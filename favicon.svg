@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Skill Canvas">
+  <defs>
+    <linearGradient id="sc-bg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0084c7"/>
+      <stop stop-color="#005799"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#sc-bg)"/>
+  <rect x="4.5" y="5.5" width="23" height="21" rx="3" fill="#E8EEF4"/>
+  <path d="M4.5 11.5h23M4.5 17.5h23M11.5 5.5v21M20.5 5.5v21" stroke="#0077bc" stroke-opacity=".14" stroke-width=".6"/>
+  <rect x="7.5" y="8.5" width="7.5" height="7.5" rx="1.6" fill="#fff" stroke="#0077bc" stroke-width=".85"/>
+  <path d="M9.2 10.8h4.6M9.2 12.6h3.4" stroke="#0077bc" stroke-width=".75" stroke-linecap="round" opacity=".85"/>
+  <rect x="17" y="8.5" width="7.5" height="7.5" rx="1.6" fill="#fff9a8" stroke="#c9b84a" stroke-width=".55"/>
+  <rect x="7.5" y="17" width="7.5" height="7.5" rx="1.6" fill="#fff" stroke="#0077bc" stroke-width=".85"/>
+  <rect x="17" y="17" width="7.5" height="7.5" rx="1.6" fill="#d4f4dd" stroke="#6aab7a" stroke-width=".55"/>
+</svg>

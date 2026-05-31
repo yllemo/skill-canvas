@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="sv" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skill Canvas</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<style>
+/* ── GS tokens ── */
+:root {
+  --gs-blue:#0077bc; --gs-blue-dark:#005799;
+  --bg:#FFFFFE; --bg-nav:#F4F9FC; --bg-info:#F2F9F9;
+  --text:#333333; --text-sec:#6E6E6E;
+  --link:#005799; --border:#C8D0D8;
+  --canvas-bg:#E8EEF4;
+  --card:#FFFFFE; --card-shadow:rgba(0,0,0,0.09);
+  --grid:rgba(0,119,188,0.08);
+  --node-bar:#0077bc;
+  --node-bar-mermaid:#008391;
+  --node-bar-image:#5a8b3b;
+  --node-bar-label:#ffd666;
+  --drag-ring:rgba(0,119,188,0.5);
+}
+[data-theme="dark"]{
+  --bg:#1F1F1F; --bg-nav:#141414; --bg-info:#282828;
+  --text:#FFFFFF; --text-sec:#B0BAC0;
+  --link:#479EF5; --border:#444;
+  --canvas-bg:#111519;
+  --card:#242B32; --card-shadow:rgba(0,0,0,0.45);
+  --grid:rgba(71,158,245,0.06);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:var(--text);background:var(--bg)}
+
+/* ── HEADER ── */
+#hdr{position:fixed;top:0;left:0;right:0;height:50px;background:var(--gs-blue);color:#fff;display:flex;align-items:center;padding:0 14px;gap:10px;z-index:200;user-select:none}
+#hdr-title{font-size:14px;font-weight:700;letter-spacing:.03em;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hdr-skill{font-size:12px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
+.hb{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:4px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .12s}
+.hb:hover{background:rgba(255,255,255,.22)}
+.hb svg{width:14px;height:14px;flex-shrink:0}
+.hb-accent{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5)}
+.hb-save{background:#27ae60;border-color:#1e8449}
+.hb-save:hover{background:#2ecc71}
+.sep{width:1px;height:22px;background:rgba(255,255,255,.2);margin:0 2px}
+
+/* ── CANVAS WRAPPER ── */
+#cw{position:fixed;top:50px;left:0;right:0;bottom:0;overflow:hidden;background:var(--canvas-bg);cursor:default}
+#cw::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,var(--grid) 1.5px,transparent 1.5px);background-size:28px 28px;pointer-events:none;z-index:0}
+#canvas{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;z-index:1}
+
+/* ── DROP ZONE ── */
+#dz{position:fixed;top:50px;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50}
+#dz.hidden{display:none}
+#dz-inner{display:flex;flex-direction:column;align-items:center;gap:16px;padding:52px 60px;border:2px dashed var(--border);border-radius:12px;background:var(--card);box-shadow:0 4px 24px var(--card-shadow);text-align:center;max-width:420px;pointer-events:all}
+#dz-inner.hover{border-color:var(--gs-blue);background:var(--bg-nav)}
+#dz-inner h2{font-size:20px;color:var(--text)}
+#dz-inner p{font-size:13px;color:var(--text-sec)}
+.openbtn{display:inline-flex;align-items:center;gap:7px;padding:10px 22px;background:var(--gs-blue);color:#fff;border:none;border-radius:4px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.openbtn:hover{opacity:.88}
+#file-input{display:none}
+
+/* ── NODE ── */
+.node{position:absolute;background:var(--card);border-radius:7px;box-shadow:0 2px 14px var(--card-shadow);min-width:200px;transition:box-shadow .15s;will-change:transform}
+.node.selected{box-shadow:0 0 0 2px var(--gs-blue),0 4px 20px var(--card-shadow)}
+.node:hover:not(.selected){box-shadow:0 4px 22px var(--card-shadow)}
+
+/* Node top bar — thin color stripe, always visible */
+.node-bar{height:4px;border-radius:7px 7px 0 0;background:var(--node-bar)}
+.node.mermaid .node-bar{background:var(--node-bar-mermaid)}
+.node.image .node-bar{background:var(--node-bar-image)}
+.node.label .node-bar{background:var(--node-bar-label)}
+
+/* Drag handle — absolutely positioned overlay, appears on hover/select, pushes nothing */
+.node-handle{
+  position:absolute;top:4px;left:0;right:0;
+  height:26px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 8px;
+  cursor:grab;user-select:none;
+  background:rgba(244,249,252,0.96);
+  border-bottom:1px solid var(--border);
+  border-radius:0;
+  opacity:0;pointer-events:none;
+  transition:opacity .15s;
+  font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-sec);
+  z-index:5;
+}
+[data-theme="dark"] .node-handle{background:rgba(20,20,20,0.96)}
+.node:hover .node-handle,.node.selected .node-handle{opacity:1;pointer-events:all}
+.node-handle .node-type-label{font-size:10px;opacity:.6;font-weight:600}
+.node-handle-actions{display:flex;gap:3px}
+.node-handle-actions button{width:22px;height:22px;border:none;background:transparent;color:var(--text-sec);cursor:pointer;border-radius:3px;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s}
+.node-handle-actions button:hover{background:var(--border);color:var(--text)}
+.node-handle-actions button svg{width:13px;height:13px}
+
+/* Node content area — padding top reduced, handle overlays on hover */
+.node-body{padding:14px 18px 16px;overflow:hidden}
+.node.label .node-body{padding:10px 14px}
+
+/* Markdown content */
+.md{color:var(--text)}
+.md h1{font-size:1.45em;margin-bottom:.55em;color:var(--gs-blue);line-height:1.25}
+.md h2{font-size:1.2em;margin:1em 0 .45em;line-height:1.3}
+.md h3{font-size:1.05em;margin:.85em 0 .35em;line-height:1.3}
+.md h4,.md h5{font-size:.95em;margin:.7em 0 .3em}
+.md p{margin-bottom:.7em}
+.md p:last-child{margin-bottom:0}
+.md ul,.md ol{padding-left:1.5em;margin-bottom:.7em}
+.md li{margin-bottom:.2em}
+.md a{color:var(--link)}
+.md code{background:var(--bg-nav);padding:1px 5px;border-radius:3px;font-size:.86em;font-family:'Courier New',monospace}
+.md pre{background:var(--bg-nav);padding:12px 14px;border-radius:5px;overflow-x:auto;margin-bottom:.7em}
+.md pre code{background:none;padding:0;font-size:.85em}
+.md blockquote{border-left:3px solid var(--gs-blue);padding-left:12px;color:var(--text-sec);margin-bottom:.7em}
+.md table{border-collapse:collapse;width:100%;margin-bottom:.7em;font-size:.9em}
+.md th,.md td{border:1px solid var(--border);padding:6px 10px;text-align:left}
+.md th{background:var(--bg-nav);font-weight:700}
+.md hr{border:none;border-top:1px solid var(--border);margin:.8em 0}
+.md img{max-width:100%;border-radius:4px;display:block;margin:.4em 0}
+.md strong{font-weight:700}
+.md em{font-style:italic}
+
+/* Mermaid node */
+.node.mermaid .node-body{padding:14px 16px}
+.mermaid-wrap{overflow:auto}
+.mermaid-wrap svg{max-width:100%;display:block}
+
+/* Image node */
+.node.image .node-body{padding:0}
+.node.image img{display:block;width:100%;border-radius:0 0 7px 7px;object-fit:contain}
+.img-caption{padding:7px 12px;font-size:12px;color:var(--text-sec);background:var(--bg-nav);border-top:1px solid var(--border);border-radius:0 0 7px 7px}
+
+/* Label node — transparent, no card chrome */
+.node.label{background:transparent;box-shadow:none;border-radius:0}
+.node.label:hover:not(.selected){box-shadow:none}
+.node.label.selected{box-shadow:0 0 0 2px rgba(0,119,188,0.4);border-radius:4px}
+.node.label .node-bar{display:none}
+.node.label .node-resize{display:none}
+.label-text{font-weight:700;color:var(--text);letter-spacing:.02em;line-height:1.2}
+
+/* Resize handle */
+.node-resize{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;z-index:10;opacity:0;transition:opacity .15s}
+.node:hover .node-resize,.node.selected .node-resize{opacity:1}
+.node-resize::after{content:'';position:absolute;right:3px;bottom:3px;width:8px;height:8px;border-right:2px solid var(--border);border-bottom:2px solid var(--border);border-radius:1px}
+
+/* ── MODAL overlay ── */
+#modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:none;align-items:center;justify-content:center}
+#modal-bg.open{display:flex}
+#modal{background:var(--card);border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.3);width:620px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+#modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--gs-blue);color:#fff}
+#modal-head h3{font-size:15px;font-weight:700}
+#modal-head button{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;opacity:.8;line-height:1;padding:2px 6px;border-radius:3px}
+#modal-head button:hover{opacity:1;background:rgba(255,255,255,.15)}
+#modal-body{padding:18px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:14px}
+#modal-foot{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.mfield{display:flex;flex-direction:column;gap:5px}
+.mfield label{font-size:12px;font-weight:700;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em}
+.mfield input,.mfield textarea,.mfield select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px;transition:border-color .15s}
+.mfield input:focus,.mfield textarea:focus,.mfield select:focus{outline:none;border-color:var(--gs-blue)}
+.mfield textarea{resize:vertical;min-height:160px;font-family:'Courier New',monospace;font-size:12px;line-height:1.5}
+.mfield textarea.tall{min-height:260px}
+.mbtn{padding:8px 18px;border-radius:4px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:opacity .15s}
+.mbtn-primary{background:var(--gs-blue);color:#fff}
+.mbtn-primary:hover{opacity:.88}
+.mbtn-cancel{background:var(--bg);color:var(--text);border-color:var(--border)}
+.mbtn-cancel:hover{background:var(--bg-nav)}
+.mbtn-danger{background:#d24723;color:#fff}
+.mbtn-danger:hover{opacity:.88}
+.file-drop-area{border:2px dashed var(--border);border-radius:6px;padding:24px;text-align:center;font-size:13px;color:var(--text-sec);cursor:pointer;transition:border-color .15s,background .15s}
+.file-drop-area:hover,.file-drop-area.hover{border-color:var(--gs-blue);background:var(--bg-nav)}
+.file-drop-area input{display:none}
+
+/* ── ADD PANEL ── */
+#add-panel{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:100;padding:8px 12px;background:var(--card);border-radius:30px;box-shadow:0 4px 20px var(--card-shadow);border:1px solid var(--border)}
+#add-panel.hidden{display:none}
+.add-btn{display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg-nav);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;transition:background .12s,border-color .12s,color .12s}
+.add-btn:hover{background:var(--gs-blue);color:#fff;border-color:var(--gs-blue)}
+.add-btn svg{width:13px;height:13px}
+.add-btn.add-md:hover{background:#0077bc}
+.add-btn.add-img:hover{background:#5a8b3b}
+.add-btn.add-mm:hover{background:#008391}
+.add-btn.add-lbl:hover{background:#8a6a00;color:#fff;border-color:#8a6a00}
+
+/* ── ZOOM CONTROLS ── */
+#zc{position:fixed;bottom:28px;right:20px;display:flex;flex-direction:column;gap:3px;z-index:100}
+#zc.hidden{display:none}
+.zb{width:34px;height:34px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px var(--card-shadow);transition:background .1s}
+.zb:hover{background:var(--bg-nav)}
+#zlevel{width:34px;height:22px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text-sec);font-size:10px;display:flex;align-items:center;justify-content:center;cursor:default;user-select:none}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(12px);background:#222;color:#fff;padding:8px 16px;border-radius:6px;font-size:12px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:500;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── LOADING ── */
+#loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35);z-index:600}
+#loading.on{display:flex}
+.spin{width:40px;height:40px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* Context menu */
+#ctxmenu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px var(--card-shadow);padding:4px 0;z-index:300;display:none;min-width:160px}
+#ctxmenu.open{display:block}
+.ctx-item{padding:7px 14px;font-size:13px;cursor:pointer;color:var(--text);white-space:nowrap;display:flex;align-items:center;gap:8px}
+.ctx-item:hover{background:var(--bg-nav)}
+.ctx-item.danger{color:#d24723}
+.ctx-item.danger:hover{background:#ffeae5}
+.ctx-sep{height:1px;background:var(--border);margin:3px 0}
+
+[data-theme="dark"] .ctx-item.danger:hover{background:#3d1a14}
+</style>
+</head>
+<body>
+<!-- HEADER -->
+<header id="hdr">
+  <span id="hdr-title">Skill Canvas</span>
+  <span id="hdr-skill"></span>
+  <button class="hb" id="btn-open">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3v10M5 8l5-5 5 5"/><path d="M3 14v1a2 2 0 002 2h10a2 2 0 002-2v-1"/></svg>
+    Öppna
+  </button>
+  <div class="sep"></div>
+  <button class="hb hb-save hidden" id="btn-save">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h9l3 3v11a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M7 3v5h6V3M7 13h6"/></svg>
+    Spara zip
+  </button>
+  <button class="hb hidden" id="btn-meta">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="3"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/></svg>
+    Canvas
+  </button>
+  <button class="hb hidden" id="btn-fit">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>
+    Centrera
+  </button>
+  <button class="hb" id="btn-theme">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 14V4a6 6 0 010 12z"/></svg>
+    Tema
+  </button>
+</header>
+
+<!-- DROP ZONE -->
+<div id="dz">
+  <div id="dz-inner">
+    <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="var(--gs-blue)" stroke-width="1.5"><path d="M3 7a2 2 0 012-2h2l2-2h4l2 2h2a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/><path d="M12 11v5M9.5 13.5L12 11l2.5 2.5"/></svg>
+    <h2>Skill Canvas</h2>
+    <p>Öppna en befintlig <strong>.zip</strong>-fil eller skapa en ny canvas från grunden.</p>
+    <button class="openbtn" id="btn-open-dz">Öppna .zip-fil</button>
+    <button class="openbtn" id="btn-new" style="background:var(--gs-blue-dark)">Ny tom canvas</button>
+    <p style="font-size:11px;color:var(--text-sec)">Allt sker lokalt — inget laddas upp.</p>
+  </div>
+</div>
+
+<!-- CANVAS -->
+<div id="cw"><div id="canvas"></div></div>
+
+<!-- ADD PANEL -->
+<div id="add-panel" class="hidden">
+  <button class="add-btn add-md" id="add-md">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 7h6M7 10h6M7 13h4"/></svg>
+    Markdown
+  </button>
+  <button class="add-btn add-img" id="add-img">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="16" height="12" rx="2"/><circle cx="7" cy="9" r="1.5"/><path d="M2 14l4-4 3 3 2-2 5 5"/></svg>
+    Bild
+  </button>
+  <button class="add-btn add-mm" id="add-mm">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="10" r="2"/><circle cx="15" cy="6" r="2"/><circle cx="15" cy="14" r="2"/><path d="M7 10h2l4-4M7 10h2l4 4"/></svg>
+    Mermaid
+  </button>
+  <button class="add-btn add-lbl" id="add-lbl">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h14M3 10h9M3 14h6"/></svg>
+    Label
+  </button>
+</div>
+
+<!-- ZOOM CONTROLS -->
+<div id="zc" class="hidden">
+  <button class="zb" id="zi">+</button>
+  <div id="zlevel">100%</div>
+  <button class="zb" id="zo">−</button>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="ctxmenu">
+  <div class="ctx-item" id="ctx-edit"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 3.5l2 2-10 10H4.5v-2L14.5 3.5z"/></svg>Redigera</div>
+  <div class="ctx-item" id="ctx-dup"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M3 13V4a1 1 0 011-1h9"/></svg>Duplicera</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" id="ctx-del"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h12M9 7V4h2v3M6 7l1 9h6l1-9"/></svg>Ta bort</div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-bg">
+  <div id="modal">
+    <div id="modal-head"><h3 id="modal-title">Redigera</h3><button id="modal-close">×</button></div>
+    <div id="modal-body"></div>
+    <div id="modal-foot">
+      <button class="mbtn mbtn-cancel" id="modal-cancel">Avbryt</button>
+      <button class="mbtn mbtn-primary" id="modal-ok">Spara</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING / TOAST -->
+<div id="loading"><div class="spin"></div></div>
+<div id="toast"></div>
+<input type="file" id="file-input" accept=".zip">
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+let panX=0,panY=0,scale=1;
+let isPanning=false,panSX=0,panSY=0;
+let skillMeta={name:'Ny Canvas',title:'',description:'',author:'',version:'1.0',tags:''};
+let nodes=[];           // [{id,type,x,y,width,height,title,content,file,src,alt,caption,...}]
+let files={};           // {path: Uint8Array|string}  — in-memory zip contents
+let dirty=false;
+let selectedId=null;
+let ctxTargetId=null;
+let dragNode=null,dragOX=0,dragOY=0;
+let resizeNode=null,resizeSX=0,resizeSY=0,resizeOW=0,resizeOH=0;
+let mermaidCounter=0;
+
+const canvas   = document.getElementById('canvas');
+const cw       = document.getElementById('cw');
+const dz       = document.getElementById('dz');
+const addPanel = document.getElementById('add-panel');
+const zlevel   = document.getElementById('zlevel');
+const toast    = document.getElementById('toast');
+const loading  = document.getElementById('loading');
+const ctxmenu  = document.getElementById('ctxmenu');
+const modalBg  = document.getElementById('modal-bg');
+const modalBody= document.getElementById('modal-body');
+
+// ════════════════════════════════════════════════════════════
+//  MERMAID + MARKED
+// ════════════════════════════════════════════════════════════
+mermaid.initialize({startOnLoad:false,theme:'default',securityLevel:'loose',fontFamily:'Arial,Helvetica,sans-serif',fontSize:13});
+
+marked.setOptions({breaks:true,gfm:true});
+
+function reinitMermaid(){
+  const t=document.documentElement.getAttribute('data-theme');
+  mermaid.initialize({startOnLoad:false,theme:t==='dark'?'dark':'default',securityLevel:'loose',fontFamily:'Arial,Helvetica,sans-serif',fontSize:13});
+}
+
+// ════════════════════════════════════════════════════════════
+//  THEME
+// ════════════════════════════════════════════════════════════
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  localStorage.setItem('theme',t);
+  reinitMermaid();
+  // re-render mermaid nodes
+  nodes.forEach(n=>{if(n.type==='mermaid') rerenderMermaid(n)});
+}
+(()=>{applyTheme(localStorage.getItem('theme')||'light')})();
+document.getElementById('btn-theme').onclick=()=>{
+  applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
+};
+
+// ════════════════════════════════════════════════════════════
+//  TRANSFORM
+// ════════════════════════════════════════════════════════════
+function applyTf(){
+  canvas.style.transform=`translate(${panX}px,${panY}px) scale(${scale})`;
+  zlevel.textContent=Math.round(scale*100)+'%';
+}
+function clampS(s){return Math.min(Math.max(s,.08),5)}
+function zoomAt(cx,cy,d){
+  const o=scale; scale=clampS(scale*d);
+  panX=cx-(cx-panX)*(scale/o); panY=cy-(cy-panY)*(scale/o);
+  applyTf();
+}
+
+cw.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const r=cw.getBoundingClientRect();
+  zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY<0?1.1:.909);
+},{passive:false});
+
+// Pan (middle mouse or space+drag or background drag)
+let spaceDown=false;
+window.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.target.matches('input,textarea,select')){e.preventDefault();spaceDown=true;cw.style.cursor='grab'}});
+window.addEventListener('keyup',e=>{if(e.code==='Space'){spaceDown=false;cw.style.cursor='default'}});
+
+cw.addEventListener('mousedown',e=>{
+  if(e.button===1||(e.button===0&&spaceDown)){
+    e.preventDefault(); isPanning=true;
+    panSX=e.clientX-panX; panSY=e.clientY-panY;
+    cw.style.cursor='grabbing';
+  } else if(e.button===0&&e.target===cw||e.target===canvas){
+    // click on empty space — deselect
+    selectNode(null);
+    closeCtx();
+  }
+});
+window.addEventListener('mousemove',e=>{
+  if(isPanning){panX=e.clientX-panSX;panY=e.clientY-panSY;applyTf();return}
+  if(dragNode){
+    const dx=(e.clientX-dragNode._mx)/scale, dy=(e.clientY-dragNode._my)/scale;
+    dragNode.x=Math.round(dragNode._ox+dx);
+    dragNode.y=Math.round(dragNode._oy+dy);
+    dragNode._el.style.left=dragNode.x+'px';
+    dragNode._el.style.top=dragNode.y+'px';
+    markDirty();
+  }
+  if(resizeNode){
+    const dx=(e.clientX-resizeSX)/scale, dy=(e.clientY-resizeSY)/scale;
+    const nw=Math.max(160,Math.round(resizeOW+dx));
+    const nh=Math.max(60,Math.round(resizeOH+dy));
+    resizeNode.width=nw; resizeNode.height=nw; // keep width only; height auto
+    resizeNode.width=nw;
+    resizeNode._el.style.width=nw+'px';
+    markDirty();
+  }
+});
+window.addEventListener('mouseup',e=>{
+  isPanning=false; cw.style.cursor='default';
+  if(dragNode){dragNode=null}
+  if(resizeNode){resizeNode=null}
+});
+
+document.getElementById('zi').onclick=()=>{const r=cw.getBoundingClientRect();zoomAt(r.width/2,r.height/2,1.2)};
+document.getElementById('zo').onclick=()=>{const r=cw.getBoundingClientRect();zoomAt(r.width/2,r.height/2,1/1.2)};
+document.getElementById('btn-fit').onclick=fitView;
+
+function fitView(){
+  if(!nodes.length){panX=0;panY=0;scale=1;applyTf();return}
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  nodes.forEach(n=>{
+    const w=n.width||380,h=n._el?n._el.offsetHeight:300;
+    x0=Math.min(x0,n.x);y0=Math.min(y0,n.y);
+    x1=Math.max(x1,n.x+w);y1=Math.max(y1,n.y+h);
+  });
+  const pad=80,bw=x1-x0+pad*2,bh=y1-y0+pad*2;
+  const ww=cw.clientWidth,wh=cw.clientHeight;
+  scale=clampS(Math.min(ww/bw,wh/bh,.95));
+  panX=(ww-bw*scale)/2-(x0-pad)*scale;
+  panY=(wh-bh*scale)/2-(y0-pad)*scale;
+  applyTf();
+}
+
+// ════════════════════════════════════════════════════════════
+//  CANVAS OPEN / NEW
+// ════════════════════════════════════════════════════════════
+document.getElementById('btn-open').onclick=()=>document.getElementById('file-input').click();
+document.getElementById('btn-open-dz').onclick=()=>document.getElementById('file-input').click();
+document.getElementById('file-input').onchange=e=>{if(e.target.files[0])loadZip(e.target.files[0]);e.target.value=''};
+
+// Drag-drop anywhere
+document.body.addEventListener('dragover',e=>{e.preventDefault();document.getElementById('dz-inner').classList.add('hover')});
+document.body.addEventListener('dragleave',()=>document.getElementById('dz-inner').classList.remove('hover'));
+document.body.addEventListener('drop',e=>{
+  e.preventDefault();document.getElementById('dz-inner').classList.remove('hover');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.name.endsWith('.zip'))loadZip(f);else showToast('Välj en .zip-fil');
+});
+
+document.getElementById('btn-new').onclick=()=>{
+  files={};nodes=[];skillMeta={name:'Ny Canvas',description:'',version:'1.0',author:''};
+  canvas.innerHTML='';dirty=false;
+  showCanvas();
+  openMetaModal();
+};
+
+function showCanvas(){
+  dz.classList.add('hidden');
+  addPanel.classList.remove('hidden');
+  document.getElementById('zc').classList.remove('hidden');
+  document.getElementById('btn-save').classList.remove('hidden');
+  document.getElementById('btn-fit').classList.remove('hidden');
+  document.getElementById('btn-meta').classList.remove('hidden');
+  document.getElementById('hdr-title').textContent=skillMeta.name||'Skill Canvas';
+  document.getElementById('hdr-skill').textContent=skillMeta.description||'';
+}
+
+// ════════════════════════════════════════════════════════════
+//  LOAD ZIP
+// ════════════════════════════════════════════════════════════
+async function loadZip(file){
+  loading.classList.add('on');
+  try{
+    const zip=await JSZip.loadAsync(file);
+    const sf=zip.file('SKILL.md');
+    if(!sf)throw new Error('SKILL.md saknas i zip-filen.');
+    const raw=await sf.async('string');
+
+    // load all other files into memory
+    files={};
+    const promises=[];
+    zip.forEach((path,entry)=>{
+      if(path==='SKILL.md'||entry.dir)return;
+      promises.push(entry.async('uint8array').then(d=>{files[path]=d}));
+    });
+    await Promise.all(promises);
+
+    await parseSkill(raw);
+    showCanvas();
+    setTimeout(fitView,250);
+    showToast('Öppnad: '+file.name);
+  }catch(err){
+    console.error(err);showToast('Fel: '+err.message,4000);
+  }finally{loading.classList.remove('on')}
+}
+
+// ════════════════════════════════════════════════════════════
+//  PARSE SKILL.md
+// ════════════════════════════════════════════════════════════
+async function parseSkill(raw){
+  const fm=raw.match(/^---\n([\s\S]*?)\n---/);
+  if(!fm)throw new Error('YAML frontmatter saknas');
+  let meta;
+  try{meta=jsyaml.load(fm[1])}catch(e){throw new Error('YAML-fel: '+e.message)}
+  skillMeta={
+    name:meta.name||'Canvas',
+    title:meta.title||'',
+    description:meta.description||'',
+    version:String(meta.version||'1.0'),
+    author:meta.author||'',
+    tags:Array.isArray(meta.tags)?meta.tags.join(', '):(meta.tags||'')
+  };
+  nodes=(meta.nodes||[]).map((n,i)=>({...n,id:n.id||genId()}));
+  canvas.innerHTML='';
+  for(const n of nodes)await buildNodeEl(n);
+  applyTf();
+}
+
+// ════════════════════════════════════════════════════════════
+//  BUILD NODE ELEMENT
+// ════════════════════════════════════════════════════════════
+async function buildNodeEl(node){
+  const el=document.createElement('div');
+  el.className='node '+(node.type||'markdown');
+  el.dataset.id=node.id;
+  el.style.left=(node.x||0)+'px';
+  el.style.top=(node.y||0)+'px';
+  if(node.width)el.style.width=node.width+'px';
+  node._el=el;
+
+  // color bar
+  const bar=document.createElement('div');bar.className='node-bar';el.appendChild(bar);
+
+  // drag handle
+  const handle=document.createElement('div');
+  handle.className='node-handle';
+  handle.innerHTML=`<span class="node-type-label">${typeLabel(node.type)}</span>
+    <span>${node.title||''}</span>
+    <span class="node-handle-actions">
+      <button title="Redigera" data-action="edit">${iconEdit()}</button>
+      <button title="Ta bort" data-action="del">${iconDel()}</button>
+    </span>`;
+  el.appendChild(handle);
+
+  // body
+  const body=document.createElement('div');body.className='node-body';
+  el.appendChild(body);
+
+  // resize
+  const rz=document.createElement('div');rz.className='node-resize';el.appendChild(rz);
+
+  canvas.appendChild(el);
+  await renderNodeContent(node,body);
+  attachNodeEvents(node,el,handle,rz);
+  return el;
+}
+
+async function renderNodeContent(node,body){
+  body.innerHTML='';
+  const type=node.type||'markdown';
+
+  if(type==='markdown'){
+    let md=node.content||'';
+    if(!md&&node.file){md=await readTextFile(node.file)}
+    const div=document.createElement('div');div.className='md';
+    div.innerHTML=marked.parse(md);
+    // make links open in new tab
+    div.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noopener'});
+    body.appendChild(div);
+
+  }else if(type==='mermaid'){
+    let code=node.content||'';
+    if(!code&&node.file){code=await readTextFile(node.file)}
+    const wrap=document.createElement('div');wrap.className='mermaid-wrap';
+    const id='mm'+Date.now()+(mermaidCounter++);
+    try{
+      const {svg}=await mermaid.render(id,code);
+      wrap.innerHTML=svg;
+    }catch(e){
+      wrap.innerHTML=`<pre style="color:#d24723;font-size:12px;padding:8px;background:var(--bg-nav);border-radius:4px;">Mermaid-fel:\n${e.message}</pre>`;
+    }
+    body.appendChild(wrap);
+
+  }else if(type==='image'){
+    let src='';
+    if(node.src){src=node.src}
+    else if(node.file&&files[node.file]){
+      const blob=new Blob([files[node.file]],{type:mimeFromPath(node.file)});
+      src=URL.createObjectURL(blob);
+    }
+    const img=document.createElement('img');
+    img.src=src;img.alt=node.alt||node.title||'';
+    if(node.width)img.style.width='100%';
+    body.style.padding='0';
+    body.appendChild(img);
+    if(node.caption){
+      const cap=document.createElement('div');cap.className='img-caption';cap.textContent=node.caption;
+      body.appendChild(cap);
+    }
+  }else if(type==='label'){
+    const t=document.createElement('div');t.className='label-text';
+    t.style.fontSize=(node.fontSize||24)+'px';
+    if(node.color)t.style.color=node.color;
+    t.textContent=node.content||node.title||'';
+    body.appendChild(t);
+  }
+}
+
+async function rerenderMermaid(node){
+  if(node.type!=='mermaid'||!node._el)return;
+  const body=node._el.querySelector('.node-body');
+  if(body)await renderNodeContent(node,body);
+}
+
+async function readTextFile(path){
+  if(!files[path])return `_Fil saknas: ${path}_`;
+  const dec=new TextDecoder('utf-8');
+  return dec.decode(files[path]);
+}
+
+// ════════════════════════════════════════════════════════════
+//  NODE EVENTS (drag, resize, select, context)
+// ════════════════════════════════════════════════════════════
+function attachNodeEvents(node,el,handle,rz){
+  // select on click
+  el.addEventListener('mousedown',e=>{
+    if(e.button!==0)return;
+    selectNode(node.id);
+    closeCtx();
+  });
+
+  // drag via handle
+  handle.addEventListener('mousedown',e=>{
+    if(e.target.closest('[data-action]'))return;
+    if(e.button!==0)return;
+    e.stopPropagation();e.preventDefault();
+    dragNode=node;
+    dragNode._mx=e.clientX;dragNode._my=e.clientY;
+    dragNode._ox=node.x;dragNode._oy=node.y;
+  });
+
+  // handle actions
+  handle.querySelector('[data-action="edit"]').onclick=e=>{e.stopPropagation();openEditModal(node)};
+  handle.querySelector('[data-action="del"]').onclick=e=>{e.stopPropagation();deleteNode(node.id)};
+
+  // right-click context menu
+  el.addEventListener('contextmenu',e=>{
+    e.preventDefault();e.stopPropagation();
+    ctxTargetId=node.id;
+    showCtx(e.clientX,e.clientY);
+  });
+
+  // resize
+  rz.addEventListener('mousedown',e=>{
+    e.stopPropagation();e.preventDefault();
+    resizeNode=node;
+    resizeSX=e.clientX;resizeSY=e.clientY;
+    resizeOW=node.width||el.offsetWidth;
+    resizeOH=el.offsetHeight;
+  });
+}
+
+function selectNode(id){
+  document.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
+  selectedId=id;
+  if(id){
+    const n=nodes.find(n=>n.id===id);
+    if(n&&n._el)n._el.classList.add('selected');
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  CONTEXT MENU
+// ════════════════════════════════════════════════════════════
+function showCtx(x,y){
+  ctxmenu.style.left=x+'px';ctxmenu.style.top=y+'px';
+  ctxmenu.classList.add('open');
+}
+function closeCtx(){ctxmenu.classList.remove('open')}
+document.addEventListener('mousedown',e=>{if(!e.target.closest('#ctxmenu'))closeCtx()});
+document.getElementById('ctx-edit').onclick=()=>{closeCtx();const n=nodes.find(n=>n.id===ctxTargetId);if(n)openEditModal(n)};
+document.getElementById('ctx-dup').onclick=()=>{closeCtx();duplicateNode(ctxTargetId)};
+document.getElementById('ctx-del').onclick=()=>{closeCtx();deleteNode(ctxTargetId)};
+
+// ════════════════════════════════════════════════════════════
+//  ADD NODES
+// ════════════════════════════════════════════════════════════
+function centerPos(){
+  // place new node near center of current viewport
+  const ww=cw.clientWidth,wh=cw.clientHeight;
+  const cx=(-panX+ww/2)/scale, cy=(-panY+wh/2)/scale;
+  return {x:Math.round(cx-190),y:Math.round(cy-100)};
+}
+
+document.getElementById('add-md').onclick=()=>openAddModal('markdown');
+document.getElementById('add-img').onclick=()=>openAddModal('image');
+document.getElementById('add-mm').onclick=()=>openAddModal('mermaid');
+document.getElementById('add-lbl').onclick=()=>openAddModal('label');
+
+// ════════════════════════════════════════════════════════════
+//  DELETE / DUPLICATE
+// ════════════════════════════════════════════════════════════
+function deleteNode(id){
+  const idx=nodes.findIndex(n=>n.id===id);
+  if(idx===-1)return;
+  const n=nodes[idx];
+  if(n._el)n._el.remove();
+  // remove associated file if it's a generated one
+  if(n.file&&n._ownFile)delete files[n.file];
+  nodes.splice(idx,1);
+  markDirty();
+  showToast('Nod borttagen');
+}
+
+function duplicateNode(id){
+  const src=nodes.find(n=>n.id===id);if(!src)return;
+  const clone=JSON.parse(JSON.stringify(src));
+  clone.id=genId();clone.x=src.x+30;clone.y=src.y+30;clone._el=null;
+  if(src.file&&src._ownFile){
+    // duplicate the file too
+    const newPath=uniqueFilePath(src.file);
+    files[newPath]=files[src.file];
+    clone.file=newPath;clone._ownFile=true;
+  }
+  nodes.push(clone);
+  buildNodeEl(clone);
+  markDirty();
+}
+
+// ════════════════════════════════════════════════════════════
+//  MODAL SYSTEM
+// ════════════════════════════════════════════════════════════
+let modalOkCb=null;
+document.getElementById('modal-close').onclick=closeModal;
+document.getElementById('modal-cancel').onclick=closeModal;
+document.getElementById('modal-ok').onclick=()=>{if(modalOkCb)modalOkCb()};
+modalBg.addEventListener('mousedown',e=>{if(e.target===modalBg)closeModal()});
+function closeModal(){modalBg.classList.remove('open');modalOkCb=null}
+function openModal(title,bodyHTML,okCb,okLabel='Spara'){
+  document.getElementById('modal-title').textContent=title;
+  modalBody.innerHTML=bodyHTML;
+  document.getElementById('modal-ok').textContent=okLabel;
+  modalOkCb=okCb;
+  modalBg.classList.add('open');
+}
+
+// ── META modal ──
+function openMetaModal(){
+  openModal('Canvas-metadata',`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="mfield" style="grid-column:1/-1"><label>Namn <span style="color:#d24723">*</span></label><input id="m-name" value="${esc(skillMeta.name)}" placeholder="kortnamn-utan-mellanslag"></div>
+      <div class="mfield" style="grid-column:1/-1"><label>Titel</label><input id="m-title" value="${esc(skillMeta.title)}" placeholder="Lång läsbar titel"></div>
+      <div class="mfield" style="grid-column:1/-1"><label>Beskrivning</label><input id="m-desc" value="${esc(skillMeta.description)}" placeholder="En mening om vad canvasen innehåller"></div>
+      <div class="mfield"><label>Författare</label><input id="m-author" value="${esc(skillMeta.author)}" placeholder="Intraservice"></div>
+      <div class="mfield"><label>Version</label><input id="m-ver" value="${esc(skillMeta.version)}" placeholder="1.0.0"></div>
+      <div class="mfield" style="grid-column:1/-1"><label>Taggar <span style="color:var(--text-sec);font-weight:400;text-transform:none;font-size:11px">(kommaseparerade)</span></label><input id="m-tags" value="${esc(skillMeta.tags)}" placeholder="klos, bas, isdb"></div>
+    </div>
+    <p style="font-size:11px;color:var(--text-sec);margin-top:4px">Namn och beskrivning är minimum för Claude-skill-kompatibilitet.</p>
+  `,()=>{
+    skillMeta.name=document.getElementById('m-name').value||'Canvas';
+    skillMeta.title=document.getElementById('m-title').value;
+    skillMeta.description=document.getElementById('m-desc').value;
+    skillMeta.author=document.getElementById('m-author').value;
+    skillMeta.version=document.getElementById('m-ver').value||'1.0';
+    skillMeta.tags=document.getElementById('m-tags').value;
+    document.getElementById('hdr-title').textContent=skillMeta.name;
+    document.getElementById('hdr-skill').textContent=skillMeta.description;
+    markDirty();closeModal();
+  },'Spara');
+}
+document.getElementById('btn-meta').onclick=openMetaModal;
+
+// ── ADD modal ──
+function openAddModal(type){
+  const pos=centerPos();
+  if(type==='markdown'){
+    openModal('Lägg till Markdown',`
+      <div class="mfield"><label>Titel (valfri)</label><input id="n-title" placeholder="Rubrik för handtaget…"></div>
+      <div class="mfield"><label>Bredd (px)</label><input id="n-width" value="400" type="number" min="160" max="1200"></div>
+      <div class="mfield"><label>Markdown-innehåll</label><textarea id="n-content" class="tall" placeholder="## Rubrik&#10;&#10;Text, **fetstil**, _kursiv_, listor, tabeller…"></textarea></div>
+    `,async ()=>{
+      const title=document.getElementById('n-title').value;
+      const width=parseInt(document.getElementById('n-width').value)||400;
+      const content=document.getElementById('n-content').value;
+      const id=genId();
+      const filename=`nodes/${id}.md`;
+      files[filename]=new TextEncoder().encode(content);
+      const node={id,type:'markdown',x:pos.x,y:pos.y,width,title,file:filename,_ownFile:true};
+      nodes.push(node);
+      await buildNodeEl(node);
+      markDirty();closeModal();
+      showToast('Markdown-nod tillagd');
+    });
+  } else if(type==='image'){
+    openModal('Lägg till Bild',`
+      <div class="mfield"><label>Ladda upp bild</label>
+        <div class="file-drop-area" id="img-drop-area">
+          <input type="file" id="img-file-pick" accept="image/*">
+          Klicka eller dra en bild hit
+          <div id="img-preview" style="margin-top:10px"></div>
+        </div>
+      </div>
+      <div class="mfield"><label>— eller — Extern URL</label><input id="img-url" placeholder="https://…" type="url"></div>
+      <div class="mfield"><label>Bildtext (caption)</label><input id="img-caption" placeholder="Valfri bildtext"></div>
+      <div class="mfield"><label>Alt-text</label><input id="img-alt" placeholder="Beskrivning av bilden"></div>
+      <div class="mfield"><label>Bredd (px)</label><input id="img-width" value="400" type="number" min="120" max="1200"></div>
+    `,async ()=>{
+      const caption=document.getElementById('img-caption').value;
+      const alt=document.getElementById('img-alt').value;
+      const width=parseInt(document.getElementById('img-width').value)||400;
+      const url=document.getElementById('img-url').value.trim();
+      const pick=document.getElementById('img-file-pick');
+      const id=genId();
+      let node;
+      if(pick.files&&pick.files[0]){
+        const f=pick.files[0];
+        const ext=f.name.split('.').pop().toLowerCase();
+        const path=`images/${id}.${ext}`;
+        const buf=await f.arrayBuffer();
+        files[path]=new Uint8Array(buf);
+        node={id,type:'image',x:pos.x,y:pos.y,width,file:path,caption,alt,_ownFile:true};
+      } else if(url){
+        node={id,type:'image',x:pos.x,y:pos.y,width,src:url,caption,alt};
+      } else{showToast('Välj en bild eller ange en URL');return}
+      nodes.push(node);
+      await buildNodeEl(node);
+      markDirty();closeModal();showToast('Bildnod tillagd');
+    });
+    // wire up preview
+    setTimeout(()=>{
+      const area=document.getElementById('img-drop-area');
+      const inp=document.getElementById('img-file-pick');
+      const prev=document.getElementById('img-preview');
+      area.onclick=()=>inp.click();
+      area.ondragover=e=>{e.preventDefault();area.classList.add('hover')};
+      area.ondragleave=()=>area.classList.remove('hover');
+      area.ondrop=e=>{e.preventDefault();area.classList.remove('hover');inp.files=e.dataTransfer.files;previewImg(inp,prev,area)};
+      inp.onchange=()=>previewImg(inp,prev,area);
+    },50);
+  } else if(type==='mermaid'){
+    openModal('Lägg till Mermaid-diagram',`
+      <div class="mfield"><label>Titel (valfri)</label><input id="n-title" placeholder="Diagramtitel…"></div>
+      <div class="mfield"><label>Bredd (px)</label><input id="n-width" value="500" type="number" min="160" max="1400"></div>
+      <div class="mfield"><label>Mermaid-kod</label><textarea id="n-content" class="tall" placeholder="flowchart LR&#10;  A[Start] --> B[Slut]"></textarea></div>
+    `,async ()=>{
+      const title=document.getElementById('n-title').value;
+      const width=parseInt(document.getElementById('n-width').value)||500;
+      const content=document.getElementById('n-content').value;
+      const id=genId();
+      const filename=`diagrams/${id}.mmd`;
+      files[filename]=new TextEncoder().encode(content);
+      const node={id,type:'mermaid',x:pos.x,y:pos.y,width,title,file:filename,_ownFile:true};
+      nodes.push(node);
+      await buildNodeEl(node);
+      markDirty();closeModal();showToast('Mermaid-nod tillagd');
+    });
+  } else if(type==='label'){
+    openModal('Lägg till Label',`
+      <div class="mfield"><label>Text</label><input id="n-content" placeholder="Rubrik eller rubriktext…" autofocus></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div class="mfield"><label>Teckenstorlek (px)</label><input id="n-fontsize" value="28" type="number" min="10" max="120"></div>
+        <div class="mfield"><label>Färg</label><input id="n-color" value="#0077bc" type="color" style="height:38px;padding:2px 4px"></div>
+        <div class="mfield"><label>Bredd (px, valfri)</label><input id="n-width" value="" type="number" min="80" max="2000" placeholder="auto"></div>
+      </div>
+    `,async ()=>{
+      const content=document.getElementById('n-content').value;
+      if(!content.trim()){showToast('Skriv in en text');return}
+      const fontSize=parseInt(document.getElementById('n-fontsize').value)||28;
+      const color=document.getElementById('n-color').value||'#0077bc';
+      const widthRaw=document.getElementById('n-width').value;
+      const width=widthRaw?parseInt(widthRaw):undefined;
+      const id=genId();
+      const node={id,type:'label',x:pos.x,y:pos.y,content,fontSize,color,...(width?{width}:{})};
+      nodes.push(node);
+      await buildNodeEl(node);
+      markDirty();closeModal();showToast('Label tillagd');
+    });
+  }
+}
+
+function previewImg(inp,prev,area){
+  if(!inp.files||!inp.files[0])return;
+  const url=URL.createObjectURL(inp.files[0]);
+  prev.innerHTML=`<img src="${url}" style="max-width:100%;max-height:140px;border-radius:4px;object-fit:contain">`;
+  area.style.border='2px solid var(--gs-blue)';
+}
+
+// ── EDIT modal ──
+async function openEditModal(node){
+  selectNode(node.id);
+  const type=node.type||'markdown';
+  let currentContent='';
+  if(node.file)currentContent=await readTextFile(node.file);
+  else if(node.content)currentContent=node.content;
+
+  if(type==='markdown'){
+    openModal('Redigera Markdown',`
+      <div class="mfield"><label>Titel</label><input id="e-title" value="${esc(node.title||'')}"></div>
+      <div class="mfield"><label>Bredd (px)</label><input id="e-width" value="${node.width||400}" type="number" min="160" max="1200"></div>
+      <div class="mfield"><label>Markdown-innehåll</label><textarea id="e-content" class="tall">${esc(currentContent)}</textarea></div>
+    `,async ()=>{
+      node.title=document.getElementById('e-title').value;
+      node.width=parseInt(document.getElementById('e-width').value)||400;
+      const content=document.getElementById('e-content').value;
+      if(node.file){files[node.file]=new TextEncoder().encode(content);}
+      else{node.content=content}
+      node._el.style.width=node.width+'px';
+      // update handle title
+      const htitle=node._el.querySelector('.node-handle span:nth-child(2)');
+      if(htitle)htitle.textContent=node.title||'';
+      const body=node._el.querySelector('.node-body');
+      await renderNodeContent(node,body);
+      markDirty();closeModal();showToast('Sparad');
+    });
+  } else if(type==='mermaid'){
+    openModal('Redigera Mermaid',`
+      <div class="mfield"><label>Titel</label><input id="e-title" value="${esc(node.title||'')}"></div>
+      <div class="mfield"><label>Bredd (px)</label><input id="e-width" value="${node.width||500}" type="number" min="160" max="1400"></div>
+      <div class="mfield"><label>Mermaid-kod</label><textarea id="e-content" class="tall">${esc(currentContent)}</textarea></div>
+    `,async ()=>{
+      node.title=document.getElementById('e-title').value;
+      node.width=parseInt(document.getElementById('e-width').value)||500;
+      const content=document.getElementById('e-content').value;
+      if(node.file){files[node.file]=new TextEncoder().encode(content);}
+      else{node.content=content}
+      node._el.style.width=node.width+'px';
+      const htitle=node._el.querySelector('.node-handle span:nth-child(2)');
+      if(htitle)htitle.textContent=node.title||'';
+      const body=node._el.querySelector('.node-body');
+      await renderNodeContent(node,body);
+      markDirty();closeModal();showToast('Sparad');
+    });
+  } else if(type==='image'){
+    openModal('Redigera Bild',`
+      <div class="mfield"><label>Bildtext (caption)</label><input id="e-caption" value="${esc(node.caption||'')}"></div>
+      <div class="mfield"><label>Alt-text</label><input id="e-alt" value="${esc(node.alt||'')}"></div>
+      <div class="mfield"><label>Bredd (px)</label><input id="e-width" value="${node.width||400}" type="number" min="120" max="1200"></div>
+      <div class="mfield"><label>Byt bild (valfri)</label>
+        <div class="file-drop-area" id="img-drop2">
+          <input type="file" id="img-new" accept="image/*"> Välj ny bild
+        </div>
+      </div>
+    `,async ()=>{
+      node.caption=document.getElementById('e-caption').value;
+      node.alt=document.getElementById('e-alt').value;
+      node.width=parseInt(document.getElementById('e-width').value)||400;
+      const pick=document.getElementById('img-new');
+      if(pick.files&&pick.files[0]){
+        const f=pick.files[0];
+        const ext=f.name.split('.').pop().toLowerCase();
+        const path=node.file||(node.id?`images/${node.id}.${ext}`:`images/${genId()}.${ext}`);
+        const buf=await f.arrayBuffer();
+        files[path]=new Uint8Array(buf);
+        node.file=path;node._ownFile=true;delete node.src;
+      }
+      node._el.style.width=node.width+'px';
+      const body=node._el.querySelector('.node-body');
+      await renderNodeContent(node,body);
+      markDirty();closeModal();showToast('Sparad');
+    });
+    setTimeout(()=>{
+      const area=document.getElementById('img-drop2');
+      const inp=document.getElementById('img-new');
+      if(area&&inp){area.onclick=()=>inp.click()}
+    },50);
+  } else if(type==='label'){
+    openModal('Redigera Label',`
+      <div class="mfield"><label>Text</label><input id="e-content" value="${esc(node.content||node.title||'')}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div class="mfield"><label>Teckenstorlek (px)</label><input id="e-fontsize" value="${node.fontSize||28}" type="number" min="10" max="120"></div>
+        <div class="mfield"><label>Färg</label><input id="e-color" value="${node.color||'#0077bc'}" type="color" style="height:38px;padding:2px 4px"></div>
+        <div class="mfield"><label>Bredd (px, valfri)</label><input id="e-width" value="${node.width||''}" type="number" min="80" max="2000" placeholder="auto"></div>
+      </div>
+    `,async ()=>{
+      node.content=document.getElementById('e-content').value;
+      node.fontSize=parseInt(document.getElementById('e-fontsize').value)||28;
+      node.color=document.getElementById('e-color').value;
+      const widthRaw=document.getElementById('e-width').value;
+      if(widthRaw){node.width=parseInt(widthRaw);node._el.style.width=node.width+'px';}
+      else{delete node.width;node._el.style.width='';}
+      const body=node._el.querySelector('.node-body');
+      await renderNodeContent(node,body);
+      markDirty();closeModal();showToast('Sparad');
+    });
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  SAVE ZIP
+// ════════════════════════════════════════════════════════════
+document.getElementById('btn-save').onclick=saveZip;
+
+async function saveZip(){
+  loading.classList.add('on');
+  try{
+    const zip=new JSZip();
+
+    // Build SKILL.md
+    const exportNodes=nodes.map(n=>{
+      const {_el,_ownFile,...rest}=n;
+      // update x,y from current position
+      if(_el){
+        rest.x=parseInt(_el.style.left)||n.x||0;
+        rest.y=parseInt(_el.style.top)||n.y||0;
+        rest.width=_el.offsetWidth||n.width;
+      }
+      return rest;
+    });
+
+    const tagsVal=skillMeta.tags
+      ?skillMeta.tags.split(',').map(t=>t.trim()).filter(Boolean)
+      :undefined;
+
+    const yamlObj={
+      name:skillMeta.name,
+      ...(skillMeta.title?{title:skillMeta.title}:{}),
+      description:skillMeta.description,
+      author:skillMeta.author,
+      version:skillMeta.version,
+      ...(tagsVal&&tagsVal.length?{tags:tagsVal}:{}),
+      nodes:exportNodes
+    };
+    const skillContent='---\n'+jsyaml.dump(yamlObj,{lineWidth:120,noRefs:true})+'---\n';
+    zip.file('SKILL.md',skillContent);
+
+    // Add all files
+    for(const [path,data] of Object.entries(files)){
+      if(data instanceof Uint8Array)zip.file(path,data);
+      else zip.file(path,data);
+    }
+
+    const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=(skillMeta.name||'skill-canvas').toLowerCase().replace(/\s+/g,'-')+'.zip';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    dirty=false;
+    document.getElementById('btn-save').classList.remove('hb-save');
+    showToast('Sparad: '+a.download);
+  }catch(err){
+    console.error(err);showToast('Sparafel: '+err.message,4000);
+  }finally{loading.classList.remove('on')}
+}
+
+// ════════════════════════════════════════════════════════════
+//  DIRTY / UTILS
+// ════════════════════════════════════════════════════════════
+function markDirty(){
+  dirty=true;
+  document.getElementById('btn-save').classList.add('hb-save');
+}
+function genId(){return 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function uniqueFilePath(orig){
+  let p=orig,i=1;
+  while(files[p]){const d=orig.lastIndexOf('.');p=d>-1?orig.slice(0,d)+'-'+i+orig.slice(d):orig+'-'+i;i++}
+  return p;
+}
+function mimeFromPath(p){
+  const e=p.split('.').pop().toLowerCase();
+  return{png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'}[e]||'application/octet-stream';
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function typeLabel(t){return{markdown:'MD',mermaid:'MM',image:'IMG',label:'LBL'}[t]||'?'}
+function iconEdit(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 3.5l2 2-10 10H4.5v-2L14.5 3.5z"/></svg>`}
+function iconDel(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h12M9 7V4h2v3M6 7l1 9h6l1-9"/></svg>`}
+
+function showToast(msg,dur=2800){
+  toast.textContent=msg;toast.classList.add('show');
+  clearTimeout(toast._t);toast._t=setTimeout(()=>toast.classList.remove('show'),dur);
+}
+
+// ── keyboard shortcuts ──
+window.addEventListener('keydown',e=>{
+  if(e.target.matches('input,textarea,select'))return;
+  if(e.key==='Delete'||e.key==='Backspace'){
+    if(selectedId){deleteNode(selectedId);selectedId=null}
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();if(dirty)saveZip()}
+  if((e.ctrlKey||e.metaKey)&&e.key==='d'){
+    e.preventDefault();if(selectedId)duplicateNode(selectedId)
+  }
+});
+
+applyTf();
+</script>
+</body>
+</html>

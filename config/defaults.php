@@ -1,0 +1,165 @@
+<?php
+declare(strict_types=1);
+
+return [
+    'skill' => [
+        'name' => '',
+        'description' => '',
+        'author' => '',
+        'version' => '1.0',
+        'tags' => '',
+    ],
+
+    'canvas' => [
+        'minNodeWidth' => 160,
+        'minNodeHeight' => 60,
+        'minScale' => 0.08,
+        'maxScale' => 5,
+        'fitPadding' => 80,
+        'nodeFocusPadding' => 12,
+    ],
+
+    'nodes' => [
+        'markdown' => [
+            'width' => 400,
+            'minWidth' => 160,
+            'maxWidth' => 1200,
+            'fileDir' => 'nodes',
+            'fileExt' => 'md',
+        ],
+        'mermaid' => [
+            'width' => 500,
+            'minWidth' => 160,
+            'maxWidth' => 1400,
+            'fileDir' => 'diagrams',
+            'fileExt' => 'mmd',
+        ],
+        'image' => [
+            'width' => 400,
+            'minWidth' => 120,
+            'maxWidth' => 1200,
+            'fileDir' => 'images',
+        ],
+        'label' => [
+            'fontSize' => 28,
+            'color' => '#0077bc',
+            'minFontSize' => 10,
+            'maxFontSize' => 120,
+            'minWidth' => 80,
+            'maxWidth' => 2000,
+        ],
+        'note' => [
+            'width' => 220,
+            'minWidth' => 140,
+            'maxWidth' => 480,
+            'minHeight' => 120,
+            'maxHeight' => 480,
+            'color' => '#fff9a8',
+            'fontSize' => 14,
+        ],
+    ],
+
+    'modules' => [
+        'markdown' => [
+            'addTitle' => 'Lägg till Markdown',
+            'editTitle' => 'Redigera Markdown',
+            'okLabel' => 'Spara',
+            'addToast' => 'Markdown-nod tillagd',
+            'editToast' => 'Sparad',
+            'labels' => [
+                'title' => 'Titel',
+                'titleOptional' => 'Titel (valfri)',
+                'width' => 'Bredd (px)',
+                'content' => 'Markdown-innehåll',
+            ],
+            'placeholders' => [
+                'title' => 'Rubrik för handtaget…',
+                'content' => "## Rubrik\n\nText, **fetstil**, _kursiv_, listor, tabeller…",
+            ],
+            'editorUrl' => 'html/markdown.php',
+            'fullscreenLabel' => 'Fullskärmseditor',
+            'fullscreenTitle' => 'Markdown — fullskärmseditor',
+        ],
+        'bild' => [
+            'addTitle' => 'Lägg till Bild',
+            'editTitle' => 'Redigera Bild',
+            'okLabel' => 'Spara',
+            'addToast' => 'Bildnod tillagd',
+            'editToast' => 'Sparad',
+            'missingToast' => 'Välj en bild, klistra in (Ctrl+V) eller ange en URL',
+            'pasteToast' => 'Bild klistrad från urklipp',
+            'labels' => [
+                'upload' => 'Ladda upp bild',
+                'pasteHint' => 'Ctrl+V klistrar in bild från urklipp',
+                'url' => '— eller — Extern URL',
+                'caption' => 'Bildtext (caption)',
+                'alt' => 'Alt-text',
+                'width' => 'Bredd (px)',
+                'replace' => 'Byt bild (valfri)',
+            ],
+            'placeholders' => [
+                'upload' => 'Klicka eller dra en bild hit',
+                'url' => 'https://…',
+                'caption' => 'Valfri bildtext',
+                'alt' => 'Beskrivning av bilden',
+                'replace' => 'Välj ny bild',
+            ],
+        ],
+        'mermaid' => [
+            'addTitle' => 'Lägg till Mermaid-diagram',
+            'editTitle' => 'Redigera Mermaid',
+            'okLabel' => 'Spara',
+            'addToast' => 'Mermaid-nod tillagd',
+            'editToast' => 'Sparad',
+            'liveEditorUrl' => 'https://mermaid.live/',
+            'liveEditorLabel' => 'Mermaid Live',
+            'labels' => [
+                'title' => 'Titel',
+                'titleOptional' => 'Titel (valfri)',
+                'width' => 'Bredd (px)',
+                'content' => 'Mermaid-kod',
+            ],
+            'placeholders' => [
+                'title' => 'Diagramtitel…',
+                'content' => "flowchart LR\n  A[Start] --> B[Slut]",
+            ],
+        ],
+        'label' => [
+            'addTitle' => 'Lägg till Label',
+            'editTitle' => 'Redigera Label',
+            'okLabel' => 'Spara',
+            'addToast' => 'Label tillagd',
+            'editToast' => 'Sparad',
+            'missingToast' => 'Skriv in en text',
+            'labels' => [
+                'content' => 'Text',
+                'fontSize' => 'Teckenstorlek (px)',
+                'color' => 'Färg',
+                'widthOptional' => 'Bredd (px, valfri)',
+            ],
+            'placeholders' => [
+                'content' => 'Rubrik eller rubriktext…',
+                'width' => 'auto',
+            ],
+        ],
+        'notes' => [
+            'addTitle' => 'Lägg till Note',
+            'okLabel' => 'Skapa',
+            'addToast' => 'Note tillagd',
+            'placeholder' => 'Skriv här…',
+            'labels' => [
+                'color' => 'Färg',
+                'width' => 'Bredd (px)',
+                'hint' => 'Texten redigeras direkt på noten efter att du skapat den.',
+            ],
+            'colors' => [
+                ['label' => 'Gul', 'value' => '#fff9a8'],
+                ['label' => 'Rosa', 'value' => '#ffd4e5'],
+                ['label' => 'Blå', 'value' => '#cce5ff'],
+                ['label' => 'Grön', 'value' => '#d4f4dd'],
+                ['label' => 'Orange', 'value' => '#ffe0b2'],
+                ['label' => 'Lila', 'value' => '#e8d4ff'],
+            ],
+        ],
+    ],
+];
