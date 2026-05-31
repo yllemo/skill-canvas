@@ -1,35 +1,40 @@
 # Contributing to Skill Canvas
 
-Tack for att du vill bidra till Skill Canvas.
+Thanks for your interest in contributing to Skill Canvas.
 
-## Hur du bidrar
+## Project Language
 
-1. Skapa en issue for bugg, forbattring eller forslag.
-2. Forka repot och skapa en branch med tydligt namn.
-3. Gor en fokuserad andring med tydlig commit-historik.
-4. Oppna en pull request med beskrivning av:
-   - vad som andrats
-   - varfor andringen behovs
-   - hur andringen kan verifieras
+This project is primarily written in Swedish.
+English contributions are absolutely welcome and work well in this repository.
 
-## Riktlinjer
+## How to Contribute
 
-- Hall andringar sma och avgransade.
-- Undvik att blanda refaktorering med funktionsandringar i samma PR.
-- Uppdatera README vid beteendeforandringar eller nya funktioner.
-- Om relevant, lagg till eller uppdatera tester och manuell testbeskrivning.
+1. Open an issue for a bug, improvement, or feature proposal.
+2. Fork the repository and create a clearly named branch.
+3. Make a focused change with clear commits.
+4. Open a pull request that explains:
+   - what was changed
+   - why the change is needed
+   - how the change was verified
 
-## Kodstil och kvalitet
+## Guidelines
 
-- Folj befintlig struktur och namngivning i projektet.
-- Behall kompatibilitet med SKILL.md-flodet och zip-exporten.
-- Prioritera tydlighet i UX for visuellt samarbete mellan manniskor och AI.
+- Keep changes small and scoped.
+- Do not mix refactoring and feature changes in one PR.
+- Update README when behavior changes or when new features are added.
+- Add or update tests and include manual test steps when relevant.
 
-## Rapportera saker
+## Code Style and Quality
 
-- Bugg: beskriv forvantat beteende, faktiskt beteende och steg for att reproducera.
-- Feature: beskriv anvandarvardet och hur funktionen stoder skills-byggande.
+- Follow the existing project structure and naming patterns.
+- Keep compatibility with the SKILL.md flow and zip export.
+- Prioritize clarity in UX for visual collaboration between people and AI.
 
-## Uppforande
+## Reporting Issues and Ideas
 
-Var respektfull, konstruktiv och tydlig i dialogen.
+- Bug reports should include expected behavior, actual behavior, and steps to reproduce.
+- Feature requests should explain user value and how the feature supports skill building.
+
+## Conduct
+
+Be respectful, constructive, and clear in all communication.
