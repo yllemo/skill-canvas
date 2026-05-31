@@ -1,8 +1,12 @@
-# Skill Canvas
+# Skill Canvas - Från idé till visuell kunskap - lokalt, delbart och AI redo
 
-En lokal whiteboard-applikation för att skapa och redigera visuella storyboards med Markdown, Mermaid-diagram, bilder, labels och notes. Allt lagras i en `.zip`-fil som styrs av en `SKILL.md` med YAML frontmatter.
+![Skill Canvas](skill-canvas.jpg)
 
-Kompatibel med [Claude Skills](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/skills)-formatet — `name` och `description` är obligatoriska. `name` används som canvas-titel i verktygsraden (ingen separat `title` i metadata).
+## Skill Canvas
+
+En lokal whiteboard-applikation för att skapa och redigera visuella storyboards med Markdown, Mermaid-diagram, bilder, labels och notes. Allt lagras i en .zip-fil som styrs av en SKILL.md med YAML frontmatter.
+
+Kompatibel med Claude Skills-formatet — name och description är obligatoriska. name används som canvas-titel i verktygsraden (ingen separat title i metadata).
 
 ---
 
