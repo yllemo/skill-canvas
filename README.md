@@ -14,11 +14,25 @@ Skill Canvas paketerar allt i en .zip-fil med SKILL.md i centrum, så samma inne
 
 Resultatet är ett gemensamt arbetsformat där människor och AI samarbetar i samma moduluppbyggda struktur: visuellt på canvasen och maskinläsbart i SKILL.md-paketeringen.
 
+### Från whiteboard till delbar AI-skill
+
+Du kan klistra in en bild direkt i Skill Canvas, och den följer automatiskt med i .zip-filen vid export. Det gör att samma material kan öppnas av en kollega, delas vidare i teamet eller användas direkt av AI och agentiska AI-skills.
+
+All paketering styrs via SKILL.md-standarden från Anthropic (Claude AI Skills), vilket ger ett tydligt och portabelt format för både människor och AI.
+
+Du får även en inbyggd markdown-editor som gör det enkelt att formatera och förbättra texter, samt Mermaid-stöd där ritningar styrs av kod som är lätt att redigera tillsammans med AI.
+
 ### Därför Skill Canvas
 
 - Paketera kunskap till delbara skills som är lätta att återanvända i team och AI-flöden
 - Samla text, diagram och visuella artefakter på en gemensam canvas för snabbare alignment
 - Skapa en tydlig bro mellan idé, struktur och leverans i ett format som går att versionera
+
+### Open source och bidrag
+
+Skill Canvas är ett open source-projekt och vi välkomnar bidrag från både utvecklare, designers och AI-praktiker.
+
+Se CONTRIBUTING.md för riktlinjer kring issues, pull requests och rekommenderat arbetssätt.
 
 ---
 
@@ -265,7 +279,7 @@ Apptitel, språk och favicon: `config/app.php`.
 
 ## Design
 
-Bygger på Göteborgs Stads grafiska profil (`#0077bc`). Ljust och mörkt tema. Favicon: `favicon.svg`.
+Ljust och mörkt tema. Favicon: `favicon.svg`.
 
 CDN-bibliotek: Mermaid, marked, JSZip, js-yaml, html2canvas (PNG-export), Monaco Editor (markdown fullskärm).
 
