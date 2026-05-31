@@ -1,12 +1,24 @@
-# Skill Canvas - Från idé till visuell kunskap - lokalt, delbart och AI redo
+# Skill Canvas - Från idé till visuell kunskap och återanvändbara skills
 
 ![Skill Canvas](skill-canvas.jpg)
 
 ## Skill Canvas
 
-En lokal whiteboard-applikation för att skapa och redigera visuella storyboards med Markdown, Mermaid-diagram, bilder, labels och notes. Allt lagras i en .zip-fil som styrs av en SKILL.md med YAML frontmatter.
+En PHP-baserad whiteboard-app för team som vill paketera kompetens till tydliga, visuella skills. Bygg och redigera storyboards med Markdown, Mermaid-diagram, bilder, labels och notes, och exportera allt som en .zip med SKILL.md och YAML frontmatter.
 
 Kompatibel med Claude Skills-formatet — name och description är obligatoriska. name används som canvas-titel i verktygsraden (ingen separat title i metadata).
+
+### AI-skills som fungerar direkt
+
+Skill Canvas paketerar allt i en .zip-fil med SKILL.md i centrum, så samma innehåll kan användas direkt av agentisk AI utan efterbehandling. Samtidigt får team en snygg visuell whiteboard-upplevelse för att bygga, granska och vidareutveckla samma skill tillsammans.
+
+Resultatet är ett gemensamt arbetsformat där människor och AI samarbetar i samma moduluppbyggda struktur: visuellt på canvasen och maskinläsbart i SKILL.md-paketeringen.
+
+### Därför Skill Canvas
+
+- Paketera kunskap till delbara skills som är lätta att återanvända i team och AI-flöden
+- Samla text, diagram och visuella artefakter på en gemensam canvas för snabbare alignment
+- Skapa en tydlig bro mellan idé, struktur och leverans i ett format som går att versionera
 
 ---
 
@@ -18,7 +30,7 @@ Kompatibel med Claude Skills-formatet — name och description är obligatoriska
 4. Lägg till noder via toolbaren längst ner
 5. **Exportera** som `.zip` (eller `Ctrl+S`) — eller som `.png` för en bild av canvasen
 
-Allt sker lokalt i webbläsaren; inget laddas upp.
+Körs som en PHP-webbapp och gör det enkelt att ta en idé till en delbar, visuellt förankrad skill.
 
 > **Legacy:** `html/skill-canvas.html` är en äldre monolitisk version. Den aktiva appen är `index.php` med modulär PHP/JS-struktur.
 
