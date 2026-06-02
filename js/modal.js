@@ -17,6 +17,7 @@ const Modal = (() => {
     const footLeft = document.getElementById('modal-foot-left');
     if (footLeft) footLeft.innerHTML = '';
     if (typeof BildModule !== 'undefined' && BildModule.cleanupPaste) BildModule.cleanupPaste();
+    if (typeof AnnotationModule !== 'undefined' && AnnotationModule.cleanupModal) AnnotationModule.cleanupModal();
   }
 
   function open(title, bodyHTML, okCb, okLabel = 'Spara') {

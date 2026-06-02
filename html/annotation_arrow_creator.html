@@ -1,0 +1,368 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); }
+  .wrap { padding: 1rem 0; display: flex; flex-direction: column; gap: 1.5rem; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ctrl-group { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 13px; color: var(--color-text-secondary); }
+  .canvas-wrap { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); background: var(--color-background-secondary); min-height: 320px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  svg#preview { width: 100%; height: 320px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  textarea { width: 100%; font-family: var(--font-sans); font-size: 14px; resize: vertical; min-height: 60px; padding: 8px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); }
+  .color-swatch { display: flex; gap: 6px; flex-wrap: wrap; }
+  .swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.15s; }
+  .swatch:hover { transform: scale(1.15); }
+  .swatch.active { border-color: var(--color-text-primary); }
+  .seg-btns { display: flex; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); overflow: hidden; }
+  .seg-btns button { flex: 1; padding: 6px 10px; background: transparent; border: none; font-size: 13px; cursor: pointer; color: var(--color-text-secondary); transition: background 0.15s, color 0.15s; }
+  .seg-btns button.active { background: var(--color-background-secondary); color: var(--color-text-primary); font-weight: 500; }
+  .export-btn { margin-top: 0.5rem; }
+  .hint { font-size: 12px; color: var(--color-text-tertiary); }
+  .canvas-wrap { cursor: crosshair; }
+  .placed-list { display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow-y: auto; }
+  .placed-item { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 10px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); background: var(--color-background-primary); }
+  .placed-item span { flex: 1; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .del-btn { background: none; border: none; cursor: pointer; color: var(--color-text-secondary); font-size: 16px; padding: 0 2px; line-height: 1; }
+  .del-btn:hover { color: #E24B4A; }
+  input[type=range] { width: 100%; }
+  .val-out { font-size: 13px; font-weight: 500; min-width: 32px; text-align: right; color: var(--color-text-primary); }
+  select { width: 100%; font-size: 13px; padding: 6px 8px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); }
+</style>
+
+<div class="wrap">
+  <h2 class="sr-only">Annotation arrow creator</h2>
+
+  <div class="canvas-wrap" id="canvasWrap">
+    <svg id="preview" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+  <p class="hint">Klicka i förhandsvisningen för att placera pilens spets</p>
+
+  <div class="controls">
+    <div class="ctrl-group" style="grid-column: 1 / -1">
+      <label>Text</label>
+      <textarea id="txt" placeholder="Skriv förklaringstext här...">Snabba idéer</textarea>
+    </div>
+
+    <div class="ctrl-group">
+      <label>Pil-riktning</label>
+      <div class="seg-btns" id="dirBtns">
+        <button class="active" data-dir="ne">↗ Upp-höger</button>
+        <button data-dir="nw">↖ Upp-vänster</button>
+        <button data-dir="se">↘ Ned-höger</button>
+        <button data-dir="sw">↙ Ned-vänster</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <label>Pilfom</label>
+      <select id="arrowStyle">
+        <option value="curve">Böjd (organisk)</option>
+        <option value="straight">Rak</option>
+        <option value="swoosh">Swoosh (U-böj)</option>
+        <option value="scribble">Handritad (skiss)</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <label>Textstil</label>
+      <select id="fontStyle">
+        <option value="'Caveat', cursive">Handskrift (Caveat)</option>
+        <option value="'Kalam', cursive">Kalam</option>
+        <option value="var(--font-sans)">Sans-serif</option>
+        <option value="'Courier New', monospace">Monospace</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <label>Textstorlek</label>
+      <div class="row">
+        <input type="range" id="fontSize" min="14" max="48" value="26" step="1">
+        <span class="val-out" id="fontSizeOut">26</span>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <label>Pilbredd</label>
+      <div class="row">
+        <input type="range" id="strokeW" min="1" max="6" value="2.5" step="0.5">
+        <span class="val-out" id="strokeWOut">2.5</span>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <label>Pilens längd</label>
+      <div class="row">
+        <input type="range" id="arrowLen" min="40" max="180" value="90" step="5">
+        <span class="val-out" id="arrowLenOut">90</span>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <label>Rotation</label>
+      <div class="row">
+        <input type="range" id="rotation" min="-45" max="45" value="0" step="1">
+        <span class="val-out" id="rotationOut">0°</span>
+      </div>
+    </div>
+
+    <div class="ctrl-group" style="grid-column: 1 / -1">
+      <label>Färg</label>
+      <div class="color-swatch" id="swatches">
+        <div class="swatch active" data-color="#F5A623" style="background:#F5A623" title="Amber"></div>
+        <div class="swatch" data-color="#4A90D9" style="background:#4A90D9" title="Blå"></div>
+        <div class="swatch" data-color="#7ED321" style="background:#7ED321" title="Grön"></div>
+        <div class="swatch" data-color="#E24B4A" style="background:#E24B4A" title="Röd"></div>
+        <div class="swatch" data-color="#BD10E0" style="background:#BD10E0" title="Lila"></div>
+        <div class="swatch" data-color="#F8F8F8" style="background:#F8F8F8; border: 0.5px solid #ccc" title="Vit"></div>
+        <div class="swatch" data-color="#1A1A2E" style="background:#1A1A2E" title="Mörk"></div>
+        <div class="swatch" data-color="#50E3C2" style="background:#50E3C2" title="Teal"></div>
+        <div class="swatch" data-color="#FF6B6B" style="background:#FF6B6B" title="Korall"></div>
+        <div class="swatch" data-color="#FFD93D" style="background:#FFD93D" title="Gul"></div>
+        <input type="color" id="customColor" value="#F5A623" title="Välj valfri färg" style="width:28px;height:28px;border-radius:50%;cursor:pointer;border:none;padding:0;background:none;">
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button onclick="addAnnotation()">+ Lägg till i canvas</button>
+    <button onclick="clearAll()">Rensa allt</button>
+    <button onclick="exportSVG()" class="export-btn">Exportera SVG ↗</button>
+  </div>
+
+  <div id="placedList" class="placed-list" style="display:none"></div>
+</div>
+
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+
+<script>
+const state = {
+  color: '#F5A623',
+  dir: 'ne',
+  annotations: [],
+  clickPos: null
+};
+
+const svg = document.getElementById('preview');
+const canvasWrap = document.getElementById('canvasWrap');
+
+function getW() { return svg.getBoundingClientRect().width || 680; }
+function getH() { return 320; }
+
+canvasWrap.addEventListener('click', e => {
+  const rect = canvasWrap.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  state.clickPos = { x, y };
+  renderPreview(x, y);
+});
+
+function getSlider(id) { return parseFloat(document.getElementById(id).value); }
+function getVal(id) { return document.getElementById(id).value; }
+
+function buildPath(tx, ty, dir, style, len, rot) {
+  const a = rot * Math.PI / 180;
+  const dirs = {
+    ne: [ 1, -1], nw: [-1, -1],
+    se: [ 1,  1], sw: [-1,  1]
+  };
+  let [dx, dy] = dirs[dir] || [1, -1];
+  const cx = Math.cos(a) * dx - Math.sin(a) * dy;
+  const cy = Math.sin(a) * dx + Math.cos(a) * dy;
+  dx = cx; dy = cy;
+
+  const ex = tx + dx * len;
+  const ey = ty + dy * len;
+
+  const midX = (tx + ex) / 2;
+  const midY = (ty + ey) / 2;
+
+  if (style === 'straight') {
+    return `M${ex},${ey} L${tx},${ty}`;
+  } else if (style === 'curve') {
+    const cpx = midX - dy * len * 0.35;
+    const cpy = midY + dx * len * 0.35;
+    return `M${ex},${ey} Q${cpx},${cpy} ${tx},${ty}`;
+  } else if (style === 'swoosh') {
+    const cpx = ex + dx * len * 0.1;
+    const cpy = ey - dy * len * 0.8;
+    return `M${ex},${ey} C${cpx},${cpy} ${tx - dx*len*0.2},${ty - dy*len*0.4} ${tx},${ty}`;
+  } else {
+    const jitter = () => (Math.random() - 0.5) * 8;
+    const steps = 4;
+    let d = `M${ex+jitter()},${ey+jitter()}`;
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const px = ex + (tx - ex) * t + jitter();
+      const py = ey + (ty - ey) * t + jitter();
+      d += ` L${px},${py}`;
+    }
+    return d;
+  }
+}
+
+function textPos(tx, ty, dir, len, rot, text, fontSize) {
+  const dirs = { ne: [1,-1], nw:[-1,-1], se:[1,1], sw:[-1,1] };
+  let [dx, dy] = dirs[dir] || [1,-1];
+  const a = rot * Math.PI / 180;
+  const cx = Math.cos(a)*dx - Math.sin(a)*dy;
+  const cy = Math.sin(a)*dx + Math.cos(a)*dy;
+  dx = cx; dy = cy;
+  const ex = tx + dx * len;
+  const ey = ty + dy * len;
+  const anchor = dx > 0 ? 'start' : 'end';
+  const textX = ex + dx * 12;
+  const textY = ey + (dy < 0 ? -8 : fontSize + 4);
+  return { x: textX, y: textY, anchor };
+}
+
+function renderSVGContent(annotations, clickX, clickY) {
+  const w = getW(); const h = getH();
+  let defs = `<defs>`;
+  let body = '';
+
+  annotations.forEach((ann, i) => {
+    const { tx, ty, dir, style, len, rot, color, text, fontSize, strokeW, font } = ann;
+    const markerId = `arrow${i}`;
+    defs += `<marker id="${markerId}" markerWidth="8" markerHeight="8" refX="3" refY="3" orient="auto-start-reverse">
+      <path d="M0,0 L6,3 L0,6 Z" fill="${color}"/>
+    </marker>`;
+    const pathD = buildPath(tx, ty, dir, style, len, rot);
+    const { x: textX, y: textY, anchor } = textPos(tx, ty, dir, len, rot, text, fontSize);
+    body += `<path d="${pathD}" stroke="${color}" stroke-width="${strokeW}" fill="none" marker-end="url(#${markerId})" stroke-linecap="round"/>`;
+    const lines = text.split('\n');
+    lines.forEach((line, li) => {
+      body += `<text x="${textX}" y="${textY + li * (fontSize * 1.2)}" font-family="${font}" font-size="${fontSize}" fill="${color}" text-anchor="${anchor}" font-weight="500">${line}</text>`;
+    });
+  });
+
+  if (clickX !== null) {
+    const dir = state.dir;
+    const style = getVal('arrowStyle');
+    const len = getSlider('arrowLen');
+    const rot = getSlider('rotation');
+    const color = state.color;
+    const text = getVal('txt') || 'Text';
+    const fontSize = getSlider('fontSize');
+    const strokeW = getSlider('strokeW');
+    const font = getVal('fontStyle');
+    const tx = clickX, ty = clickY;
+    const markerId = `arrowPreview`;
+    defs += `<marker id="${markerId}" markerWidth="8" markerHeight="8" refX="3" refY="3" orient="auto-start-reverse">
+      <path d="M0,0 L6,3 L0,6 Z" fill="${color}" opacity="0.7"/>
+    </marker>`;
+    const pathD = buildPath(tx, ty, dir, style, len, rot);
+    const { x: textX, y: textY, anchor } = textPos(tx, ty, dir, len, rot, text, fontSize);
+    body += `<path d="${pathD}" stroke="${color}" stroke-width="${strokeW}" fill="none" marker-end="url(#${markerId})" stroke-linecap="round" opacity="0.7" stroke-dasharray="5,3"/>`;
+    const lines = text.split('\n');
+    lines.forEach((line, li) => {
+      body += `<text x="${textX}" y="${textY + li * (fontSize * 1.2)}" font-family="${font}" font-size="${fontSize}" fill="${color}" text-anchor="${anchor}" font-weight="500" opacity="0.7">${line}</text>`;
+    });
+  }
+
+  defs += '</defs>';
+  return defs + body;
+}
+
+function renderPreview(cx, cy) {
+  const cl = cx !== undefined ? cx : (state.clickPos ? state.clickPos.x : null);
+  const cy2 = cy !== undefined ? cy : (state.clickPos ? state.clickPos.y : null);
+  svg.setAttribute('viewBox', `0 0 ${getW()} ${getH()}`);
+  svg.innerHTML = renderSVGContent(state.annotations, cl, cy2);
+}
+
+function addAnnotation() {
+  const tx = state.clickPos ? state.clickPos.x : getW() / 2;
+  const ty = state.clickPos ? state.clickPos.y : getH() / 2;
+  state.annotations.push({
+    tx, ty,
+    dir: state.dir,
+    style: getVal('arrowStyle'),
+    len: getSlider('arrowLen'),
+    rot: getSlider('rotation'),
+    color: state.color,
+    text: getVal('txt') || 'Text',
+    fontSize: getSlider('fontSize'),
+    strokeW: getSlider('strokeW'),
+    font: getVal('fontStyle')
+  });
+  state.clickPos = null;
+  renderPreview(null, null);
+  updateList();
+}
+
+function clearAll() {
+  state.annotations = [];
+  state.clickPos = null;
+  renderPreview(null, null);
+  updateList();
+}
+
+function updateList() {
+  const list = document.getElementById('placedList');
+  if (!state.annotations.length) { list.style.display = 'none'; return; }
+  list.style.display = 'flex';
+  list.innerHTML = state.annotations.map((a, i) =>
+    `<div class="placed-item">
+      <div style="width:14px;height:14px;border-radius:50%;background:${a.color};flex-shrink:0"></div>
+      <span>"${a.text.replace(/\n/g,' ')}" — ${a.dir}, ${a.style}</span>
+      <button class="del-btn" onclick="removeAnnotation(${i})">×</button>
+    </div>`
+  ).join('');
+}
+
+function removeAnnotation(i) {
+  state.annotations.splice(i, 1);
+  renderPreview(null, null);
+  updateList();
+}
+
+function exportSVG() {
+  const w = getW(), h = getH();
+  const content = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${renderSVGContent(state.annotations, null, null)}</svg>`;
+  const blob = new Blob([content], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'annotations.svg'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('dirBtns').querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#dirBtns button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.dir = btn.dataset.dir;
+    renderPreview();
+  });
+});
+
+document.querySelectorAll('.swatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    state.color = sw.dataset.color;
+    document.getElementById('customColor').value = sw.dataset.color;
+    renderPreview();
+  });
+});
+
+document.getElementById('customColor').addEventListener('input', e => {
+  state.color = e.target.value;
+  document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+  renderPreview();
+});
+
+['arrowStyle','fontStyle','txt','fontSize','strokeW','arrowLen','rotation'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    if (id === 'fontSize') document.getElementById('fontSizeOut').textContent = el.value;
+    if (id === 'strokeW') document.getElementById('strokeWOut').textContent = el.value;
+    if (id === 'arrowLen') document.getElementById('arrowLenOut').textContent = el.value;
+    if (id === 'rotation') document.getElementById('rotationOut').textContent = el.value + '°';
+    renderPreview();
+  });
+});
+
+renderPreview(340, 200);
+</script>

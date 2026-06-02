@@ -3,8 +3,16 @@
 // ════════════════════════════════════════════════════════════
 let panX=0,panY=0,scale=1;
 let isPanning=false,panSX=0,panSY=0;
-const skillDefaults=()=>(window.SC_DEFAULTS?.skill)||{name:'',description:'',author:'',version:'1.0',tags:''};
+const skillDefaults=()=>(window.SC_DEFAULTS?.skill)||{name:'my-skill',description:'Describe when an AI agent should activate this skill. Agentic systems compare the user\'s request to this text to decide if the skill is relevant—list concrete situations, topics, or example questions (e.g. "Use when the user asks about our onboarding process or needs a visual overview of X"). The canvas holds the knowledge; description is the trigger.',author:'',version:'1.0',tags:''};
 let skillMeta={...skillDefaults()};
+
+function skillRequiredDefaults(){
+  const d=skillDefaults();
+  return{
+    name:d.name||'my-skill',
+    description:d.description||skillDefaults().description,
+  };
+}
 let nodes=[];           // [{id,type,x,y,width,height,title,content,file,src,alt,caption,...}]
 let files={};           // {path: Uint8Array|string}  — in-memory zip contents
 let dirty=false;
@@ -102,8 +110,8 @@ window.addEventListener('mousemove',e=>{
   }
   if(resizeNode){
     const dx=(e.clientX-resizeSX)/scale, dy=(e.clientY-resizeSY)/scale;
-    if(resizeNode.type==='note'){
-      const defs=window.SC_DEFAULTS?.nodes?.note||{};
+    if(resizeNode.type==='note'||resizeNode.type==='annotation'){
+      const defs=window.SC_DEFAULTS?.nodes?.[resizeNode.type]||{};
       const minW=defs.minWidth||140, maxW=defs.maxWidth||480;
       const minH=defs.minHeight||120, maxH=defs.maxHeight||480;
       const nw=Math.max(minW,Math.min(maxW,Math.round(resizeOW+dx)));
@@ -326,6 +334,11 @@ async function renderNodeContent(node,body){
     return;
   }
 
+  if(type==='annotation'&&typeof AnnotationModule!=='undefined'){
+    AnnotationModule.renderContent(node,body);
+    return;
+  }
+
   if(type==='markdown'){
     let md=node.content||'';
     if(!md&&node.file){md=await readTextFile(node.file)}
@@ -533,12 +546,15 @@ function duplicateNode(id){
 
 // ── META modal ──
 function openMetaModal(){
+  const req=skillRequiredDefaults();
+  const nameVal=skillMeta.name||req.name;
+  const descVal=skillMeta.description||req.description;
   Modal.open('Skill-metadata',`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="mfield" style="grid-column:1/-1"><label>name <span style="color:#d24723">*</span></label>
-        <input id="m-name" value="${esc(skillMeta.name)}" placeholder="my-skill" autocomplete="off" spellcheck="false"></div>
+        <input id="m-name" value="${esc(nameVal)}" placeholder="${esc(req.name)}" autocomplete="off" spellcheck="false"></div>
       <div class="mfield" style="grid-column:1/-1"><label>description <span style="color:#d24723">*</span></label>
-        <textarea id="m-desc" rows="4" placeholder="Summarizes uncommitted changes and flags anything risky. Use when the user asks what changed.">${esc(skillMeta.description)}</textarea></div>
+        <textarea id="m-desc" rows="4" placeholder="${esc(req.description)}">${esc(descVal)}</textarea></div>
       <div class="mfield"><label>author</label>
         <input id="m-author" value="${esc(skillMeta.author)}" placeholder="Intraservice"></div>
       <div class="mfield"><label>version</label>
@@ -548,10 +564,9 @@ function openMetaModal(){
     </div>
     <p style="font-size:11px;color:var(--text-sec);margin-top:4px"><code>name</code> och <code>description</code> krävs för Claude Skills. <code>name</code> visas som titel i verktygsraden.</p>
   `,()=>{
-    const name=document.getElementById('m-name').value.trim();
-    const description=document.getElementById('m-desc').value.trim();
-    if(!name){showToast('name krävs');return;}
-    if(!description){showToast('description krävs');return;}
+    const req=skillRequiredDefaults();
+    const name=document.getElementById('m-name').value.trim()||req.name;
+    const description=document.getElementById('m-desc').value.trim()||req.description;
     skillMeta.name=name;
     skillMeta.description=description;
     skillMeta.author=document.getElementById('m-author').value.trim();
@@ -682,6 +697,9 @@ async function saveZip(){
         rest.x=parseInt(_el.style.left)||n.x||0;
         rest.y=parseInt(_el.style.top)||n.y||0;
         rest.width=_el.offsetWidth||n.width;
+        if(n.type==='note'||n.type==='annotation'){
+          rest.height=_el.offsetHeight||n.height;
+        }
       }
       return rest;
     });
@@ -736,7 +754,7 @@ function mimeFromPath(p){
   return{png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'}[e]||'application/octet-stream';
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function typeLabel(t){return{markdown:'MD',mermaid:'MM',image:'IMG',label:'LBL',note:'Note'}[t]||'?'}
+function typeLabel(t){return{markdown:'MD',mermaid:'MM',image:'IMG',label:'LBL',note:'Note',annotation:'ANN'}[t]||'?'}
 function iconEdit(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 3.5l2 2-10 10H4.5v-2L14.5 3.5z"/></svg>`}
 function iconFocus(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3H3v3M14 3h3v3M17 14v3h-3M6 17H3v-3"/><rect x="7" y="7" width="6" height="6" rx="1"/></svg>`}
 function iconDel(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h12M9 7V4h2v3M6 7l1 9h6l1-9"/></svg>`}

@@ -12,6 +12,7 @@ require_once __DIR__ . '/includes/bootstrap.php';
 <?php $favicon = $app['favicon'] ?? 'favicon.svg'; ?>
 <link rel="icon" href="<?= h($favicon) ?>?v=<?= asset_version($favicon) ?>" type="image/svg+xml">
 <link rel="stylesheet" href="style.css?v=<?= asset_version('style.css') ?>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Kalam:wght@400;700&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -100,6 +101,10 @@ require_once __DIR__ . '/includes/bootstrap.php';
   <button class="add-btn add-note" id="add-note">
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="12" height="14" rx="1"/><path d="M8 7h4M8 10h4"/></svg>
     Note
+  </button>
+  <button class="add-btn add-ann" id="add-ann">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14l4-4 3 3 4-6"/><path d="M3 17h14"/></svg>
+    Annotation
   </button>
 </div>
 

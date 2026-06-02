@@ -4,7 +4,7 @@
 
 ## Skill Canvas
 
-En PHP-baserad whiteboard-app för team som vill paketera kompetens till tydliga, visuella skills. Bygg och redigera storyboards med Markdown, Mermaid-diagram, bilder, labels och notes, och exportera allt som en .zip med SKILL.md och YAML frontmatter.
+En PHP-baserad whiteboard-app för team som vill paketera kompetens till tydliga, visuella skills. Bygg och redigera storyboards med Markdown, Mermaid-diagram, bilder, labels, annotations (text+pil) och notes, och exportera allt som en .zip med SKILL.md och YAML frontmatter.
 
 Kompatibel med Claude Skills-formatet — name och description är obligatoriska. name används som canvas-titel i verktygsraden (ingen separat title i metadata).
 
@@ -79,8 +79,8 @@ my-skill_2026-05-31_14.30.45.png
 | Centrera allt | **Centrera** |
 | Fokusera en nod | Dubbelklick på handtaget, eller fokus-ikonen (ej Notes) |
 | Markera nod | Klick |
-| Flytta nod | Dra i handtaget (Markdown, Mermaid, Bild) — eller direkt på ytan (Label, Note) |
-| Ändra storlek | Resize-hörn nere till höger (Notes: bredd och höjd) |
+| Flytta nod | Dra i handtaget (Markdown, Mermaid, Bild, Annotation) — eller direkt på ytan (Label, Note) |
+| Ändra storlek | Resize-hörn nere till höger (Note och Annotation: bredd och höjd) |
 | Kontextmeny | Högerklick på nod |
 | Ta bort markerad | `Delete` / `Backspace` |
 | Duplicera markerad | `Ctrl+D` |
@@ -107,6 +107,9 @@ Uppladdning, extern URL eller **Ctrl+V** (klistra in från urklipp). Lokala bild
 
 ### Label
 Fri text direkt på canvas — ingen kortyta. Teckenstorlek och färg väljs i modal. Dra genom att greppa texten.
+
+### Annotation
+Text med pil (SVG) för att förklara eller peka ut delar av canvasen. Modal med live-förhandsvisning — klicka för att placera pilspetsen. Välj riktning (↗↖↘↙), pilform (böjd, rak, swoosh, skiss), färg, typsnitt (Caveat/Kalam m.fl.), textstorlek och pilens längd. Transparent på canvas; justera yta med resize-hörnet.
 
 ### Note
 Post-it-liknande kort med inline-redigering (`contenteditable`). Ingen redigeringsmodal — skriv direkt på kortet.
@@ -152,7 +155,7 @@ Varje `.zip` måste innehålla `SKILL.md` med YAML frontmatter. Övriga filer i 
 ```yaml
 ---
 name: my-skill
-description: Summarizes uncommitted changes and flags anything risky. Use when the user asks what changed.
+description: Describe when an AI agent should activate this skill. Agentic systems compare the user's request to this text to decide if the skill is relevant—list concrete situations, topics, or example questions (e.g. "Use when the user asks about our onboarding process or needs a visual overview of X"). The canvas holds the knowledge; description is the trigger.
 author: ''
 version: '1.0'
 tags:
@@ -179,10 +182,10 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
 | Fält | Typ | Beskrivning |
 |------|-----|-------------|
 | `id` | sträng | Unikt ID, genereras automatiskt |
-| `type` | sträng | `markdown` \| `mermaid` \| `image` \| `label` \| `note` |
+| `type` | sträng | `markdown` \| `mermaid` \| `image` \| `label` \| `annotation` \| `note` |
 | `x`, `y` | heltal | Position i px |
 | `width` | heltal | Bredd i px |
-| `height` | heltal | Höjd i px (Notes) |
+| `height` | heltal | Höjd i px (Note, Annotation) |
 
 ### Markdown
 
@@ -233,10 +236,32 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
   color: "#0077bc"
 ```
 
-### Note
+### Annotation
 
 ```yaml
 - id: n005
+  type: annotation
+  x: 120
+  y: 300
+  width: 320
+  height: 160
+  content: "Snabba idéer"
+  tipX: 280
+  tipY: 130
+  dir: ne
+  arrowStyle: curve
+  arrowLen: 90
+  rotation: 0
+  color: "#F5A623"
+  fontSize: 26
+  strokeWidth: 2.5
+  fontFamily: "'Caveat', cursive"
+```
+
+### Note
+
+```yaml
+- id: n006
   type: note
   x: 200
   y: 400

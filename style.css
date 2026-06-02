@@ -96,6 +96,7 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .node.mermaid .node-bar{background:var(--node-bar-mermaid)}
 .node.image .node-bar{background:var(--node-bar-image)}
 .node.label .node-bar{background:var(--node-bar-label)}
+.node.annotation .node-bar{background:#f5a623}
 
 /* Drag handle — absolutely positioned overlay, appears on hover/select, pushes nothing */
 .node-handle{
@@ -179,6 +180,40 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .node.label .node-body,.node.label .label-text{cursor:grab;user-select:none}
 .node.label.dragging .node-body,.node.label.dragging .label-text{cursor:grabbing}
 .label-text{font-weight:700;color:var(--text);letter-spacing:.02em;line-height:1.2}
+
+/* Annotation node */
+.node.annotation{background:transparent;box-shadow:none;border-radius:0;min-width:120px}
+.node.annotation:hover:not(.selected){box-shadow:none}
+.node.annotation.selected{box-shadow:0 0 0 2px rgba(245,166,35,0.55);border-radius:4px}
+.node.annotation:not(:hover):not(.selected) .node-bar{display:none}
+.node.annotation:not(:hover):not(.selected) .node-handle{opacity:0;pointer-events:none}
+.node.annotation:hover .node-handle,.node.annotation.selected .node-handle{opacity:1;pointer-events:all}
+.node.annotation .node-body{padding:0;overflow:visible}
+.node.annotation .annotation-svg{display:block;width:100%;height:100%;overflow:visible}
+
+/* Annotation modal */
+.ann-modal-form{display:flex;flex-direction:column;gap:12px}
+.ann-preview-wrap{
+  border:1px solid var(--border);border-radius:8px;background:var(--canvas-bg);
+  min-height:200px;cursor:crosshair;overflow:hidden;
+}
+.ann-preview-svg{width:100%;height:200px;display:block}
+.ann-preview-hint{font-size:11px;color:var(--text-sec);margin:-4px 0 0}
+.ann-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ann-field-full{grid-column:1/-1}
+.ann-seg-btns{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.ann-seg-btns .ann-dir-btn{
+  flex:1;padding:6px 8px;border:none;background:var(--bg);font-size:12px;cursor:pointer;
+  color:var(--text-sec);font-family:inherit;
+}
+.ann-seg-btns .ann-dir-btn.active{background:var(--bg-nav);color:var(--text);font-weight:600}
+.ann-range-row{display:flex;align-items:center;gap:10px}
+.ann-range-row input[type=range]{flex:1}
+.ann-range-val{font-size:12px;font-weight:600;min-width:36px;text-align:right;color:var(--text-sec)}
+.ann-color-swatches{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ann-color-btn{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+.ann-color-btn.active{border-color:var(--gs-blue);box-shadow:0 0 0 1px var(--gs-blue)}
+.ann-color-swatches input[type=color]{width:26px;height:26px;border:none;padding:0;background:none;cursor:pointer}
 
 /* Note node */
 .node.note{
@@ -308,6 +343,7 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .add-btn.add-mm:hover{background:#008391}
 .add-btn.add-lbl:hover{background:#8a6a00;color:#fff;border-color:#8a6a00}
 .add-btn.add-note:hover{background:#c9a800;color:#fff;border-color:#c9a800}
+.add-btn.add-ann:hover{background:#e09010;color:#fff;border-color:#e09010}
 
 /* ── ZOOM CONTROLS ── */
 #zc{position:fixed;bottom:28px;right:20px;display:flex;flex-direction:column;gap:3px;z-index:100}
