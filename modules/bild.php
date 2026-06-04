@@ -52,6 +52,9 @@ final class BildModule extends AbstractModule
                    min="<?= h((string) ($nodeDefaults['minWidth'] ?? 120)) ?>"
                    max="<?= h((string) ($nodeDefaults['maxWidth'] ?? 1200)) ?>">
         </div>
+        <p class="note-add-hint" style="font-size:11px;color:var(--text-sec);margin-top:4px">
+            <?= h($labels['paintHint'] ?? 'Använd knappen nere till vänster för att måla eller redigera bilden.') ?>
+        </p>
         <?php
         return (string) ob_get_clean();
     }
@@ -93,6 +96,9 @@ final class BildModule extends AbstractModule
                 <div id="bild-preview" style="margin-top:10px"></div>
             </div>
         </div>
+        <p class="note-add-hint" style="font-size:11px;color:var(--text-sec);margin-top:4px">
+            <?= h($labels['paintHint'] ?? 'Använd knappen nere till vänster för att måla eller redigera bilden.') ?>
+        </p>
         <?php
         return (string) ob_get_clean();
     }

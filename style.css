@@ -12,6 +12,7 @@
   --node-bar-image:#5a8b3b;
   --node-bar-label:#ffd666;
   --node-bar-note:#fff9a8;
+  --node-bar-drawio:#d35400;
   --drag-ring:rgba(0,119,188,0.5);
 }
 [data-theme="dark"]{
@@ -97,6 +98,7 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .node.image .node-bar{background:var(--node-bar-image)}
 .node.label .node-bar{background:var(--node-bar-label)}
 .node.annotation .node-bar{background:#f5a623}
+.node.drawio .node-bar{background:var(--node-bar-drawio)}
 
 /* Drag handle — absolutely positioned overlay, appears on hover/select, pushes nothing */
 .node-handle{
@@ -122,8 +124,8 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .node-handle-actions button svg{width:13px;height:13px}
 
 /* Handle i flöde (inte över content) — mermaid, bild, markdown */
-.node.mermaid,.node.image,.node.markdown{display:flex;flex-direction:column}
-.node.mermaid .node-handle,.node.image .node-handle,.node.markdown .node-handle{
+.node.mermaid,.node.image,.node.markdown,.node.drawio{display:flex;flex-direction:column}
+.node.mermaid .node-handle,.node.image .node-handle,.node.markdown .node-handle,.node.drawio .node-handle{
   position:relative;top:auto;left:auto;right:auto;
   flex-shrink:0;
   display:none;
@@ -132,7 +134,8 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .node.mermaid:hover .node-handle,.node.mermaid.selected .node-handle,
 .node.image:hover .node-handle,.node.image.selected .node-handle,
 .node.markdown:hover .node-handle,.node.markdown.selected .node-handle{display:flex}
-.node.mermaid .node-body,.node.image .node-body,.node.markdown .node-body{flex:1 1 auto;min-height:0}
+.node.drawio:hover .node-handle,.node.drawio.selected .node-handle{display:flex}
+.node.mermaid .node-body,.node.image .node-body,.node.markdown .node-body,.node.drawio .node-body{flex:1 1 auto;min-height:0}
 
 /* Node content area — padding top reduced, handle overlays on hover */
 .node-body{padding:14px 18px 16px;overflow:hidden}
@@ -168,6 +171,10 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 
 /* Image node */
 .node.image .node-body{padding:0}
+.node.drawio .node-body{padding:0}
+.drawio-preview{min-height:80px;display:flex;align-items:center;justify-content:center;background:var(--bg-nav)}
+.drawio-preview img{display:block;width:100%;height:auto;max-height:480px;object-fit:contain}
+.drawio-placeholder{padding:24px 16px;font-size:12px;color:var(--text-sec);text-align:center}
 .node.image img{display:block;width:100%;border-radius:0 0 7px 7px;object-fit:contain}
 .img-caption{padding:7px 12px;font-size:12px;color:var(--text-sec);background:var(--bg-nav);border-top:1px solid var(--border);border-radius:0 0 7px 7px}
 
@@ -344,6 +351,7 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .add-btn.add-lbl:hover{background:#8a6a00;color:#fff;border-color:#8a6a00}
 .add-btn.add-note:hover{background:#c9a800;color:#fff;border-color:#c9a800}
 .add-btn.add-ann:hover{background:#e09010;color:#fff;border-color:#e09010}
+.add-btn.add-dio:hover{background:#d35400;color:#fff;border-color:#d35400}
 
 /* ── ZOOM CONTROLS ── */
 #zc{position:fixed;bottom:28px;right:20px;display:flex;flex-direction:column;gap:3px;z-index:100}
@@ -374,8 +382,9 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 [data-theme="dark"] .ctx-item.danger:hover{background:#3d1a14}
 
 /* ── Markdown fullskärmseditor ── */
-#md-editor-overlay{position:fixed;inset:0;z-index:700;display:none;background:var(--bg)}
-#md-editor-overlay.open{display:block}
-#md-editor-overlay iframe{width:100%;height:100%;border:none;display:block}
+#md-editor-overlay,#docx-import-overlay,#drawio-editor-overlay,#paint-editor-overlay{position:fixed;inset:0;z-index:700;display:none;background:var(--bg)}
+#md-editor-overlay.open,#docx-import-overlay.open,#drawio-editor-overlay.open,#paint-editor-overlay.open{display:block}
+#md-editor-overlay iframe,#docx-import-overlay iframe,#drawio-editor-overlay iframe,#paint-editor-overlay iframe{width:100%;height:100%;border:none;display:block}
+#docx-import-overlay{z-index:750}
 .md-fullscreen-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:4px;border:1px solid #1e8449;background:#27ae60;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .12s,border-color .12s;white-space:nowrap;text-decoration:none}
 .md-fullscreen-btn:hover{background:#2ecc71;border-color:#27ae60;color:#fff}

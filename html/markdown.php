@@ -567,9 +567,11 @@ $theme = in_array($_GET['theme'] ?? '', ['light', 'dark'], true) ? $_GET['theme'
     <button class="header-btn header-btn-embed header-btn-save" onclick="embedSave()" title="Spara tillbaka till kortet">✓ Spara till kort</button>
     <button class="header-btn header-btn-embed" onclick="embedCancel()" title="Stäng utan att spara">✕ Avbryt</button>
     <button class="header-btn header-btn-embed" onclick="openImport()" title="Importera HTML eller richtext">📥 Importera</button>
+    <button class="header-btn header-btn-embed" onclick="openDocxImport()" title="Importera Word (.docx) med bilder">📄 DOCX</button>
     <button class="header-btn header-btn-standalone" onclick="copyMarkdown()" title="Kopiera markdown">📋 Kopiera</button>
     <button class="header-btn header-btn-standalone" onclick="downloadMarkdown()" title="Ladda ner som .md fil">⬇️ Ladda ner</button>
     <button class="header-btn header-btn-standalone" onclick="openImport()" title="Importera HTML eller richtext">📥 Importera</button>
+    <button class="header-btn header-btn-standalone" onclick="openDocxImport()" title="Importera Word (.docx)">📄 DOCX</button>
     <button class="header-btn header-btn-standalone" onclick="clearEditor()" title="Rensa">🗑 Rensa</button>
     <button class="header-btn header-btn-standalone" onclick="toggleTheme()" id="theme-btn">🌙 Mörkt</button>
   </div>
@@ -801,6 +803,22 @@ function embedCancel() {
   window.parent.postMessage({ type: 'sc-markdown-cancel' }, '*');
 }
 
+function openDocxImport() {
+  if (EMBED_MODE && window.parent !== window) {
+    window.parent.postMessage({ type: 'sc-request-docx-import' }, '*');
+    return;
+  }
+  alert('DOCX-import är tillgänglig från Skill Canvas markdown-kortet.');
+}
+
+function applyDocxMarkdown(md) {
+  if (!monacoEditor || !md) return;
+  monacoEditor.setValue(md);
+  monacoEditor.focus();
+  renderPreview();
+  updateStats();
+}
+
 function initEmbedMessaging() {
   window.addEventListener('message', function(e) {
     var d = e.data;
@@ -815,6 +833,14 @@ function initEmbedMessaging() {
     }
     if (d.type === 'sc-markdown-set-theme' && d.theme) {
       applyTheme(d.theme, true);
+    }
+    if (d.type === 'sc-docx-query-content' && monacoEditor) {
+      if (e.source === window.parent) {
+        window.parent.postMessage({ type: 'sc-markdown-content', content: monacoEditor.getValue() }, '*');
+      }
+    }
+    if (d.type === 'sc-docx-apply' && monacoEditor) {
+      applyDocxMarkdown(String(d.markdown || ''));
     }
   });
   window.parent.postMessage({ type: 'sc-markdown-ready' }, '*');

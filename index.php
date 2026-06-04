@@ -106,6 +106,10 @@ require_once __DIR__ . '/includes/bootstrap.php';
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14l4-4 3 3 4-6"/><path d="M3 17h14"/></svg>
     Annotation
   </button>
+  <button class="add-btn add-dio" id="add-drawio">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 10h6M10 7v6"/></svg>
+    Draw.io
+  </button>
 </div>
 
 <!-- ZOOM CONTROLS -->
@@ -148,12 +152,32 @@ require_once __DIR__ . '/includes/bootstrap.php';
   <iframe id="md-editor-frame" title="Markdown-editor"></iframe>
 </div>
 
+<!-- DOCX IMPORT -->
+<div id="docx-import-overlay" aria-hidden="true">
+  <iframe id="docx-import-frame" title="Importera DOCX"></iframe>
+</div>
+
+<!-- DRAW.IO EDITOR -->
+<div id="drawio-editor-overlay" aria-hidden="true">
+  <iframe id="drawio-editor-frame" title="Draw.io-editor"></iframe>
+</div>
+
+<!-- PAINT EDITOR -->
+<div id="paint-editor-overlay" aria-hidden="true">
+  <iframe id="paint-editor-frame" title="Måla / redigera bild"></iframe>
+</div>
+
 <script>
+<?php
+$scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php'));
+$app['basePath'] = ($scriptDir === '/' || $scriptDir === '.' || $scriptDir === '') ? '' : rtrim($scriptDir, '/') . '/';
+?>
 window.SC_APP = <?= json_encode($app, JSON_UNESCAPED_UNICODE) ?>;
 window.SC_DEFAULTS = <?= json_encode($defaults, JSON_UNESCAPED_UNICODE) ?>;
 window.SC_MODULES = <?= json_encode(registered_modules(), JSON_UNESCAPED_UNICODE) ?>;
 </script>
 <script src="js/modal.js?v=<?= asset_version('js/modal.js') ?>"></script>
+<script src="js/docx-import.js?v=<?= asset_version('js/docx-import.js') ?>"></script>
 <script src="js/modules/registry.js?v=<?= asset_version('js/modules/registry.js') ?>"></script>
 <script src="app.js?v=<?= asset_version('app.js') ?>"></script>
 <?php foreach (registered_module_scripts() as $script): ?>

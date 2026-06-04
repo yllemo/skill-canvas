@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="sv" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Draw.io → SKILL.md — Göteborgs Stad</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root {
+  --gs-blue:       #0077bc;
+  --bg-color:      #FFFFFE;
+  --bg-footer:     #F5F5F5;
+  --bg-nav:        #F4F9FC;
+  --bg-info:       #F2F9F9;
+  --text-color:    #333333;
+  --text-secondary:#6E6E6E;
+  --link-color:    #005799;
+  --border-color:  #979797;
+  --success:       #5a8b3b;
+  --warning:       #f2a900;
+  --error:         #d24723;
+  --turquoise:     #008391;
+}
+[data-theme="dark"] {
+  --bg-color:      #1F1F1F;
+  --bg-footer:     #121212;
+  --bg-nav:        #141414;
+  --bg-info:       #282828;
+  --text-color:    #FFFFFF;
+  --text-secondary:#E3E8E9;
+  --link-color:    #479EF5;
+  --border-color:  #666666;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body {
+  font-family: 'Goteborg', Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-color);
+  background: var(--bg-color);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ──────────────────────────────── */
+header {
+  background: var(--gs-blue);
+  color: #fff;
+  padding: 0 2rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.header-left { display:flex; align-items:center; gap:.75rem; }
+.site-title  { font-size:1rem; font-weight:700; color:#fff; }
+.app-title   { font-size:1rem; font-weight:400; opacity:.85; padding-left:.75rem; border-left:1px solid rgba(255,255,255,.35); }
+.header-right { display:flex; align-items:center; gap:.5rem; }
+.theme-btn, .load-zip-btn {
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.3);
+  color: #fff;
+  border-radius: 4px;
+  padding: .3rem .8rem;
+  cursor: pointer;
+  font-size: .82rem;
+  font-family: inherit;
+  transition: background .2s;
+}
+.theme-btn:hover, .load-zip-btn:hover { background: rgba(255,255,255,.28); }
+#zipLoadInput { display:none; }
+
+/* ── Main ────────────────────────────────── */
+main {
+  flex:1;
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 2.5rem;
+}
+
+h1 { font-size:1.55rem; font-weight:700; margin-bottom:.3rem; }
+.subtitle { color:var(--text-secondary); font-size:.9rem; margin-bottom:1.8rem; }
+
+/* ── Two-column layout ───────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+@media(max-width:680px){ .layout { grid-template-columns:1fr; } }
+
+/* ── Card ────────────────────────────────── */
+.card {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-color);
+}
+.card-header {
+  background: var(--bg-nav);
+  padding: .6rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+}
+.card-title { font-size:.82rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary); }
+.card-body  { padding: 1rem; }
+
+/* ── Diagram preview ─────────────────────── */
+.diagram-area {
+  min-height: 220px;
+  background: var(--bg-nav);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  border: 1px dashed var(--border-color);
+}
+.diagram-area img {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  display: block;
+}
+.diagram-placeholder {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: .9rem;
+  padding: 2rem;
+}
+.diagram-placeholder span { font-size:2.5rem; display:block; margin-bottom:.5rem; }
+
+.diagram-actions {
+  display: flex;
+  gap: .5rem;
+  margin-top: .75rem;
+  flex-wrap: wrap;
+}
+
+/* ── Meta fields ─────────────────────────── */
+.field { margin-bottom: .9rem; }
+.field:last-child { margin-bottom:0; }
+.field label {
+  display:block;
+  font-size:.82rem;
+  font-weight:700;
+  color:var(--text-secondary);
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  margin-bottom:.3rem;
+}
+.field input, .field textarea, .field select {
+  width:100%;
+  padding:.45rem .7rem;
+  border:1px solid var(--border-color);
+  border-radius:4px;
+  background:var(--bg-color);
+  color:var(--text-color);
+  font-size:.93rem;
+  font-family:inherit;
+  transition:border-color .2s;
+}
+.field input:focus, .field textarea:focus {
+  outline:none;
+  border-color:var(--gs-blue);
+  box-shadow:0 0 0 3px rgba(0,119,188,.14);
+}
+.field textarea { resize:vertical; min-height:74px; }
+
+/* ── Tabs ────────────────────────────────── */
+.tabs-row {
+  display:flex;
+  gap:0;
+  border-bottom:2px solid var(--border-color);
+  margin-bottom:0;
+}
+.tab-btn {
+  background:none; border:none;
+  padding:.55rem 1.1rem;
+  font-size:.88rem; font-weight:600;
+  cursor:pointer;
+  color:var(--text-secondary);
+  border-bottom:3px solid transparent;
+  margin-bottom:-2px;
+  font-family:inherit;
+  transition:color .2s, border-color .2s;
+}
+.tab-btn.active { color:var(--gs-blue); border-bottom-color:var(--gs-blue); }
+.tab-btn:hover:not(.active) { color:var(--text-color); }
+
+.tab-pane { display:none; }
+.tab-pane.active { display:block; }
+
+/* ── Markdown pane ───────────────────────── */
+.pane-toolbar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:.5rem .85rem;
+  background:var(--bg-nav);
+  border-bottom:1px solid var(--border-color);
+}
+.pane-label { font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary); }
+.copy-btn {
+  background:none;
+  border:1px solid var(--border-color);
+  color:var(--text-color);
+  border-radius:4px;
+  padding:.2rem .6rem;
+  font-size:.78rem;
+  cursor:pointer;
+  font-family:inherit;
+  transition:background .15s;
+}
+.copy-btn:hover { background:var(--border-color); }
+.copy-btn.copied { color:var(--success); border-color:var(--success); }
+
+#markdownOutput {
+  width:100%; min-height:260px; max-height:420px;
+  padding:.85rem;
+  font-family:'Courier New',Courier,monospace;
+  font-size:.82rem;
+  line-height:1.6;
+  resize:vertical;
+  border:none;
+  background:var(--bg-color);
+  color:var(--text-color);
+  display:block;
+}
+#markdownOutput:focus { outline:none; }
+
+/* ── XML pane ────────────────────────────── */
+#xmlOutput {
+  width:100%; min-height:260px; max-height:420px;
+  padding:.85rem;
+  font-family:'Courier New',Courier,monospace;
+  font-size:.78rem;
+  line-height:1.5;
+  resize:vertical;
+  border:none;
+  background:var(--bg-color);
+  color:var(--text-color);
+  display:block;
+}
+#xmlOutput:focus { outline:none; }
+
+/* ── Status ──────────────────────────────── */
+.status-bar {
+  background:var(--bg-info);
+  border:1px solid var(--border-color);
+  border-radius:6px;
+  padding:.7rem 1rem;
+  display:flex;
+  align-items:center;
+  gap:.7rem;
+  font-size:.88rem;
+  margin-bottom:1.2rem;
+  transition:background .3s;
+}
+.status-bar.success { background:#eef5e8; border-color:var(--success); }
+.status-bar.error   { background:#fdf0ec; border-color:var(--error); }
+.status-bar.working { background:#e5f1fa; border-color:var(--gs-blue); }
+[data-theme="dark"] .status-bar.success { background:#1e2d19; }
+[data-theme="dark"] .status-bar.error   { background:#2d1a14; }
+[data-theme="dark"] .status-bar.working { background:#0d2035; }
+.status-icon { font-size:1.2rem; flex-shrink:0; }
+.status-msg strong { display:block; font-weight:600; }
+.status-msg span   { color:var(--text-secondary); font-size:.82rem; }
+
+/* ── Progress ────────────────────────────── */
+.progress-wrap {
+  height:3px; background:var(--border-color); border-radius:2px;
+  overflow:hidden; margin-bottom:1.2rem; opacity:0; transition:opacity .3s;
+}
+.progress-wrap.visible { opacity:1; }
+.progress-bar { height:100%; background:var(--gs-blue); border-radius:2px; width:0%; transition:width .35s ease; }
+
+/* ── Actions ─────────────────────────────── */
+.actions { display:flex; gap:.75rem; flex-wrap:wrap; margin-bottom:.5rem; }
+
+.btn-primary {
+  background:var(--gs-blue); color:#fff;
+  border:none; border-radius:4px;
+  padding:.6rem 1.3rem;
+  font-size:.93rem; font-weight:600;
+  cursor:pointer; font-family:inherit;
+  display:flex; align-items:center; gap:.45rem;
+  transition:background .2s, transform .1s;
+}
+.btn-primary:hover { background:#005fa3; }
+.btn-primary:active { transform:scale(.98); }
+.btn-primary:disabled { background:var(--border-color); cursor:not-allowed; }
+
+.btn-secondary {
+  background:var(--bg-color); color:var(--text-color);
+  border:1px solid var(--border-color); border-radius:4px;
+  padding:.6rem 1.1rem; font-size:.93rem;
+  cursor:pointer; font-family:inherit;
+  display:flex; align-items:center; gap:.4rem;
+  transition:background .2s;
+}
+.btn-secondary:hover { background:var(--bg-nav); }
+.btn-secondary:disabled { opacity:.5; cursor:not-allowed; }
+
+.btn-sm {
+  background:var(--bg-color); color:var(--text-color);
+  border:1px solid var(--border-color); border-radius:4px;
+  padding:.3rem .7rem; font-size:.82rem;
+  cursor:pointer; font-family:inherit;
+  transition:background .15s;
+}
+.btn-sm:hover { background:var(--bg-nav); }
+.btn-sm.accent { background:var(--gs-blue); color:#fff; border-color:var(--gs-blue); }
+.btn-sm.accent:hover { background:#005fa3; }
+
+/* ── Full-width bottom section ───────────── */
+.full-section {
+  grid-column: 1 / -1;
+  border:1px solid var(--border-color);
+  border-radius:6px;
+  overflow:hidden;
+}
+
+/* ── Modal / draw.io overlay ─────────────── */
+.modal-backdrop {
+  display:none;
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.55);
+  z-index:1000;
+  align-items:center;
+  justify-content:center;
+}
+.modal-backdrop.open { display:flex; }
+
+.modal {
+  background:var(--bg-color);
+  border-radius:8px;
+  box-shadow:0 8px 40px rgba(0,0,0,.35);
+  width:95vw; height:92vh;
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+.modal-header {
+  background:var(--gs-blue);
+  color:#fff;
+  padding:.7rem 1.2rem;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+}
+.modal-title { font-size:1rem; font-weight:700; }
+.modal-actions { display:flex; gap:.5rem; align-items:center; }
+.modal-close {
+  background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3);
+  color:#fff; border-radius:4px; padding:.3rem .7rem;
+  cursor:pointer; font-family:inherit; font-size:.85rem;
+  transition:background .2s;
+}
+.modal-close:hover { background:rgba(255,255,255,.28); }
+.modal-save {
+  background:#fff; color:var(--gs-blue);
+  border:none; border-radius:4px; padding:.3rem .9rem;
+  cursor:pointer; font-family:inherit; font-size:.85rem; font-weight:700;
+  transition:opacity .2s;
+}
+.modal-save:hover { opacity:.85; }
+
+#drawioFrame {
+  flex:1;
+  border:none;
+  width:100%;
+}
+
+.modal-status {
+  background:var(--bg-nav);
+  border-top:1px solid var(--border-color);
+  padding:.45rem 1.2rem;
+  font-size:.82rem;
+  color:var(--text-secondary);
+  flex-shrink:0;
+}
+
+/* ── Footer ──────────────────────────────── */
+footer {
+  background:var(--bg-footer);
+  border-top:1px solid var(--border-color);
+  text-align:center;
+  font-size:.78rem;
+  color:var(--text-secondary);
+  padding:.8rem 1rem;
+  flex-shrink:0;
+}
+
+@keyframes spin { to{transform:rotate(360deg);} }
+.spinner {
+  display:inline-block;
+  width:.95rem; height:.95rem;
+  border:2px solid rgba(0,119,188,.25);
+  border-top-color:var(--gs-blue);
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+  vertical-align:middle;
+}
+</style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────── -->
+<header>
+  <div class="header-left">
+    <span class="site-title">Göteborgs Stad</span>
+    <span class="app-title">Draw.io → SKILL.md</span>
+  </div>
+  <div class="header-right">
+    <label class="load-zip-btn" title="Öppna ett sparat ZIP-paket">
+      📂 Öppna ZIP
+      <input type="file" id="zipLoadInput" accept=".zip">
+    </label>
+    <button class="theme-btn" onclick="toggleTheme()">🌓 Tema</button>
+  </div>
+</header>
+
+<!-- ── Main ─────────────────────────────────────────── -->
+<main>
+  <h1>Draw.io → SKILL.md-editor</h1>
+  <p class="subtitle">Rita ett diagram i draw.io, fyll i metadata, förhandsgranska Markdown — spara allt i ett ZIP-paket som går att öppna igen.</p>
+
+  <!-- Status -->
+  <div class="status-bar" id="statusBar">
+    <span class="status-icon">💡</span>
+    <div class="status-msg">
+      <strong>Redo</strong>
+      <span>Öppna draw.io-editorn för att börja rita, eller ladda ett befintligt ZIP-paket.</span>
+    </div>
+  </div>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+
+  <!-- Two-column -->
+  <div class="layout">
+
+    <!-- Left: Diagram preview -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📐 Diagram</span>
+        <span id="diagramLabel" style="font-size:.78rem;color:var(--text-secondary);">Inget diagram än</span>
+      </div>
+      <div class="card-body">
+        <div class="diagram-area" id="diagramArea">
+          <div class="diagram-placeholder">
+            <span>🖊</span>
+            Öppna editorn för att rita ett diagram
+          </div>
+        </div>
+        <div class="diagram-actions">
+          <button class="btn-sm accent" onclick="openEditor()">✏️ Öppna draw.io-editor</button>
+          <button class="btn-sm" id="clearDiagramBtn" onclick="clearDiagram()" style="display:none">🗑 Rensa</button>
+          <button class="btn-sm" id="exportPngBtn" onclick="exportPng()" style="display:none">💾 Spara PNG</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Metadata -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">⚙️ Metadata</span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label for="skillName">Skill-namn</label>
+          <input type="text" id="skillName" placeholder="t.ex. my-architecture-skill" oninput="syncMarkdown()">
+        </div>
+        <div class="field">
+          <label for="skillVersion">Version</label>
+          <input type="text" id="skillVersion" placeholder="1.0.0" oninput="syncMarkdown()">
+        </div>
+        <div class="field">
+          <label for="skillDescription">Beskrivning</label>
+          <textarea id="skillDescription" placeholder="Beskriv skillens syfte och när den ska triggas…" oninput="syncMarkdown()"></textarea>
+        </div>
+        <div class="field">
+          <label for="skillAuthor">Författare</label>
+          <input type="text" id="skillAuthor" placeholder="t.ex. Henrik Yllemo" oninput="syncMarkdown()">
+        </div>
+        <div class="field">
+          <label for="skillLicense">Licens</label>
+          <input type="text" id="skillLicense" placeholder="t.ex. MIT" oninput="syncMarkdown()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom: Tabs (full width) -->
+    <div class="full-section">
+      <div class="tabs-row">
+        <button class="tab-btn active" onclick="switchTab('markdown')" id="tabMarkdown">📝 SKILL.md</button>
+        <button class="tab-btn" onclick="switchTab('xml')" id="tabXml">🔷 Draw.io XML</button>
+      </div>
+
+      <!-- Markdown tab -->
+      <div class="tab-pane active" id="paneMarkdown">
+        <div class="pane-toolbar">
+          <span class="pane-label">Förhandsgranskning — redigera fritt</span>
+          <button class="copy-btn" id="copyBtn" onclick="copyMarkdown()">Kopiera</button>
+        </div>
+        <textarea id="markdownOutput" spellcheck="false" placeholder="SKILL.md-innehåll visas här när du öppnat editorn och sparat ett diagram…"></textarea>
+      </div>
+
+      <!-- XML tab -->
+      <div class="tab-pane" id="paneXml">
+        <div class="pane-toolbar">
+          <span class="pane-label">Draw.io XML — inbäddas i SKILL.md</span>
+          <button class="copy-btn" id="copyXmlBtn" onclick="copyXml()">Kopiera</button>
+        </div>
+        <textarea id="xmlOutput" spellcheck="false" readonly placeholder="Draw.io XML visas här efter att du sparat från editorn…"></textarea>
+      </div>
+    </div>
+
+  </div><!-- /layout -->
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn-primary" id="downloadBtn" onclick="downloadZip()" disabled>
+      📦 Spara som ZIP
+    </button>
+    <button class="btn-secondary" onclick="resetAll()">↺ Börja om</button>
+  </div>
+  <p style="font-size:.78rem;color:var(--text-secondary);">ZIP-paketet innehåller SKILL.md, diagram.xml och diagram.svg — och kan öppnas igen med "Öppna ZIP" ovan.</p>
+</main>
+
+<!-- ── Footer ────────────────────────────────────────── -->
+<footer>
+  Göteborgs Stad · Intraservice · Draw.io → SKILL.md-editor
+</footer>
+
+<!-- ── Draw.io Modal ─────────────────────────────────── -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">✏️ Draw.io-editor</span>
+      <div class="modal-actions">
+        <span id="modalStatus" style="font-size:.82rem;opacity:.8;">Laddar…</span>
+        <button class="modal-save" onclick="saveDiagram()">💾 Spara diagram</button>
+        <button class="modal-close" onclick="closeEditor()">✕ Stäng</button>
+      </div>
+    </div>
+    <iframe id="drawioFrame"
+      src="about:blank"
+      sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads allow-modals"
+      allow="clipboard-read; clipboard-write">
+    </iframe>
+    <div class="modal-status" id="drawioStatus">draw.io läser in — detta kan ta några sekunder.</div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────
+const state = {
+  xml:     '',   // draw.io XML
+  svgData: '',   // SVG string from draw.io export
+  pngData: '',   // base64 PNG (data URL)
+  ready:   false,
+  fileName:'diagram',
+};
+
+let drawioReady  = false;
+let pendingLoad  = null; // XML to load once draw.io is ready
+let exportResolve = null;
+
+// ─────────────────────────────────────────────────────────────────
+// Theme
+// ─────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('gs-theme', next);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.documentElement.setAttribute('data-theme', localStorage.getItem('gs-theme') || 'light');
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Tab switch
+// ─────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  ['markdown','xml'].forEach(t => {
+    document.getElementById('tab'+cap(t)).classList.toggle('active', t===tab);
+    document.getElementById('pane'+cap(t)).classList.toggle('active', t===tab);
+  });
+}
+const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+
+// ─────────────────────────────────────────────────────────────────
+// Open / Close draw.io editor
+// ─────────────────────────────────────────────────────────────────
+function openEditor() {
+  const frame = document.getElementById('drawioFrame');
+  drawioReady = false;
+
+  // Use draw.io embed mode
+  const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'kennedy';
+  const url = `https://embed.diagrams.net/?embed=1&proto=json&spin=1&saveAndExit=0&noSaveBtn=0&noExitBtn=0&ui=${theme}&lang=sv`;
+
+  frame.src = url;
+  document.getElementById('modalBackdrop').classList.add('open');
+  document.getElementById('modalStatus').textContent = 'Laddar draw.io…';
+  document.getElementById('drawioStatus').textContent = 'draw.io läser in — detta kan ta några sekunder.';
+
+  // If we have existing XML, prep to load it once ready
+  pendingLoad = state.xml || null;
+}
+
+function closeEditor() {
+  document.getElementById('modalBackdrop').classList.remove('open');
+  // blank the iframe to free resources
+  document.getElementById('drawioFrame').src = 'about:blank';
+  drawioReady = false;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// draw.io postMessage protocol
+// ─────────────────────────────────────────────────────────────────
+window.addEventListener('message', async (evt) => {
+  const frame = document.getElementById('drawioFrame');
+  if (evt.source !== frame.contentWindow) return;
+
+  let msg;
+  try { msg = JSON.parse(evt.data); } catch { return; }
+
+  const send = (obj) => frame.contentWindow.postMessage(JSON.stringify(obj), '*');
+
+  switch (msg.event) {
+    case 'init':
+      drawioReady = true;
+      document.getElementById('drawioStatus').textContent = 'draw.io redo.';
+      document.getElementById('modalStatus').textContent = 'Redo ✓';
+
+      if (pendingLoad) {
+        // Load existing XML into editor
+        send({ action: 'load', xml: pendingLoad });
+        pendingLoad = null;
+      } else {
+        send({ action: 'load', xml: '' });
+      }
+      break;
+
+    case 'autosave':
+      // Silently capture XML on every autosave
+      if (msg.xml) state.xml = msg.xml;
+      break;
+
+    case 'save':
+      // User clicked draw.io's own Save button — treat same as our Save
+      if (msg.xml) {
+        state.xml = msg.xml;
+        await requestExport();
+      }
+      break;
+
+    case 'export':
+      // SVG export response
+      if (exportResolve) {
+        exportResolve(msg);
+        exportResolve = null;
+      }
+      break;
+
+    case 'exit':
+      closeEditor();
+      break;
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Save diagram — triggered by our "Spara diagram" button
+// ─────────────────────────────────────────────────────────────────
+async function saveDiagram() {
+  const frame = document.getElementById('drawioFrame');
+  if (!drawioReady) {
+    setStatus('error','⚠️','Editorn inte redo','Vänta tills draw.io har laddats klart.');
+    return;
+  }
+
+  document.getElementById('modalStatus').textContent = 'Exporterar…';
+
+  // 1. Ask for current XML via autosave message (we poll via export)
+  await requestExport();
+}
+
+function requestExport() {
+  return new Promise((resolve, reject) => {
+    const frame = document.getElementById('drawioFrame');
+    exportResolve = async (msg) => {
+      try {
+        await handleExportResult(msg);
+        resolve();
+      } catch(e) { reject(e); }
+    };
+    // Request SVG export
+    frame.contentWindow.postMessage(JSON.stringify({
+      action: 'export',
+      format: 'svg',
+      spinKey: 'export',
+    }), '*');
+
+    // Timeout safety
+    setTimeout(() => {
+      if (exportResolve) {
+        exportResolve = null;
+        reject(new Error('Export-timeout'));
+      }
+    }, 15000);
+  });
+}
+
+async function handleExportResult(msg) {
+  // msg.data = base64 SVG (data:image/svg+xml;base64,...)  OR raw SVG string
+  let svgString = '';
+  let pngDataUrl = '';
+
+  if (msg.data && msg.data.startsWith('data:image/svg+xml;base64,')) {
+    const b64 = msg.data.split(',')[1];
+    svgString = atob(b64);
+  } else if (msg.data && msg.data.startsWith('data:')) {
+    // PNG or other — use as-is
+    pngDataUrl = msg.data;
+    svgString = '';
+  } else if (msg.data) {
+    svgString = msg.data;
+  }
+
+  // Also capture XML if included
+  if (msg.xml) state.xml = msg.xml;
+
+  state.svgData = svgString;
+
+  // Convert SVG → PNG via canvas
+  if (svgString) {
+    pngDataUrl = await svgToPng(svgString);
+  }
+  state.pngData = pngDataUrl;
+
+  // Update UI
+  renderDiagramPreview(pngDataUrl || (svgString ? 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgString) : ''));
+  document.getElementById('xmlOutput').value = state.xml || '';
+  syncMarkdown();
+  state.ready = true;
+  document.getElementById('downloadBtn').disabled = false;
+  document.getElementById('clearDiagramBtn').style.display = '';
+  document.getElementById('exportPngBtn').style.display = '';
+  document.getElementById('diagramLabel').textContent = 'Diagram sparat ✓';
+
+  setStatus('success','✅','Diagram sparat','SVG och XML har hämtats från draw.io.');
+  document.getElementById('modalStatus').textContent = 'Sparat ✓';
+  document.getElementById('drawioStatus').textContent = 'Diagrammet sparades. Du kan fortsätta redigera eller stänga editorn.';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SVG → PNG via canvas
+// ─────────────────────────────────────────────────────────────────
+function svgToPng(svgString) {
+  return new Promise((resolve) => {
+    try {
+      const blob = new Blob([svgString], {type:'image/svg+xml;charset=utf-8'});
+      const url  = URL.createObjectURL(blob);
+      const img  = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth  || 800;
+        const h = img.naturalHeight || 600;
+        const canvas = document.createElement('canvas');
+        canvas.width  = w * 2;
+        canvas.height = h * 2;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(2,2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(''); };
+      img.src = url;
+    } catch(e) { resolve(''); }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Render diagram preview
+// ─────────────────────────────────────────────────────────────────
+function renderDiagramPreview(dataUrl) {
+  const area = document.getElementById('diagramArea');
+  if (!dataUrl) {
+    area.innerHTML = `<div class="diagram-placeholder"><span>🖊</span>Öppna editorn för att rita ett diagram</div>`;
+    return;
+  }
+  area.innerHTML = `<img src="${dataUrl}" alt="Diagram-förhandsgranskning">`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Export PNG standalone
+// ─────────────────────────────────────────────────────────────────
+function exportPng() {
+  if (!state.pngData) return;
+  const a = document.createElement('a');
+  a.href     = state.pngData;
+  a.download = (state.fileName || 'diagram') + '.png';
+  a.click();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Clear diagram
+// ─────────────────────────────────────────────────────────────────
+function clearDiagram() {
+  state.xml = ''; state.svgData = ''; state.pngData = '';
+  renderDiagramPreview('');
+  document.getElementById('xmlOutput').value = '';
+  document.getElementById('clearDiagramBtn').style.display = 'none';
+  document.getElementById('exportPngBtn').style.display = 'none';
+  document.getElementById('diagramLabel').textContent = 'Inget diagram än';
+  syncMarkdown();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Sync Markdown
+// ─────────────────────────────────────────────────────────────────
+function syncMarkdown() {
+  const md = buildSkillMd();
+  document.getElementById('markdownOutput').value = md;
+  state.ready = !!(state.xml || state.svgData);
+  document.getElementById('downloadBtn').disabled = !state.ready;
+}
+
+function buildSkillMd() {
+  const name    = v('skillName')    || 'skill-name';
+  const version = v('skillVersion');
+  const desc    = v('skillDescription');
+  const author  = v('skillAuthor');
+  const license = v('skillLicense');
+
+  let fm = '---\n';
+  fm += `name: ${name}\n`;
+  if (desc)    fm += `description: >\n  ${desc.replace(/\n/g,'\n  ')}\n`;
+  if (version) fm += `version: ${version}\n`;
+  if (author)  fm += `author: ${author}\n`;
+  if (license) fm += `license: ${license}\n`;
+  fm += '---\n\n';
+
+  // Body: description as section
+  let body = '';
+  if (desc) {
+    body += `## Beskrivning\n\n${desc}\n\n`;
+  }
+
+  // Diagram image reference
+  if (state.svgData || state.pngData) {
+    body += `## Diagram\n\n![${name} diagram](diagram.png)\n\n`;
+  }
+
+  // Draw.io XML embed
+  if (state.xml) {
+    body += `## Draw.io XML\n\n> Källa för diagrammet. Öppna i draw.io-editorn för att redigera.\n\n\`\`\`xml\n${state.xml}\n\`\`\`\n`;
+  }
+
+  return fm + (body || '_Lägg till innehåll i editorn ovan._\n');
+}
+
+const v = id => document.getElementById(id).value.trim();
+
+// Sync textarea edits back
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('markdownOutput').addEventListener('input', e => {
+    // user is free-editing; don't override
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Copy
+// ─────────────────────────────────────────────────────────────────
+function copyMarkdown() {
+  navigator.clipboard.writeText(document.getElementById('markdownOutput').value);
+  flash('copyBtn', '✓ Kopierat');
+}
+function copyXml() {
+  navigator.clipboard.writeText(document.getElementById('xmlOutput').value);
+  flash('copyXmlBtn', '✓ Kopierat');
+}
+function flash(id, text) {
+  const btn = document.getElementById(id);
+  const orig = btn.textContent;
+  btn.textContent = text; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Download ZIP
+// ─────────────────────────────────────────────────────────────────
+async function downloadZip() {
+  const name = v('skillName') || 'skill';
+  state.fileName = name;
+
+  setStatus('working','<span class="spinner"></span>','Skapar ZIP…','');
+  setProgress(20);
+
+  const zip  = new JSZip();
+  const folder = zip.folder(name);
+
+  // 1. SKILL.md
+  const finalMd = document.getElementById('markdownOutput').value;
+  folder.file('SKILL.md', finalMd);
+  setProgress(40);
+
+  // 2. Draw.io XML
+  if (state.xml) {
+    folder.file('diagram.xml', state.xml);
+  }
+  setProgress(60);
+
+  // 3. SVG
+  if (state.svgData) {
+    folder.file('diagram.svg', state.svgData);
+  }
+  setProgress(75);
+
+  // 4. PNG
+  if (state.pngData) {
+    const pngBlob = dataUrlToBlob(state.pngData);
+    if (pngBlob) folder.file('diagram.png', pngBlob);
+  }
+  setProgress(85);
+
+  // 5. meta.json (for re-loading)
+  const meta = {
+    skillName:    v('skillName'),
+    skillVersion: v('skillVersion'),
+    skillDescription: v('skillDescription'),
+    skillAuthor:  v('skillAuthor'),
+    skillLicense: v('skillLicense'),
+  };
+  folder.file('meta.json', JSON.stringify(meta, null, 2));
+
+  setProgress(95);
+  const blob = await zip.generateAsync({ type:'blob', compression:'DEFLATE', compressionOptions:{level:6} });
+  setProgress(100);
+
+  const a = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `${name}.zip`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  setStatus('success','📦',`${name}.zip nedladdad`,
+    `Innehåller SKILL.md, diagram.xml, diagram.svg, diagram.png och meta.json.`);
+  setTimeout(() => setProgress(0), 900);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Open ZIP
+// ─────────────────────────────────────────────────────────────────
+document.getElementById('zipLoadInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  e.target.value = '';
+
+  setStatus('working','<span class="spinner"></span>','Öppnar ZIP…','');
+  setProgress(15);
+
+  try {
+    const ab  = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(ab);
+
+    // Find root folder (first folder or root)
+    let prefix = '';
+    zip.forEach((path) => {
+      if (!prefix && path.endsWith('/') && !path.includes('/',1)) prefix = path;
+    });
+
+    const getFile = async (name) => {
+      const f = zip.file(prefix + name) || zip.file(name);
+      return f ? f : null;
+    };
+
+    setProgress(35);
+
+    // meta.json
+    const metaFile = await getFile('meta.json');
+    if (metaFile) {
+      const meta = JSON.parse(await metaFile.async('string'));
+      document.getElementById('skillName').value        = meta.skillName        || '';
+      document.getElementById('skillVersion').value     = meta.skillVersion     || '';
+      document.getElementById('skillDescription').value = meta.skillDescription || '';
+      document.getElementById('skillAuthor').value      = meta.skillAuthor      || '';
+      document.getElementById('skillLicense').value     = meta.skillLicense     || '';
+      state.fileName = meta.skillName || 'diagram';
+    }
+    setProgress(50);
+
+    // XML
+    const xmlFile = await getFile('diagram.xml');
+    if (xmlFile) {
+      state.xml = await xmlFile.async('string');
+      document.getElementById('xmlOutput').value = state.xml;
+    }
+    setProgress(65);
+
+    // SVG
+    const svgFile = await getFile('diagram.svg');
+    if (svgFile) {
+      state.svgData = await svgFile.async('string');
+    }
+    setProgress(75);
+
+    // PNG
+    const pngFile = await getFile('diagram.png');
+    if (pngFile) {
+      const pngB64 = await pngFile.async('base64');
+      state.pngData = 'data:image/png;base64,' + pngB64;
+    }
+    setProgress(88);
+
+    // Preview
+    if (state.pngData) {
+      renderDiagramPreview(state.pngData);
+    } else if (state.svgData) {
+      renderDiagramPreview('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(state.svgData));
+    }
+
+    if (state.xml || state.svgData) {
+      state.ready = true;
+      document.getElementById('downloadBtn').disabled = false;
+      document.getElementById('clearDiagramBtn').style.display = '';
+      document.getElementById('exportPngBtn').style.display = '';
+      document.getElementById('diagramLabel').textContent = 'Diagram laddat ✓';
+    }
+
+    // SKILL.md
+    const mdFile = await getFile('SKILL.md');
+    if (mdFile) {
+      const mdText = await mdFile.async('string');
+      document.getElementById('markdownOutput').value = mdText;
+    } else {
+      syncMarkdown();
+    }
+
+    setProgress(100);
+    setStatus('success','📂',`${file.name} öppnat`,
+      `Metadata, diagram och SKILL.md återställda. Öppna editorn för att redigera diagrammet.`);
+    setTimeout(() => setProgress(0), 900);
+
+  } catch(err) {
+    setStatus('error','❌','Kunde inte öppna ZIP',err.message);
+    setProgress(0);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Reset
+// ─────────────────────────────────────────────────────────────────
+function resetAll() {
+  state.xml = ''; state.svgData = ''; state.pngData = ''; state.ready = false; state.fileName = 'diagram';
+  ['skillName','skillVersion','skillDescription','skillAuthor','skillLicense'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('markdownOutput').value = '';
+  document.getElementById('xmlOutput').value = '';
+  renderDiagramPreview('');
+  document.getElementById('downloadBtn').disabled = true;
+  document.getElementById('clearDiagramBtn').style.display = 'none';
+  document.getElementById('exportPngBtn').style.display = 'none';
+  document.getElementById('diagramLabel').textContent = 'Inget diagram än';
+  setStatus('idle','💡','Redo','Öppna draw.io-editorn för att börja rita, eller ladda ett befintligt ZIP-paket.');
+  setProgress(0);
+  closeEditor();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// UI helpers
+// ─────────────────────────────────────────────────────────────────
+function setStatus(type, icon, title, sub) {
+  const bar = document.getElementById('statusBar');
+  bar.className = 'status-bar ' + (type !== 'idle' ? type : '');
+  bar.innerHTML = `<span class="status-icon">${icon}</span>
+    <div class="status-msg"><strong>${title}</strong><span>${sub}</span></div>`;
+}
+function setProgress(pct) {
+  const wrap = document.getElementById('progressWrap');
+  const bar  = document.getElementById('progressBar');
+  if (pct===0){ wrap.classList.remove('visible'); bar.style.width='0%'; }
+  else { wrap.classList.add('visible'); bar.style.width=pct+'%'; }
+}
+function dataUrlToBlob(dataUrl) {
+  try {
+    const [header, data] = dataUrl.split(',');
+    const mime = header.match(/:(.*?);/)[1];
+    const bytes = atob(data);
+    const arr = new Uint8Array(bytes.length);
+    for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+    return new Blob([arr],{type:mime});
+  } catch { return null; }
+}
+</script>
+</body>
+</html>

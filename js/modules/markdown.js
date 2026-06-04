@@ -85,24 +85,45 @@ const MarkdownModule = (() => {
     iframe.src = url;
   }
 
-  function wireFullscreenButton() {
+  function wireModalFooterButtons() {
     setTimeout(() => {
       const footLeft = document.getElementById('modal-foot-left');
       const textarea = document.getElementById('md-content');
       if (!footLeft || !textarea) return;
 
       footLeft.innerHTML = '';
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.id = 'md-open-fullscreen';
-      btn.className = 'md-fullscreen-btn';
-      btn.textContent = cfg().fullscreenLabel || 'Fullskärmseditor';
-      btn.onclick = () => {
+
+      const docxBtn = document.createElement('button');
+      docxBtn.type = 'button';
+      docxBtn.className = 'md-fullscreen-btn';
+      docxBtn.style.marginRight = '8px';
+      docxBtn.style.background = '#0077bc';
+      docxBtn.style.borderColor = '#005799';
+      docxBtn.textContent = cfg().docxLabel || 'Importera DOCX';
+      docxBtn.title = cfg().docxTitle || 'Word → Markdown med bilder';
+      docxBtn.onclick = () => {
+        if (typeof DocxImport === 'undefined') {
+          showToast('DOCX-import otillgänglig', 4000);
+          return;
+        }
+        DocxImport.open({
+          getContent: () => textarea.value,
+          apply: (md) => { textarea.value = md; },
+        });
+      };
+      footLeft.appendChild(docxBtn);
+
+      const fsBtn = document.createElement('button');
+      fsBtn.type = 'button';
+      fsBtn.id = 'md-open-fullscreen';
+      fsBtn.className = 'md-fullscreen-btn';
+      fsBtn.textContent = cfg().fullscreenLabel || 'Fullskärmseditor';
+      fsBtn.onclick = () => {
         openFullscreenEditor(textarea.value, (newContent) => {
           textarea.value = newContent;
         });
       };
-      footLeft.appendChild(btn);
+      footLeft.appendChild(fsBtn);
     }, 50);
   }
 
@@ -132,7 +153,7 @@ const MarkdownModule = (() => {
       Modal.close();
       showToast(cfg().addToast || 'Markdown-nod tillagd');
     });
-    wireFullscreenButton();
+    wireModalFooterButtons();
   }
 
   async function openEdit(node) {
@@ -164,10 +185,55 @@ const MarkdownModule = (() => {
       Modal.close();
       showToast(cfg().editToast || 'Sparad');
     });
-    wireFullscreenButton();
+    wireModalFooterButtons();
   }
 
-  return { openAdd, openEdit, closeFullscreenEditor };
+  function queryFullscreenContent() {
+    return new Promise(resolve => {
+      const iframe = document.getElementById('md-editor-frame');
+      const overlay = document.getElementById('md-editor-overlay');
+      if (!iframe?.contentWindow || !overlay?.classList.contains('open')) {
+        resolve('');
+        return;
+      }
+      function onMsg(e) {
+        if (e.source !== iframe.contentWindow) return;
+        if (e.data?.type === 'sc-markdown-content') {
+          window.removeEventListener('message', onMsg);
+          resolve(String(e.data.content ?? ''));
+        }
+      }
+      window.addEventListener('message', onMsg);
+      iframe.contentWindow.postMessage({ type: 'sc-docx-query-content' }, '*');
+      setTimeout(() => {
+        window.removeEventListener('message', onMsg);
+        resolve('');
+      }, 2500);
+    });
+  }
+
+  async function openDocxForFullscreen() {
+    if (typeof DocxImport === 'undefined') {
+      showToast('DOCX-import otillgänglig', 4000);
+      return;
+    }
+    const iframe = document.getElementById('md-editor-frame');
+    const current = await queryFullscreenContent();
+    DocxImport.open({
+      getContent: () => current,
+      apply: md => {
+        iframe?.contentWindow?.postMessage({ type: 'sc-docx-apply', markdown: md }, '*');
+      },
+    });
+  }
+
+  window.addEventListener('message', e => {
+    if (e.data?.type === 'sc-request-docx-import') {
+      openDocxForFullscreen();
+    }
+  });
+
+  return { openAdd, openEdit, closeFullscreenEditor, openDocxForFullscreen };
 })();
 
 ModuleRegistry.register('markdown', MarkdownModule);

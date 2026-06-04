@@ -57,6 +57,12 @@ return [
             'color' => '#fff9a8',
             'fontSize' => 14,
         ],
+        'drawio' => [
+            'width' => 480,
+            'minWidth' => 200,
+            'maxWidth' => 1200,
+            'fileDir' => 'diagrams',
+        ],
         'annotation' => [
             'width' => 320,
             'height' => 160,
@@ -97,6 +103,8 @@ return [
             'editorUrl' => 'html/markdown.php',
             'fullscreenLabel' => 'Fullskärmseditor',
             'fullscreenTitle' => 'Markdown — fullskärmseditor',
+            'docxLabel' => 'Importera DOCX',
+            'docxTitle' => 'Konvertera Word-dokument till Markdown med bilder',
         ],
         'bild' => [
             'addTitle' => 'Lägg till Bild',
@@ -106,6 +114,10 @@ return [
             'editToast' => 'Sparad',
             'missingToast' => 'Välj en bild, klistra in (Ctrl+V) eller ange en URL',
             'pasteToast' => 'Bild klistrad från urklipp',
+            'paintEditorUrl' => 'html/paint-skill-editor.php',
+            'paintLabel' => 'Måla / redigera bild',
+            'paintTitle' => 'Öppna bilden i målarprogrammet',
+            'paintSaveToast' => 'Bild uppdaterad från målaren',
             'labels' => [
                 'upload' => 'Ladda upp bild',
                 'pasteHint' => 'Ctrl+V klistrar in bild från urklipp',
@@ -114,6 +126,7 @@ return [
                 'alt' => 'Alt-text',
                 'width' => 'Bredd (px)',
                 'replace' => 'Byt bild (valfri)',
+                'paintHint' => 'Knappen nere till vänster öppnar målaren (ny tom canvas eller redigera vald bild).',
             ],
             'placeholders' => [
                 'upload' => 'Klicka eller dra en bild hit',
@@ -158,6 +171,23 @@ return [
             'placeholders' => [
                 'content' => 'Rubrik eller rubriktext…',
                 'width' => 'auto',
+            ],
+        ],
+        'drawio' => [
+            'addTitle' => 'Lägg till Draw.io',
+            'editTitle' => 'Draw.io — titel',
+            'okLabel' => 'Skapa',
+            'addToast' => 'Draw.io-nod tillagd',
+            'saveToast' => 'Diagram sparat',
+            'editorUrl' => 'html/drawio-skill-editor.php',
+            'labels' => [
+                'titleOptional' => 'Titel (valfri)',
+                'width' => 'Bredd på kort (px)',
+                'addHint' => 'Draw.io öppnas direkt efter att noden skapats.',
+                'editHint' => 'Diagrammet redigeras i draw.io.',
+            ],
+            'placeholders' => [
+                'title' => 'Diagramtitel…',
             ],
         ],
         'annotation' => [

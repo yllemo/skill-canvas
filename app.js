@@ -325,6 +325,41 @@ async function buildNodeEl(node){
   return el;
 }
 
+function revokeMarkdownImgUrls(node){
+  if(!node._imgUrls)return;
+  node._imgUrls.forEach(u=>URL.revokeObjectURL(u));
+  node._imgUrls=[];
+}
+
+function revokeDrawioPreview(node){
+  if(node._previewUrl){
+    URL.revokeObjectURL(node._previewUrl);
+    node._previewUrl=null;
+  }
+}
+
+function resolveMarkdownImages(container,node){
+  revokeMarkdownImgUrls(node);
+  container.querySelectorAll('img').forEach(img=>{
+    const raw=img.getAttribute('src')||'';
+    if(!raw||raw.startsWith('data:')||raw.startsWith('blob:')||/^https?:\/\//i.test(raw))return;
+    const candidates=[
+      decodeURIComponent(raw).replace(/^\.\//,''),
+      decodeURIComponent(raw).split('/').pop(),
+    ];
+    let path=null;
+    for(const c of candidates){
+      if(c&&files[c]){path=c;break}
+    }
+    if(!path)return;
+    const url=URL.createObjectURL(new Blob([files[path]],{type:mimeFromPath(path)}));
+    if(!node._imgUrls)node._imgUrls=[];
+    node._imgUrls.push(url);
+    img.src=url;
+    img.alt=img.alt||path.split('/').pop()||'';
+  });
+}
+
 async function renderNodeContent(node,body){
   body.innerHTML='';
   const type=node.type||'markdown';
@@ -344,7 +379,7 @@ async function renderNodeContent(node,body){
     if(!md&&node.file){md=await readTextFile(node.file)}
     const div=document.createElement('div');div.className='md';
     div.innerHTML=marked.parse(md);
-    // make links open in new tab
+    resolveMarkdownImages(div,node);
     div.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noopener'});
     body.appendChild(div);
 
@@ -383,6 +418,28 @@ async function renderNodeContent(node,body){
     if(node.color)t.style.color=node.color;
     t.textContent=node.content||node.title||'';
     body.appendChild(t);
+
+  }else if(type==='drawio'){
+    revokeDrawioPreview(node);
+    const wrap=document.createElement('div');wrap.className='drawio-preview';
+    let src='';
+    if(node.previewFile&&files[node.previewFile]){
+      const blob=new Blob([files[node.previewFile]],{type:mimeFromPath(node.previewFile)});
+      src=URL.createObjectURL(blob);
+      node._previewUrl=src;
+    }
+    if(src){
+      const img=document.createElement('img');
+      img.src=src;img.alt=node.title||'Draw.io-diagram';
+      img.style.width='100%';
+      wrap.appendChild(img);
+    }else{
+      const ph=document.createElement('div');ph.className='drawio-placeholder';
+      ph.textContent='Ingen förhandsbild — klicka Redigera för att rita';
+      wrap.appendChild(ph);
+    }
+    body.style.padding='0';
+    body.appendChild(wrap);
   }
 }
 
@@ -517,9 +574,11 @@ function deleteNode(id){
   const idx=nodes.findIndex(n=>n.id===id);
   if(idx===-1)return;
   const n=nodes[idx];
+  revokeMarkdownImgUrls(n);
+  revokeDrawioPreview(n);
   if(n._el)n._el.remove();
-  // remove associated file if it's a generated one
   if(n.file&&n._ownFile)delete files[n.file];
+  if(n.previewFile&&n._ownPreview)delete files[n.previewFile];
   nodes.splice(idx,1);
   markDirty();
   showToast('Nod borttagen');
@@ -530,11 +589,16 @@ function duplicateNode(id){
   const clone=JSON.parse(JSON.stringify(src));
   clone.id=genId();clone.x=src.x+30;clone.y=src.y+30;clone._el=null;
   if(src.file&&src._ownFile){
-    // duplicate the file too
     const newPath=uniqueFilePath(src.file);
     files[newPath]=files[src.file];
     clone.file=newPath;clone._ownFile=true;
   }
+  if(src.previewFile&&src._ownPreview&&files[src.previewFile]){
+    const newPrev=uniqueFilePath(src.previewFile);
+    files[newPrev]=files[src.previewFile];
+    clone.previewFile=newPrev;clone._ownPreview=true;
+  }
+  clone._previewUrl=null;
   nodes.push(clone);
   buildNodeEl(clone);
   markDirty();
@@ -754,7 +818,7 @@ function mimeFromPath(p){
   return{png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'}[e]||'application/octet-stream';
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function typeLabel(t){return{markdown:'MD',mermaid:'MM',image:'IMG',label:'LBL',note:'Note',annotation:'ANN'}[t]||'?'}
+function typeLabel(t){return{markdown:'MD',mermaid:'MM',image:'IMG',label:'LBL',note:'Note',annotation:'ANN',drawio:'DIO'}[t]||'?'}
 function iconEdit(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 3.5l2 2-10 10H4.5v-2L14.5 3.5z"/></svg>`}
 function iconFocus(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3H3v3M14 3h3v3M17 14v3h-3M6 17H3v-3"/><rect x="7" y="7" width="6" height="6" rx="1"/></svg>`}
 function iconDel(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h12M9 7V4h2v3M6 7l1 9h6l1-9"/></svg>`}
