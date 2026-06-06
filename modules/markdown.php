@@ -30,7 +30,7 @@ final class MarkdownModule extends AbstractModule
         <div class="mfield">
             <label><?= h($labels['width'] ?? 'Bredd (px)') ?></label>
             <input id="md-width"
-                   value="<?= h((string) ($nodeDefaults['width'] ?? 400)) ?>"
+                   value="<?= h((string) ($nodeDefaults['width'] ?? 720)) ?>"
                    type="number"
                    min="<?= h((string) ($nodeDefaults['minWidth'] ?? 160)) ?>"
                    max="<?= h((string) ($nodeDefaults['maxWidth'] ?? 1200)) ?>">
@@ -51,7 +51,7 @@ final class MarkdownModule extends AbstractModule
         $labels = $this->config()['labels'] ?? [];
 
         $title = (string) ($values['title'] ?? '');
-        $width = (int) ($values['width'] ?? ($nodeDefaults['width'] ?? 400));
+        $width = (int) ($values['width'] ?? ($nodeDefaults['width'] ?? 720));
         $content = (string) ($values['content'] ?? '');
 
         ob_start();

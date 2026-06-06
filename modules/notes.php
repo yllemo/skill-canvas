@@ -21,6 +21,13 @@ final class NotesModule extends AbstractModule
         $labels = $this->config()['labels'] ?? [];
         $colors = $this->config()['colors'] ?? [];
         $defaultColor = (string) ($nodeDefaults['color'] ?? '#fff9a8');
+        $defaultIdx = 0;
+        foreach ($colors as $idx => $color) {
+            if ((string) ($color['value'] ?? '') === $defaultColor) {
+                $defaultIdx = $idx;
+                break;
+            }
+        }
 
         ob_start();
         ?>
@@ -31,11 +38,11 @@ final class NotesModule extends AbstractModule
                     <?php
                     $value = (string) ($color['value'] ?? '#fff9a8');
                     $label = (string) ($color['label'] ?? 'Färg');
-                    $checked = ($i === 0 || $value === $defaultColor) ? 'checked' : '';
+                    $checked = ($i === $defaultIdx) ? 'checked' : '';
                     ?>
                     <label class="note-color-swatch" title="<?= h($label) ?>" style="--swatch:<?= h($value) ?>">
-                        <input type="radio" name="note-color" value="<?= h($value) ?>" <?= $checked ? 'checked' : '' ?>>
-                        <span></span>
+                        <input type="radio" name="note-color" value="<?= h($value) ?>" <?= $checked ?>>
+                        <span aria-hidden="true"></span>
                     </label>
                 <?php endforeach; ?>
             </div>

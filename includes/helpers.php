@@ -16,9 +16,30 @@ function defaults_config(): array
     static $defaults = null;
     if ($defaults === null) {
         $defaults = require dirname(__DIR__) . '/config/defaults.php';
+        if (isset($defaults['skill']) && is_array($defaults['skill'])) {
+            $defaults['skill']['name'] = skill_default_name($defaults['skill']);
+        }
     }
 
     return $defaults;
+}
+
+function skill_name_base(array $skill): string
+{
+    $base = (string) ($skill['nameBase'] ?? $skill['name'] ?? 'my-skill');
+
+    return (string) preg_replace('/-\d{4}-\d{2}-\d{2}$/', '', $base);
+}
+
+function skill_default_name(?array $skill = null): string
+{
+    $skill ??= defaults_config()['skill'] ?? [];
+    $base = skill_name_base($skill);
+    if (empty($skill['nameDateSuffix'])) {
+        return $base;
+    }
+
+    return $base . '-' . date('Y-m-d');
 }
 
 function h(?string $value): string

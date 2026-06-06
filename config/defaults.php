@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 return [
     'skill' => [
+        'nameBase' => 'my-skill',
+        'nameDateSuffix' => true,
         'name' => 'my-skill',
         'description' => 'Describe when an AI agent should activate this skill. Agentic systems compare the user\'s request to this text to decide if the skill is relevant—list concrete situations, topics, or example questions (e.g. "Use when the user asks about our onboarding process or needs a visual overview of X"). The canvas holds the knowledge; description is the trigger.',
         'author' => '',
@@ -19,9 +21,17 @@ return [
         'nodeFocusPadding' => 12,
     ],
 
+    'edges' => [
+        'strokeWidth' => 2,
+        'color' => '#0077bc',
+        'style' => 'curve',
+        'markerStart' => 'none',
+        'markerEnd' => 'arrow',
+    ],
+
     'nodes' => [
         'markdown' => [
-            'width' => 400,
+            'width' => 720,
             'minWidth' => 160,
             'maxWidth' => 1200,
             'fileDir' => 'nodes',
@@ -62,6 +72,18 @@ return [
             'minWidth' => 200,
             'maxWidth' => 1200,
             'fileDir' => 'diagrams',
+        ],
+        'html' => [
+            'width' => 640,
+            'height' => 400,
+            'iframeWidth' => '100%',
+            'defaultUrl' => 'https://blog.yllemo.com',
+            'fileDir' => 'html',
+            'fileExt' => 'html',
+            'minWidth' => 200,
+            'maxWidth' => 1400,
+            'minHeight' => 120,
+            'maxHeight' => 1200,
         ],
         'annotation' => [
             'width' => 320,
@@ -167,6 +189,7 @@ return [
                 'fontSize' => 'Teckenstorlek (px)',
                 'color' => 'Färg',
                 'widthOptional' => 'Bredd (px, valfri)',
+                'linkHint' => 'På canvas: [Hej](https://…) visas som «Hej». Här redigerar du hela markdown-länken.',
             ],
             'placeholders' => [
                 'content' => 'Rubrik eller rubriktext…',
@@ -188,6 +211,52 @@ return [
             ],
             'placeholders' => [
                 'title' => 'Diagramtitel…',
+            ],
+        ],
+        'html' => [
+            'addTitle' => 'Lägg till HTML / iframe',
+            'editTitle' => 'Redigera HTML / iframe',
+            'okLabel' => 'Spara',
+            'addToast' => 'HTML/iframe-nod tillagd',
+            'editToast' => 'Sparad',
+            'missingUrlToast' => 'Ange en giltig Website URL (https://…)',
+            'missingContentToast' => 'Ange HTML-kod',
+            'missingFilenameToast' => 'Ange ett filnamn (t.ex. min-sida)',
+            'fileExistsToast' => 'Filnamnet finns redan i paketet',
+            'copyCodeLabel' => 'Kopiera iframe-kod',
+            'copyToast' => 'iframe-kod kopierad',
+            'starterHtml' => '<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skill HTML</title>
+</head>
+<body>
+  <h1>Hej!</h1>
+  <p>Redigera HTML — filen sparas i skill-paketet som html/…</p>
+</body>
+</html>',
+            'labels' => [
+                'titleOptional' => 'Titel (valfri)',
+                'title' => 'Titel',
+                'source' => 'Källa',
+                'tabIframe' => 'iFrame',
+                'tabHtml' => 'HTML',
+                'url' => 'Website URL',
+                'urlHint' => 'Extern sida inbäddad via iframe.',
+                'fileName' => 'Filnamn',
+                'htmlContent' => 'HTML-kod',
+                'fileHint' => 'Visas i iframe på canvas — samma som extern URL.',
+                'displaySection' => 'Visning på canvas',
+                'iframeHeight' => 'Höjd (px)',
+                'cardWidth' => 'Bredd kort (px)',
+                'iframeCode' => 'iframe-kod',
+            ],
+            'placeholders' => [
+                'title' => 'Visas i nodhandtaget…',
+                'url' => 'https://blog.yllemo.com',
+                'fileName' => 'min-sida',
             ],
         ],
         'annotation' => [

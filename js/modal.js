@@ -16,6 +16,7 @@ const Modal = (() => {
     modalOkCb = null;
     const footLeft = document.getElementById('modal-foot-left');
     if (footLeft) footLeft.innerHTML = '';
+    if (typeof SkillTree !== 'undefined') SkillTree.closeDrawer();
     if (typeof BildModule !== 'undefined' && BildModule.cleanupPaste) BildModule.cleanupPaste();
     if (typeof AnnotationModule !== 'undefined' && AnnotationModule.cleanupModal) AnnotationModule.cleanupModal();
   }

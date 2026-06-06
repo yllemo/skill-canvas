@@ -75,10 +75,27 @@ function registered_modules(): array
 function registered_module_scripts(): array
 {
     $scripts = [];
-    foreach (array_unique(array_values(registered_modules())) as $slug) {
-        $path = "js/modules/{$slug}.js";
-        if (is_file(dirname(__DIR__) . '/' . $path)) {
-            $scripts[] = $path;
+    $root = dirname(__DIR__);
+
+    foreach (registered_modules() as $type => $slug) {
+        foreach (array_unique([$slug, $type]) as $name) {
+            $rel = "js/modules/{$name}.js";
+            $full = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rel);
+            if (is_file($full)) {
+                if (!in_array($rel, $scripts, true)) {
+                    $scripts[] = $rel;
+                }
+                break;
+            }
+        }
+    }
+
+    // JS ska laddas även om PHP-modulregistrering misslyckats
+    foreach (['annotation', 'bild', 'drawio', 'html', 'label', 'markdown', 'mermaid', 'notes'] as $name) {
+        $rel = "js/modules/{$name}.js";
+        $full = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rel);
+        if (!in_array($rel, $scripts, true) && is_file($full)) {
+            $scripts[] = $rel;
         }
     }
 

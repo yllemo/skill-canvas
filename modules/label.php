@@ -26,8 +26,8 @@ final class LabelModule extends AbstractModule
         <div class="mfield">
             <label><?= h($labels['content'] ?? 'Text') ?></label>
             <input id="lbl-content"
-                   placeholder="<?= h($placeholders['content'] ?? 'Rubrik eller rubriktext…') ?>"
-                   autofocus>
+                   placeholder="<?= h($placeholders['content'] ?? 'Rubrik eller rubriktext…') ?>">
+            <p class="field-hint"><?= h($labels['linkHint'] ?? 'På canvas: [Hej](https://…) visas som «Hej». Här redigerar du hela markdown-länken.') ?></p>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
             <div class="mfield">
@@ -75,6 +75,7 @@ final class LabelModule extends AbstractModule
         <div class="mfield">
             <label><?= h($labels['content'] ?? 'Text') ?></label>
             <input id="lbl-content" value="<?= h($content) ?>">
+            <p class="field-hint"><?= h($labels['linkHint'] ?? 'På canvas: [Hej](https://…) visas som «Hej». Här redigerar du hela markdown-länken.') ?></p>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
             <div class="mfield">

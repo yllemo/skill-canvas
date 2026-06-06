@@ -4,7 +4,7 @@
 
 ## Skill Canvas
 
-En PHP-baserad whiteboard-app för team som vill paketera kompetens till tydliga, visuella skills. Bygg och redigera storyboards med Markdown, Mermaid-diagram, Draw.io-ritningar, bilder (inkl. inbyggd målare), labels, annotations (text+pil) och notes, och exportera allt som en .zip med SKILL.md och YAML frontmatter.
+En PHP-baserad whiteboard-app för team som vill paketera kompetens till tydliga, visuella skills. Bygg och redigera storyboards med Markdown, Mermaid-diagram, Draw.io-ritningar, bilder (inkl. inbyggd målare), labels, annotations (text+pil), notes, **HTML/iframe** (extern webb eller egen `.html`-fil i paketet) och **relationer mellan moduler**, och exportera allt som en .zip med SKILL.md och YAML frontmatter.
 
 Kompatibel med Claude Skills-formatet — name och description är obligatoriska. name används som canvas-titel i verktygsraden (ingen separat title i metadata).
 
@@ -39,9 +39,9 @@ Se CONTRIBUTING.md för riktlinjer kring issues, pull requests och rekommenderat
 ## Kom igång
 
 1. Kör appen via PHP (t.ex. `php -S localhost:8080` i projektroten) och öppna `index.php`
-2. **Öppna** en befintlig `.zip`, dra den till fönstret, eller välj **Ny tom canvas** via öppna-menyn
-3. Fyll i skill-metadata (`name`, `description`, …) vid ny canvas — standardvärden fylls i automatiskt
-4. Lägg till noder via toolbaren längst ner
+2. **Öppna** en befintlig `.zip` eller `.skill`-fil (samma format), dra den till fönstret, eller välj **Ny tom canvas** via öppna-menyn
+3. Fyll i skill-metadata (`name`, `description`, …) vid ny canvas — standardvärden fylls i automatiskt (standardnamn t.ex. `my-skill-2026-05-31` med dagens datum)
+4. Lägg till noder via toolbaren längst ner. **⋯** (längst till höger) innehåller **HTML / iframe**; fler moduler (Prompt book, BPMN, ArchiMate) kommer snart. Koppla moduler med **länk-ikonen** i handtaget.
 5. **Exportera** som `.zip` (eller `Ctrl+S`) — eller som `.png` för en bild av canvasen
 
 Körs som en PHP-webbapp och gör det enkelt att ta en idé till en delbar, visuellt förankrad skill.
@@ -55,18 +55,20 @@ Körs som en PHP-webbapp och gör det enkelt att ta en idé till en delbar, visu
 | Element | Funktion |
 |---------|----------|
 | **Titel** (`name`) | Klicka för att öppna skill-metadata. Beskrivningen (`description`) visas som underrad. |
-| **Öppna** ▾ | Klick = filväljare. Pil = meny: *Öppna .zip-fil* / *Ny tom canvas* |
+| **Öppna** ▾ | Klick = filväljare (.zip / .skill). Pil = meny: *Öppna .zip / .skill* / *Ny tom canvas* |
 | **Exportera** ▾ | *Spara .zip* (SKILL.md + filer) eller *Spara .png* (bild av alla objekt) |
-| **Canvas** | Öppna skill-metadata |
+| **Canvas** | Öppna skill-metadata (inkl. **Skill-träd** — filöversikt i paketet) |
 | **Centrera** | Zooma ut så att alla noder syns |
 | **Tema** | Växla ljust/mörkt läge |
 
-Exportfiler namnges automatiskt:
+Exportfiler namnges automatiskt (skill-namn + tidsstämpel):
 
 ```
-my-skill_2026-05-31_14.30.45.zip
-my-skill_2026-05-31_14.30.45.png
+my-skill-2026-05-31_2026-05-31_14.30.45.zip
+my-skill-2026-05-31_2026-05-31_14.30.45.png
 ```
+
+Ny canvas får som standard `name` med datum-suffix (`my-skill-YYYY-MM-DD`). Styr basnamn och suffix i `config/defaults.php` (`nameBase`, `nameDateSuffix`).
 
 ---
 
@@ -79,21 +81,21 @@ my-skill_2026-05-31_14.30.45.png
 | Centrera allt | **Centrera** |
 | Fokusera en nod | Dubbelklick på handtaget, eller fokus-ikonen (ej Notes) |
 | Markera nod | Klick |
-| Flytta nod | Dra i handtaget (Markdown, Mermaid, Bild, Draw.io, Annotation) — eller direkt på ytan (Label, Note) |
-| Ändra storlek | Resize-hörn nere till höger (Note och Annotation: bredd och höjd) |
-| Kontextmeny | Högerklick på nod |
+| Flytta nod | Dra i handtaget (Markdown, Mermaid, Bild, Draw.io, HTML, Annotation) — eller direkt på ytan (Label, Note) |
+| Ändra storlek | Resize-hörn nere till höger (Note, Annotation, HTML: bredd och höjd; övriga: bredd) |
+| Kontextmeny | Högerklick på nod — inkl. **Flytta längst fram** (z-ordning på canvas och exportordning) |
 | Ta bort markerad | `Delete` / `Backspace` |
 | Duplicera markerad | `Ctrl+D` |
 | Spara .zip | `Ctrl+S` |
 
-Handtaget på Markdown, Mermaid, Bild och Draw.io ligger i dokumentflödet (trycker inte ner innehållet ovanpå text/diagram vid hover).
+Handtaget på Markdown, Mermaid, Bild, Draw.io och HTML ligger ovanför kortet (trycker inte ner innehållet vid hover). En osynlig hover-brygga gör det lättare att nå handtaget utan att träffa noden.
 
 ---
 
 ## Nodtyper
 
 ### Markdown
-Full Markdown-support: rubriker, listor, tabeller, kodblock, citat, länkar. Innehåll sparas som `.md` under `nodes/`. Bilder i Markdown (relativa sökvägar i zip) visas på kortet efter import.
+Full Markdown-support: rubriker, listor, tabeller, kodblock, citat, länkar. Innehåll sparas som `.md` under `nodes/`. Bilder i Markdown (relativa sökvägar i zip) visas på kortet efter import. Standardbredd på nya kort: **720 px** (läsbredd).
 
 - **Fullskärmseditor** — grön knapp nere till vänster i redigeringsmodalen öppnar Monaco-editor (`html/markdown.php`) i iframe med `postMessage`-sparande.
 - **Importera DOCX** — grön knapp bredvid fullskärmseditorn öppnar `html/docx-to-skill.php` och kan skicka konverterad Markdown (med bilder i zip-minnet) tillbaka till editorn eller modalen.
@@ -117,7 +119,11 @@ Uppladdning, extern URL eller **Ctrl+V** (klistra in från urklipp). Lokala bild
 - **Måla / redigera bild** — grön knapp nere till vänster i modalen öppnar paint-editorn (`html/paint-skill-editor.php`): penna, pensel, former, fyll, text, suddgummi, pipett, ångra/gör om. Tom canvas vid ny bild, befintlig bild laddas vid redigering. **Spara till kort** exporterar PNG tillbaka till noden.
 
 ### Label
-Fri text direkt på canvas — ingen kortyta. Teckenstorlek och färg väljs i modal. Dra genom att greppa texten.
+Fri text direkt på canvas — ingen kortyta. Teckenstorlek och färg väljs i modal. Handtaget (LBL + Redigera/Fokusera/Ta bort) visas **ovanför** texten vid hover/markering — som Markdown och Bild — så länkar i texten inte täcks.
+
+- **Markdown-länkar** — `[Hej](https://…)` visas på canvas som **Hej**; full syntax `[Hej](https://…)` redigeras i modalen
+- **URL i text** — `https://…` blir klickbar länk (visas som hela URL:en)
+- Länkar ser ut som övrig text (samma färg och storlek) och öppnas i **ny flik**
 
 ### Annotation
 Text med pil (SVG) för att förklara eller peka ut delar av canvasen. Modal med live-förhandsvisning — klicka för att placera pilspetsen. Välj riktning (↗↖↘↙), pilform (böjd, rak, swoosh, skiss), färg, typsnitt (Caveat/Kalam m.fl.), textstorlek och pilens längd. Transparent på canvas; justera yta med resize-hörnet. Handtaget döljs tills hover/markering.
@@ -129,6 +135,74 @@ Post-it-liknande kort med inline-redigering (`contenteditable`). Ingen redigerin
 - Flytta via nedre verktygsraden (grab-cursor)
 - Ändra bredd och höjd via resize-hörn
 - Ingen fokus-zoom (övriga nodtyper har det)
+
+### HTML / iframe
+Bädda in webbinnehåll på canvas via iframe — samma kortlayout oavsett källa. Lägg till via **⋯ → HTML / iframe**.
+
+Modalen har två flikar:
+
+| Flik | Innehåll |
+|------|----------|
+| **iFrame** | Extern **Website URL** (standard `https://blog.yllemo.com`) |
+| **HTML** | Egen **HTML-kod** som sparas som `.html` i paketet; du väljer **filnamn** (t.ex. `min-sida` → `html/min-sida.html`) |
+
+Gemensamt för båda: höjd och kortbredd på canvas, samt live **iframe-kod** (hopfällbar) med knapp **Kopiera iframe-kod**.
+
+- På canvas visas alltid en **iframe** (extern URL eller blob från intern fil)
+- Länk under förhandsvisningen öppnar sidan/filen i ny flik
+- Iframe är interaktiv när noden är **markerad** (annars blockeras klick så noden går att dra)
+- Vissa externa sidor blockar inbäddning (`X-Frame-Options`) — använd då länken eller HTML-fliken med egen fil
+
+```yaml
+# Extern URL
+- id: n008
+  type: html
+  source: url
+  url: https://blog.yllemo.com
+  width: 640
+  height: 400
+  iframeWidth: 100%
+
+# Intern HTML-fil i zip
+- id: n009
+  type: html
+  source: file
+  file: html/min-sida.html
+  width: 640
+  height: 400
+  iframeWidth: 100%
+```
+
+---
+
+## Mobila enheter
+
+Gränssnittet är anpassat för telefon och surfplatta utan att ändra canvas-modellen:
+
+- **Panorera** — dra med ett finger på tom yta i canvas
+- **Zoom** — nyp med två fingrar, eller zoom-knapparna nere till höger
+- **Flytta nod** — dra via handtaget (label: dra direkt på texten)
+- **Storlek** — dra resize-hörnet (större på pekskärm)
+- **Snabbmeny** — håll nedtryckt (~0,5 s) på en nod
+- **Header och lägg-till-panel** — horisontell scroll; ikoner utan text på smala skärmar
+- **Modaler** — fullskärm på mobil; metadata-fält i en kolumn
+
+Fullskärmseditorer (Markdown, Draw.io, målare) har redan `viewport` och egna responsiva verktygsrader.
+
+### Inställningar
+
+Knappen **Inställningar** (bredvid Tema) öppnar en panel med app-preferenser. Val sparas i `localStorage` (samma webbläsare).
+
+- **Canvas-bakgrund** — prickar (standard), rutnät eller enfärgad. Använder `--canvas-bg` och `--grid` så ljust/mörkt tema fungerar automatiskt.
+- **Bakgrundsfärg** och **färg prickar/linjer** — egna färger via färgväljare, eller **Återställ** för temastandard. Rutnätsfärgen döljs vid enfärgad bakgrund.
+
+Nya inställningar läggs i `config/settings.php` (schema och standardvärden). Rendering sker via `includes/settings.php`; beteende i `js/settings.js`. Vid ändring skickas `sc-settings-change` (som `sc-theme-change`).
+
+### Skill-metadata och Skill-träd
+
+Knappen **Canvas** (eller titeln i headern) öppnar skill-metadata: `name`, `description`, `author`, `version`, `tags`.
+
+Längst ner till vänster i samma modal: **Skill-träd** — visar alla filer i paketet (samma innehåll som exporteras till zip), storlek, och vilka som är kopplade till noder. `SKILL.md` markeras som genererad vid export om den saknas i minnet.
 
 ---
 
@@ -156,8 +230,10 @@ skill-canvas/
 ├── favicon.svg
 ├── config/
 │   ├── app.php            ← apptitel, språk, tema, favicon
-│   └── defaults.php       ← standardvärden för skill, canvas, nodtyper, moduler
-├── includes/              ← bootstrap, modul-laddare, hjälpfunktioner
+│   ├── defaults.php       ← standardvärden för skill, canvas, nodtyper, moduler
+│   ├── settings.php       ← app-inställningar (schema, standardvärden)
+│   └── add-menu.php       ← ⋯-menyn: HTML/iframe, Prompt book, BPMN, ArchiMate m.fl.
+├── includes/              ← bootstrap, modul-laddare, settings/add-menu, hjälpfunktioner
 ├── modules/               ← PHP: modal-HTML per nodtyp
 │   ├── markdown.php
 │   ├── mermaid.php
@@ -165,9 +241,14 @@ skill-canvas/
 │   ├── drawio.php
 │   ├── label.php
 │   ├── annotation.php
-│   └── notes.php
+│   ├── notes.php
+│   └── html.php
 ├── js/
 │   ├── modal.js
+│   ├── add-menu.js        ← ⋯-meny i lägg-till-panelen
+│   ├── skill-import.js    ← zip/.skill-validering + fallback-import
+│   ├── skill-tree.js      ← filträd i skill-metadata-modalen
+│   ├── connections.js     ← relationer mellan moduler (SVG)
 │   ├── docx-import.js
 │   └── modules/           ← JS: add/edit/render per nodtyp
 ├── api/modal.php          ← returnerar modal-HTML som JSON
@@ -191,13 +272,15 @@ Nya nodtyper läggs till som par av `modules/<slug>.php` + `js/modules/<slug>.js
 
 ## SKILL.md-format
 
-Varje `.zip` måste innehålla `SKILL.md` med YAML frontmatter. Övriga filer i zip:en refereras via `file`- (och vid Draw.io även `previewFile`-) fält i noderna.
+Varje `.zip` eller `.skill` (samma format) bör innehålla `SKILL.md` med YAML frontmatter och en `nodes`-array för full Skill Canvas-layout. Övriga filer refereras via `file`- (och vid Draw.io även `previewFile`-) fält i noderna.
+
+**Import:** Om frontmatter saknas eller inte har `nodes` importeras filen ändå — `SKILL.md` och övriga `.md` blir markdown-noder, `.mmd` mermaid, `.drawio` draw.io (med matchande `.png` som förhandsbild om den finns), `.html` html-noder (intern fil), bilder blir bild-noder. Metadata från giltig YAML (namn, beskrivning m.m.) används när den går att läsa.
 
 ### Metadata
 
 ```yaml
 ---
-name: my-skill
+name: my-skill-2026-05-31
 description: Describe when an AI agent should activate this skill. Agentic systems compare the user's request to this text to decide if the skill is relevant—list concrete situations, topics, or example questions (e.g. "Use when the user asks about our onboarding process or needs a visual overview of X"). The canvas holds the knowledge; description is the trigger.
 author: ''
 version: '1.0'
@@ -207,6 +290,19 @@ tags:
 
 nodes:
   # ... se nodschema nedan
+
+edges:
+  # valfritt — relationer mellan moduler (ej Notes)
+  - id: e001
+    from: n001
+    to: n002
+    label: "läser"
+    style: curve
+    strokeWidth: 2
+    color: "#0077bc"
+    markerEnd: arrow
+    multiplicityStart: "1"
+    multiplicityEnd: "0..*"
 ---
 ```
 
@@ -217,6 +313,28 @@ nodes:
 | `author` | sträng | Valfri |
 | `version` | sträng | Valfri, standard `1.0` |
 | `tags` | lista | Valfria sökbara taggar |
+| `edges` | lista | Valfria kopplingar mellan moduler (se nedan) |
+
+### Relationer (`edges`)
+
+Kopplingar ritas som SVG-linjer bakom noderna. Skapa via **länk-ikonen** i modulens handtag (dra till en annan modul). Notes kan varken kopplas från eller till. Klicka på en linje för att redigera text, utseende (böjd/rak/streckad), tjocklek, färg och **ändpunkter** (pil, diamant, cirkel eller ingen).
+
+| Fält | Typ | Beskrivning |
+|------|-----|-------------|
+| `id` | sträng | Unikt ID |
+| `from`, `to` | sträng | Käll- och mål-nod (`id`) |
+| `label` | sträng | Valfri text på linjen |
+| `style` | sträng | `curve` (standard), `straight`, `dashed` |
+| `strokeWidth` | heltal | Linjebredd i px, standard `2` |
+| `color` | sträng | Hex-färg, standard `#0077bc` |
+| `markerStart` | sträng | `none` (standard), `arrow`, `diamond`, `circle` — vid källmodulen |
+| `markerEnd` | sträng | `arrow` (standard), `none`, `diamond`, `circle` — vid målmodulen |
+| `multiplicityStart` | sträng | Valfri kardinalitet vid källan, t.ex. `1`, `0..1` |
+| `multiplicityEnd` | sträng | Valfri kardinalitet vid målet, t.ex. `1..*`, `0..*` |
+
+Äldre filer med `arrowEnd: false` tolkas som `markerEnd: none`. Multiplicitet visas vid linjens ändpunkter (ArchiMate 4-stil). Förifyllda förslag i dialogen: `1`, `0..1`, `1..1`, `1..*`, `0..*`, `*`, `n`, `n..m` — fri text stöds också.
+
+Standardvärden i `config/defaults.php` under `edges`.
 
 Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `name`.
 
@@ -225,11 +343,11 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
 | Fält | Typ | Beskrivning |
 |------|-----|-------------|
 | `id` | sträng | Unikt ID, genereras automatiskt |
-| `type` | sträng | `markdown` \| `mermaid` \| `drawio` \| `image` \| `label` \| `annotation` \| `note` |
+| `type` | sträng | `markdown` \| `mermaid` \| `drawio` \| `image` \| `label` \| `annotation` \| `note` \| `html` |
 | `x`, `y` | heltal | Position i px |
 | `width` | heltal | Bredd i px |
-| `height` | heltal | Höjd i px (Note, Annotation) |
-| `title` | sträng | Valfri rubrik i nodhandtaget (Markdown, Mermaid, Bild, Draw.io) |
+| `height` | heltal | Höjd i px (Note, Annotation, HTML) |
+| `title` | sträng | Valfri rubrik i nodhandtaget (Markdown, Mermaid, Bild, Draw.io, HTML) |
 
 ### Markdown
 
@@ -238,7 +356,7 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
   type: markdown
   x: 80
   y: 200
-  width: 420
+  width: 720
   title: "Visas i handtaget"
   file: nodes/n001.md
 ```
@@ -328,15 +446,40 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
   content: "Skriv här…"
 ```
 
+### HTML / iframe
+
+Se [nodtyper ovan](#html--iframe) för flikarna i modalen. I YAML sparas antingen `url` (extern) eller `file` (intern `.html`).
+
+```yaml
+- id: n008
+  type: html
+  source: url
+  url: https://blog.yllemo.com
+  width: 640
+  height: 400
+  iframeWidth: 100%
+  title: "Min blogg"
+
+- id: n009
+  type: html
+  source: file
+  file: html/min-sida.html
+  width: 640
+  height: 400
+  iframeWidth: 100%
+```
+
 ---
 
 ## Zip-struktur
 
 ```
-my-skill.zip
+my-skill-2026-05-31.zip
 ├── SKILL.md
 ├── nodes/
 │   └── n001.md
+├── html/
+│   └── min-sida.html
 ├── diagrams/
 │   ├── n002.mmd
 │   ├── n007.drawio
@@ -353,10 +496,11 @@ Mappnamn följer konventioner i `config/defaults.php` men styrs i praktiken av `
 
 Standardvärden i `config/defaults.php` kan justeras utan kodändring:
 
-- **skill** — standard `name`, `description`, `author`, `version`, `tags` för ny canvas
+- **skill** — `nameBase` (t.ex. `my-skill`), `nameDateSuffix` (lägger till `-YYYY-MM-DD` på ny canvas), `description`, `author`, `version`, `tags`
 - **canvas** — zoom-gränser, marginaler vid centrering/fokus
-- **nodes.\*** — standardbredd, min/max per nodtyp
-- **modules.\*** — modaltexter, placeholders, editor-URL:er, note-färger, DOCX-/paint-/drawio-etiketter
+- **edges** — standardlinje, färg, piländar för nya relationer
+- **nodes.\*** — standardbredd/höjd, min/max per nodtyp (markdown 720 px, html m.m.)
+- **modules.\*** — modaltexter, placeholders, editor-URL:er, note-färger, HTML standard-URL, DOCX-/paint-/drawio-etiketter
 
 Apptitel, språk och favicon: `config/app.php`.
 

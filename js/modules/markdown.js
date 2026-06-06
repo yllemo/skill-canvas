@@ -132,7 +132,7 @@ const MarkdownModule = (() => {
     await Modal.openFromType(TYPE, 'add', {}, async () => {
       const fields = Modal.readFields({ title: 'md-title', width: 'md-width', content: 'md-content' });
       const defaults = nodeDefaults();
-      const width = parseInt(fields.width, 10) || defaults.width || 400;
+      const width = parseInt(fields.width, 10) || defaults.width || 720;
       const id = genId();
       const filename = `${defaults.fileDir || 'nodes'}/${id}.${defaults.fileExt || 'md'}`;
 
@@ -164,13 +164,13 @@ const MarkdownModule = (() => {
 
     await Modal.openFromType(TYPE, 'edit', {
       title: node.title || '',
-      width: node.width || nodeDefaults().width || 400,
+      width: node.width || nodeDefaults().width || 720,
       content,
     }, async () => {
       const fields = Modal.readFields({ title: 'md-title', width: 'md-width', content: 'md-content' });
       const defaults = nodeDefaults();
       node.title = fields.title;
-      node.width = parseInt(fields.width, 10) || defaults.width || 400;
+      node.width = parseInt(fields.width, 10) || defaults.width || 720;
       if (node.file) {
         files[node.file] = new TextEncoder().encode(fields.content);
       } else {

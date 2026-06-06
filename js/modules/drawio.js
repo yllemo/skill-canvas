@@ -278,4 +278,4 @@ const DrawioModule = (() => {
 })();
 
 ModuleRegistry.register('drawio', DrawioModule);
-document.getElementById('add-drawio').onclick = () => DrawioModule.openAdd();
+document.getElementById('add-drawio')?.addEventListener('click', () => DrawioModule.openAdd());

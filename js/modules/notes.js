@@ -75,7 +75,7 @@ const NotesModule = (() => {
 
   function beginDrag(node, el, e) {
     if (e.target.closest('[data-action]') || e.target.closest('.note-color-btn')) return;
-    if (e.button !== 0) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.stopPropagation();
     e.preventDefault();
     selectNode(node.id);
@@ -87,11 +87,26 @@ const NotesModule = (() => {
     el.classList.add('dragging');
   }
 
+  function startNoteResize(node, el, e) {
+    e.stopPropagation();
+    e.preventDefault();
+    selectNode(node.id);
+    resizeNode = node;
+    resizeSX = e.clientX;
+    resizeSY = e.clientY;
+    resizeOW = node.width || el.offsetWidth;
+    resizeOH = node.height || el.offsetHeight;
+  }
+
   function attachEvents(node, el, handle, rz) {
     const text = el.querySelector('.note-text');
     if (!text) return;
 
-    handle.addEventListener('mousedown', e => beginDrag(node, el, e));
+    handle.addEventListener('pointerdown', e => {
+      if (e.target.closest('.note-color-btn') || e.target.closest('[data-action]')) return;
+      beginDrag(node, el, e);
+      if (dragNode === node && handle.setPointerCapture) handle.setPointerCapture(e.pointerId);
+    });
 
     el.addEventListener('contextmenu', e => {
       e.preventDefault();
@@ -100,15 +115,21 @@ const NotesModule = (() => {
       showCtx(e.clientX, e.clientY);
     });
 
-    rz.addEventListener('mousedown', e => {
-      e.stopPropagation();
-      e.preventDefault();
-      selectNode(node.id);
-      resizeNode = node;
-      resizeSX = e.clientX;
-      resizeSY = e.clientY;
-      resizeOW = node.width || el.offsetWidth;
-      resizeOH = node.height || el.offsetHeight;
+    let longPressTimer = null;
+    el.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      longPressTimer = setTimeout(() => {
+        ctxTargetId = node.id;
+        showCtx(e.touches[0].clientX, e.touches[0].clientY);
+      }, 520);
+    }, { passive: true });
+    el.addEventListener('touchend', () => { if (longPressTimer) clearTimeout(longPressTimer); });
+    el.addEventListener('touchmove', () => { if (longPressTimer) clearTimeout(longPressTimer); });
+
+    rz.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      startNoteResize(node, el, e);
+      if (rz.setPointerCapture) rz.setPointerCapture(e.pointerId);
     });
 
     text.addEventListener('mousedown', e => e.stopPropagation());
@@ -135,17 +156,37 @@ const NotesModule = (() => {
     };
 
     handle.querySelectorAll('.note-color-btn').forEach(btn => {
-      btn.onclick = e => {
+      btn.addEventListener('pointerdown', e => e.stopPropagation());
+      btn.addEventListener('mousedown', e => e.stopPropagation());
+      btn.addEventListener('click', e => {
         e.stopPropagation();
         applyColor(node, btn.dataset.color);
         handle.querySelectorAll('.note-color-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-      };
+      });
     });
   }
 
+  function wireAddModalColors() {
+    setTimeout(() => {
+      const grid = document.getElementById('note-color-grid');
+      if (!grid) return;
+      const syncSelected = () => {
+        grid.querySelectorAll('.note-color-swatch').forEach(label => {
+          const input = label.querySelector('input[type=radio]');
+          label.classList.toggle('is-selected', !!(input && input.checked));
+        });
+      };
+      grid.querySelectorAll('input[name="note-color"]').forEach(input => {
+        input.addEventListener('change', syncSelected);
+      });
+      syncSelected();
+    }, 0);
+  }
+
   function readSelectedColor() {
-    const picked = document.querySelector('input[name="note-color"]:checked');
+    const picked = document.querySelector('#note-color-grid input[name="note-color"]:checked')
+      || document.querySelector('input[name="note-color"]:checked');
     return picked?.value || nodeDefaults().color || '#fff9a8';
   }
 
@@ -171,6 +212,7 @@ const NotesModule = (() => {
       showToast(cfg().addToast || 'Note tillagd');
       setTimeout(() => focusEditor(node), 80);
     });
+    wireAddModalColors();
   }
 
   async function openEdit() {
