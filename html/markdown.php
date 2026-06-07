@@ -13,7 +13,7 @@ $theme = in_array($_GET['theme'] ?? '', ['light', 'dark'], true) ? $_GET['theme'
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 
 <!-- Mermaid (@latest with icon support) -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@latest/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.min.js"></script>
 
 <!-- Monaco Editor -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/editor/editor.main.min.css">

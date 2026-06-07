@@ -6,19 +6,103 @@ const MermaidModule = (() => {
   const cfg = () => window.SC_DEFAULTS?.modules?.mermaid || {};
   const nodeDefaults = () => window.SC_DEFAULTS?.nodes?.mermaid || {};
 
-  function wireLiveButton() {
+  let editorCleanup = null;
+
+  function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') || 'light';
+  }
+
+  function editorUrl() {
+    return cfg().editorUrl || 'html/mermaid-editor.php';
+  }
+
+  function closeFullscreenEditor() {
+    const overlay = document.getElementById('mm-editor-overlay');
+    const iframe = document.getElementById('mm-editor-frame');
+    if (editorCleanup) {
+      editorCleanup();
+      editorCleanup = null;
+    }
+    if (overlay) {
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+    if (iframe) iframe.src = 'about:blank';
+  }
+
+  function openFullscreenEditor(content, onSave) {
+    const overlay = document.getElementById('mm-editor-overlay');
+    const iframe = document.getElementById('mm-editor-frame');
+    if (!overlay || !iframe) {
+      showToast('Mermaid-editorn kunde inte öppnas', 4000);
+      return;
+    }
+
+    closeFullscreenEditor();
+
+    const theme = currentTheme();
+    const url = `${editorUrl()}?embed=1&theme=${encodeURIComponent(theme)}`;
+
+    function onMessage(e) {
+      if (e.source !== iframe.contentWindow) return;
+      const data = e.data;
+      if (!data || typeof data !== 'object') return;
+
+      if (data.type === 'sc-mermaid-ready') {
+        iframe.contentWindow.postMessage({
+          type: 'sc-mermaid-init',
+          content: content ?? '',
+          theme: currentTheme(),
+        }, '*');
+      }
+      if (data.type === 'sc-mermaid-save') {
+        onSave(String(data.content ?? ''));
+        closeFullscreenEditor();
+        showToast(cfg().editToast || 'Diagram uppdaterat');
+      }
+      if (data.type === 'sc-mermaid-cancel') {
+        closeFullscreenEditor();
+      }
+    }
+
+    function onThemeChange(e) {
+      if (!iframe.contentWindow || iframe.src === 'about:blank') return;
+      iframe.contentWindow.postMessage({
+        type: 'sc-mermaid-set-theme',
+        theme: e.detail,
+      }, '*');
+    }
+
+    window.addEventListener('message', onMessage);
+    window.addEventListener('sc-theme-change', onThemeChange);
+    editorCleanup = () => {
+      window.removeEventListener('message', onMessage);
+      window.removeEventListener('sc-theme-change', onThemeChange);
+    };
+
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+    iframe.src = url;
+  }
+
+  function wireModalFooterButtons() {
     setTimeout(() => {
       const footLeft = document.getElementById('modal-foot-left');
-      if (!footLeft) return;
+      const textarea = document.getElementById('mm-content');
+      if (!footLeft || !textarea) return;
 
       footLeft.innerHTML = '';
-      const link = document.createElement('a');
-      link.href = cfg().liveEditorUrl || 'https://mermaid.live/';
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.className = 'md-fullscreen-btn';
-      link.textContent = cfg().liveEditorLabel || 'Mermaid Live';
-      footLeft.appendChild(link);
+      const fsBtn = document.createElement('button');
+      fsBtn.type = 'button';
+      fsBtn.className = 'md-fullscreen-btn mm-fullscreen-btn';
+      fsBtn.textContent = cfg().fullscreenLabel || 'Mermaid-editor';
+      fsBtn.title = cfg().fullscreenTitle || 'Monaco-editor med live-förhandsvisning';
+      fsBtn.onclick = () => {
+        openFullscreenEditor(textarea.value, (newContent) => {
+          textarea.value = newContent;
+        });
+      };
+      footLeft.appendChild(fsBtn);
     }, 50);
   }
 
@@ -48,7 +132,7 @@ const MermaidModule = (() => {
       Modal.close();
       showToast(cfg().addToast || 'Mermaid-nod tillagd');
     });
-    wireLiveButton();
+    wireModalFooterButtons();
   }
 
   async function openEdit(node) {
@@ -80,10 +164,10 @@ const MermaidModule = (() => {
       Modal.close();
       showToast(cfg().editToast || 'Sparad');
     });
-    wireLiveButton();
+    wireModalFooterButtons();
   }
 
-  return { openAdd, openEdit };
+  return { openAdd, openEdit, closeFullscreenEditor, openFullscreenEditor };
 })();
 
 ModuleRegistry.register('mermaid', MermaidModule);

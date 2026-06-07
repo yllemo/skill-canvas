@@ -164,13 +164,15 @@ return [
             'okLabel' => 'Spara',
             'addToast' => 'Mermaid-nod tillagd',
             'editToast' => 'Sparad',
-            'liveEditorUrl' => 'https://mermaid.live/',
-            'liveEditorLabel' => 'Mermaid Live',
+            'editorUrl' => 'html/mermaid-editor.php',
+            'fullscreenLabel' => 'Mermaid-editor',
+            'fullscreenTitle' => 'Monaco-editor med live-förhandsvisning och exempeldiagram',
             'labels' => [
                 'title' => 'Titel',
                 'titleOptional' => 'Titel (valfri)',
-                'width' => 'Bredd (px)',
+                'width' => 'Bredd kort (px)',
                 'content' => 'Mermaid-kod',
+                'editorHint' => 'Tips: öppna Mermaid-editorn (knapp nere till vänster) för Monaco, live-förhandsvisning, exempeldiagram och export.',
             ],
             'placeholders' => [
                 'title' => 'Diagramtitel…',

@@ -13,7 +13,7 @@ require_once __DIR__ . '/includes/bootstrap.php';
 <link rel="icon" href="<?= h($favicon) ?>?v=<?= asset_version($favicon) ?>" type="image/svg+xml">
 <link rel="stylesheet" href="style.css?v=<?= asset_version('style.css') ?>">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Kalam:wght@400;700&display=swap">
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
@@ -168,6 +168,11 @@ require_once __DIR__ . '/includes/bootstrap.php';
 <div id="loading"><div class="spin"></div></div>
 <div id="toast"></div>
 <input type="file" id="file-input" accept=".zip,.skill,application/zip">
+
+<!-- MERMAID EDITOR -->
+<div id="mm-editor-overlay" aria-hidden="true">
+  <iframe id="mm-editor-frame" title="Mermaid-editor"></iframe>
+</div>
 
 <!-- MARKDOWN FULLSCREEN EDITOR -->
 <div id="md-editor-overlay" aria-hidden="true">

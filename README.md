@@ -103,7 +103,7 @@ Full Markdown-support: rubriker, listor, tabeller, kodblock, citat, länkar. Inn
 ### Mermaid
 Diagram med [Mermaid](https://mermaid.js.org/)-syntax. Kod sparas som `.mmd` under `diagrams/`.
 
-- **Mermaid Live** — grön knapp i redigeringsmodalen öppnar [mermaid.live](https://mermaid.live/) i ny flik.
+- **Mermaid-editor** — knapp nere till vänster i redigeringsmodalen öppnar inbyggd fullskärmseditor (`html/mermaid-editor.php`): Monaco med Mermaid-syntax, live-förhandsvisning, exempeldiagram (flöde, sekvens, Gantt, C4 m.m.), zoom/pan, kopiera kod, PNG/SVG-export. Tema följer Skill Canvas (ljust/mörkt).
 
 ### Draw.io
 Ritningar via inbäddad [diagrams.net](https://embed.diagrams.net/) i fullskärm. XML sparas som `.drawio` under `diagrams/`; kortet visar en PNG-förhandsvisning.
@@ -213,6 +213,7 @@ Tre moduler använder overlay med iframe och `postMessage`-protokoll:
 | Modul | URL | Meddelanden (urval) |
 |-------|-----|---------------------|
 | Markdown | `html/markdown.php` | `sc-markdown-ready`, `sc-markdown-init`, `sc-markdown-save` |
+| Mermaid | `html/mermaid-editor.php` | `sc-mermaid-ready`, `sc-mermaid-init`, `sc-mermaid-save` |
 | Draw.io | `html/drawio-skill-editor.php` | `sc-drawio-ready`, `sc-drawio-init`, `sc-drawio-save` |
 | Bild (målare) | `html/paint-skill-editor.php` | `sc-paint-ready`, `sc-paint-init`, `sc-paint-save` |
 
@@ -254,6 +255,7 @@ skill-canvas/
 ├── api/modal.php          ← returnerar modal-HTML som JSON
 └── html/
     ├── markdown.php       ← Monaco fullskärm
+    ├── mermaid-editor.php ← Mermaid Monaco + live preview
     ├── drawio-skill-editor.php
     ├── paint-skill-editor.php
     ├── docx-to-skill.php

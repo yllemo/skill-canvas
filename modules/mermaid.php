@@ -15,40 +15,12 @@ final class MermaidModule extends AbstractModule
         return 'mermaid';
     }
 
-    protected function renderAdd(): string
+    /** @param array<string, mixed> $values */
+    private function renderForm(array $values, bool $isEdit): string
     {
         $nodeDefaults = $this->nodeDefaults();
         $labels = $this->config()['labels'] ?? [];
         $placeholders = $this->config()['placeholders'] ?? [];
-
-        ob_start();
-        ?>
-        <div class="mfield">
-            <label><?= h($labels['titleOptional'] ?? 'Titel (valfri)') ?></label>
-            <input id="mm-title" placeholder="<?= h($placeholders['title'] ?? 'Diagramtitel…') ?>">
-        </div>
-        <div class="mfield">
-            <label><?= h($labels['width'] ?? 'Bredd (px)') ?></label>
-            <input id="mm-width"
-                   value="<?= h((string) ($nodeDefaults['width'] ?? 500)) ?>"
-                   type="number"
-                   min="<?= h((string) ($nodeDefaults['minWidth'] ?? 160)) ?>"
-                   max="<?= h((string) ($nodeDefaults['maxWidth'] ?? 1400)) ?>">
-        </div>
-        <div class="mfield">
-            <label><?= h($labels['content'] ?? 'Mermaid-kod') ?></label>
-            <textarea id="mm-content"
-                      class="tall"
-                      placeholder="<?= h($placeholders['content'] ?? "flowchart LR\n  A[Start] --> B[Slut]") ?>"></textarea>
-        </div>
-        <?php
-        return (string) ob_get_clean();
-    }
-
-    protected function renderEdit(array $values): string
-    {
-        $nodeDefaults = $this->nodeDefaults();
-        $labels = $this->config()['labels'] ?? [];
 
         $title = (string) ($values['title'] ?? '');
         $width = (int) ($values['width'] ?? ($nodeDefaults['width'] ?? 500));
@@ -57,11 +29,14 @@ final class MermaidModule extends AbstractModule
         ob_start();
         ?>
         <div class="mfield">
-            <label><?= h($labels['title'] ?? 'Titel') ?></label>
-            <input id="mm-title" value="<?= h($title) ?>">
+            <label><?= h($isEdit ? ($labels['title'] ?? 'Titel') : ($labels['titleOptional'] ?? 'Titel (valfri)')) ?></label>
+            <input id="mm-title"
+                   value="<?= h($title) ?>"
+                   placeholder="<?= h($placeholders['title'] ?? 'Diagramtitel…') ?>"
+                   <?= $isEdit ? '' : 'autofocus' ?>>
         </div>
         <div class="mfield">
-            <label><?= h($labels['width'] ?? 'Bredd (px)') ?></label>
+            <label><?= h($labels['width'] ?? 'Bredd kort (px)') ?></label>
             <input id="mm-width"
                    value="<?= h((string) $width) ?>"
                    type="number"
@@ -70,10 +45,26 @@ final class MermaidModule extends AbstractModule
         </div>
         <div class="mfield">
             <label><?= h($labels['content'] ?? 'Mermaid-kod') ?></label>
-            <textarea id="mm-content" class="tall"><?= h($content) ?></textarea>
+            <textarea id="mm-content"
+                      class="tall"
+                      placeholder="<?= h($placeholders['content'] ?? "flowchart LR\n  A[Start] --> B[Slut]") ?>"
+                      spellcheck="false"><?= h($content) ?></textarea>
+            <p class="mm-modal-hint" style="font-size:11px;color:var(--text-sec);margin-top:6px;line-height:1.45">
+                <?= h($labels['editorHint'] ?? 'Tips: öppna Mermaid-editorn (knapp nere till vänster) för Monaco, live-förhandsvisning, exempeldiagram och export.') ?>
+            </p>
         </div>
         <?php
         return (string) ob_get_clean();
+    }
+
+    protected function renderAdd(): string
+    {
+        return $this->renderForm([], false);
+    }
+
+    protected function renderEdit(array $values): string
+    {
+        return $this->renderForm($values, true);
     }
 }
 
