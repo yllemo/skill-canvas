@@ -17,16 +17,16 @@ return [
             'description' => 'Bädda in extern webbsida via iframe',
         ],
         [
+            'id' => 'bpmn',
+            'label' => 'BPMN',
+            'enabled' => true,
+            'description' => 'BPMN-processdiagram',
+        ],
+        [
             'id' => 'prompt-book',
             'label' => 'Prompt book',
             'enabled' => false,
             'description' => 'Samling av prompts och mallar',
-        ],
-        [
-            'id' => 'bpmn',
-            'label' => 'BPMN',
-            'enabled' => false,
-            'description' => 'BPMN-processdiagram',
         ],
         [
             'id' => 'archimate',

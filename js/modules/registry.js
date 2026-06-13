@@ -9,6 +9,7 @@ const ModuleRegistry = (() => {
     image: 'BildModule',
     mermaid: 'MermaidModule',
     drawio: 'DrawioModule',
+    bpmn: 'BpmnModule',
     label: 'LabelModule',
     note: 'NotesModule',
     annotation: 'AnnotationModule',

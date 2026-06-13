@@ -29,6 +29,7 @@ const SkillTree = (() => {
     if (ext === 'md') return 'md';
     if (ext === 'mmd' || ext === 'mermaid') return 'mermaid';
     if (ext === 'drawio' || ext === 'dio') return 'drawio';
+    if (ext === 'bpmn') return 'bpmn';
     if (ext === 'html' || ext === 'htm') return 'html';
     if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) return 'image';
     return 'file';
@@ -40,6 +41,7 @@ const SkillTree = (() => {
       md: 'MD',
       mermaid: 'MM',
       drawio: 'DIO',
+      bpmn: 'BPMN',
       html: 'HTML',
       image: 'IMG',
       file: 'FIL',

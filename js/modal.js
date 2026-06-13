@@ -12,16 +12,22 @@ const Modal = (() => {
   modalBg.addEventListener('mousedown', e => { if (e.target === modalBg) close(); });
 
   function close() {
+    const ae = document.activeElement;
+    if (ae && modalBg.contains(ae)) ae.blur();
     modalBg.classList.remove('open');
+    modalBg.inert = true;
     modalOkCb = null;
+    modalBody.innerHTML = '';
     const footLeft = document.getElementById('modal-foot-left');
     if (footLeft) footLeft.innerHTML = '';
     if (typeof SkillTree !== 'undefined') SkillTree.closeDrawer();
     if (typeof BildModule !== 'undefined' && BildModule.cleanupPaste) BildModule.cleanupPaste();
     if (typeof AnnotationModule !== 'undefined' && AnnotationModule.cleanupModal) AnnotationModule.cleanupModal();
+    if (typeof focusCanvasSurface === 'function') focusCanvasSurface();
   }
 
   function open(title, bodyHTML, okCb, okLabel = 'Spara') {
+    modalBg.inert = false;
     document.getElementById('modal-title').textContent = title;
     modalBody.innerHTML = bodyHTML;
     document.getElementById('modal-ok').textContent = okLabel;

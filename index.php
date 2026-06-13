@@ -4,10 +4,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/bootstrap.php';
 ?>
 <!DOCTYPE html>
+<?php render_head_comment($app); ?>
 <html lang="<?= h($app['lang']) ?>" data-theme="<?= h($app['theme']) ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<?php render_head_meta($app); ?>
 <title><?= h($app['title']) ?></title>
 <?php $favicon = $app['favicon'] ?? 'favicon.svg'; ?>
 <link rel="icon" href="<?= h($favicon) ?>?v=<?= asset_version($favicon) ?>" type="image/svg+xml">
@@ -87,7 +89,10 @@ require_once __DIR__ . '/includes/bootstrap.php';
 </div>
 
 <!-- CANVAS -->
-<div id="cw"><div id="canvas"></div></div>
+<div id="cw">
+  <div class="skill-node-hidden" id="skill-node-hidden" tabindex="0" aria-hidden="true">&#8203;</div>
+  <div id="canvas"></div>
+</div>
 
 <!-- ADD PANEL -->
 <div id="add-panel" class="hidden">
@@ -144,13 +149,14 @@ require_once __DIR__ . '/includes/bootstrap.php';
 <div id="ctxmenu">
   <div class="ctx-item" id="ctx-edit"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 3.5l2 2-10 10H4.5v-2L14.5 3.5z"/></svg>Redigera</div>
   <div class="ctx-item" id="ctx-dup"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M3 13V4a1 1 0 011-1h9"/></svg>Duplicera</div>
+  <div class="ctx-item" id="ctx-png"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 12l2-2 2 2 3-4"/><circle cx="8" cy="8" r="1.5"/></svg>Spara som .png</div>
   <div class="ctx-item" id="ctx-front"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h12M4 10h12M4 14h8"/><path d="M14 4l3 3-3 3"/></svg>Flytta längst fram</div>
   <div class="ctx-sep"></div>
   <div class="ctx-item danger" id="ctx-del"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h12M9 7V4h2v3M6 7l1 9h6l1-9"/></svg>Ta bort</div>
 </div>
 
 <!-- MODAL -->
-<div id="modal-bg">
+<div id="modal-bg" inert>
   <div id="modal">
     <div id="modal-head"><h3 id="modal-title">Redigera</h3><button id="modal-close">×</button></div>
     <div id="modal-body"></div>
@@ -187,6 +193,11 @@ require_once __DIR__ . '/includes/bootstrap.php';
 <!-- DRAW.IO EDITOR -->
 <div id="drawio-editor-overlay" aria-hidden="true">
   <iframe id="drawio-editor-frame" title="Draw.io-editor"></iframe>
+</div>
+
+<!-- BPMN EDITOR -->
+<div id="bpmn-editor-overlay" aria-hidden="true">
+  <iframe id="bpmn-editor-frame" title="BPMN-editor"></iframe>
 </div>
 
 <!-- PAINT EDITOR -->

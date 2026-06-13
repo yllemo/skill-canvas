@@ -4,7 +4,7 @@ declare(strict_types=1);
 $embed = isset($_GET['embed']) && $_GET['embed'] === '1';
 $theme = in_array($_GET['theme'] ?? '', ['light', 'dark'], true) ? $_GET['theme'] : 'light';
 if (!$embed) {
-    header('Location: drawio-skill-editor.php?embed=1&theme=' . urlencode($theme));
+    header('Location: bpmn-skill-editor.html');
     exit;
 }
 ?>
@@ -13,19 +13,25 @@ if (!$embed) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Draw.io — Skill Canvas</title>
+<title>BPMN — Skill Canvas</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/editor-credit.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bpmn-js@18.18.0/dist/assets/diagram-js.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bpmn-js@18.18.0/dist/assets/bpmn-js.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bpmn-js@18.18.0/dist/assets/bpmn-font/css/bpmn-embedded.css">
 <style>
   :root {
     --gs-blue: #0077bc;
     --bg: #FFFFFE;
+    --bg-toolbar: #F4F9FC;
     --text-sec: #6E6E6E;
     --border: #C8D0D8;
     --hdr-h: 48px;
+    --toolbar-h: 40px;
   }
   [data-theme="dark"] {
     --bg: #1F1F1F;
+    --bg-toolbar: #141414;
     --text-sec: #B0BAC0;
     --border: #444;
   }
@@ -67,13 +73,47 @@ if (!$embed) {
   .hdr-btn.save { background: #27ae60; border-color: #1e8449; }
   .hdr-btn.save:hover { background: #2ecc71; }
   .hdr-btn:disabled { opacity: .45; cursor: not-allowed; }
-  #drawio-frame {
-    flex: 1;
-    width: 100%;
-    border: none;
-    min-height: 0;
+  #toolbar {
+    height: var(--toolbar-h);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    background: var(--bg-toolbar);
+    border-bottom: 1px solid var(--border);
   }
-  #drawio-status {
+  .tb {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    color: inherit;
+  }
+  .tb:hover { filter: brightness(.97); }
+  .tb:disabled { opacity: .4; cursor: not-allowed; }
+  .tsep { width: 1px; height: 22px; background: var(--border); margin: 0 2px; }
+  #bpmn-wrap {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  #bpmn-canvas {
+    width: 100%;
+    height: 100%;
+  }
+  #bpmn-canvas .djs-container {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  #bpmn-canvas svg {
+    background: var(--bg) !important;
+  }
+  #bpmn-status {
     flex-shrink: 0;
     padding: 6px 14px;
     font-size: 11px;
@@ -81,16 +121,19 @@ if (!$embed) {
     border-top: 1px solid var(--border);
     background: var(--bg);
   }
+  .bjs-powered-by { display: none !important; }
+  [data-theme="dark"] .djs-palette { background: var(--bg-toolbar) !important; border-color: var(--border) !important; }
+  [data-theme="dark"] .djs-popup { background: var(--bg) !important; border-color: var(--border) !important; color: #fff !important; }
 </style>
 </head>
 <body>
 
 <header id="hdr">
   <div class="hdr-left">
-    <h1>Draw.io</h1>
-    <a class="editor-credit" href="https://www.diagrams.net/" target="_blank" rel="noopener noreferrer" title="Officiell webbplats för draw.io / diagrams.net">
+    <h1>BPMN</h1>
+    <a class="editor-credit" href="https://bpmn.io/" target="_blank" rel="noopener noreferrer" title="Officiell webbplats för bpmn.io och bpmn-js">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 1h-3a.5.5 0 000 1h1.793L6.146 8.146a.5.5 0 00.708.708L13 2.707V4.5a.5.5 0 001 0v-3A.5.5 0 0013.5 1z"/><path d="M11 2.5H3A1.5 1.5 0 001.5 4v9A1.5 1.5 0 003 14.5h9a1.5 1.5 0 001.5-1.5V8a.5.5 0 00-1 0v4.5a.5.5 0 01-.5.5H3a.5.5 0 01-.5-.5V4a.5.5 0 01.5-.5h8a.5.5 0 000-1z"/></svg>
-      Powered by <strong>diagrams.net</strong>
+      Powered by <strong>bpmn.io</strong>
     </a>
   </div>
   <span id="hdr-status">Väntar…</span>
@@ -100,16 +143,24 @@ if (!$embed) {
   </div>
 </header>
 
-<iframe id="drawio-frame"
-  src="about:blank"
-  sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-downloads allow-modals"
-  allow="clipboard-read; clipboard-write; fullscreen"
-  title="draw.io editor"></iframe>
-<p id="drawio-status">Ritningen sparas som XML i skill-exporten och som bild på kortet.</p>
+<div id="toolbar">
+  <button type="button" class="tb" id="btn-zoom-in" title="Zooma in">+</button>
+  <button type="button" class="tb" id="btn-zoom-out" title="Zooma ut">−</button>
+  <button type="button" class="tb" id="btn-zoom-fit" title="Anpassa">Fit</button>
+  <span class="tsep"></span>
+  <button type="button" class="tb" id="btn-undo" title="Ångra">↩</button>
+  <button type="button" class="tb" id="btn-redo" title="Gör om">↪</button>
+  <span class="tsep"></span>
+  <button type="button" class="tb" id="btn-delete" title="Ta bort valda">🗑</button>
+</div>
 
-<script src="js/drawio-embed.js"></script>
+<div id="bpmn-wrap"><div id="bpmn-canvas"></div></div>
+<p id="bpmn-status">Diagrammet sparas som .bpmn i skill-exporten och som bild på kortet.</p>
+
+<script src="https://cdn.jsdelivr.net/npm/bpmn-js@18.18.0/dist/bpmn-modeler.production.min.js"></script>
+<script src="js/bpmn-embed.js"></script>
 <script>
-  DrawioEmbed.init();
+  BpmnEmbed.init();
   document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();

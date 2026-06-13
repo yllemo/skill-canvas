@@ -11,6 +11,7 @@ $theme = in_array($_GET['theme'] ?? '', ['light', 'dark'], true) ? $_GET['theme'
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Mermaid Editor</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/editor-credit.css">
 <script>
 (function(){
   var t = document.documentElement.getAttribute('data-theme') || 'light';
@@ -408,9 +409,14 @@ header {
 .toast.err { border-left-color: var(--error); }
 @keyframes tIn { from{transform:translateX(12px);opacity:0} to{transform:translateX(0);opacity:1} }
 
-body.embed-mode .h-link,
+body.embed-mode .h-link:not(.editor-credit),
 body.embed-mode .h-btn:not(.h-btn-embed),
-body.embed-mode #themeBtn { display: none !important; }
+body.embed-mode #themeBtn,
+body.embed-mode header > .toolbar-sep { display: none !important; }
+body.embed-mode .editor-credit {
+  display: inline-flex !important;
+  margin-left: 4px;
+}
 body:not(.embed-mode) .h-btn-embed { display: none !important; }
 .h-btn-embed { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.25); color: #fff; }
 .h-btn-embed.h-btn-accent { background: #27ae60; border-color: #1e8449; }
@@ -430,20 +436,20 @@ body:not(.embed-mode) .h-btn-embed { display: none !important; }
     <span class="logo-badge">v11.15.0</span>
   </div>
 
+  <!-- Official project links -->
+  <a class="h-link editor-credit" href="https://mermaid.js.org/" target="_blank" rel="noopener noreferrer" title="Officiell dokumentation för Mermaid">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 1h-3a.5.5 0 000 1h1.793L6.146 8.146a.5.5 0 00.708.708L13 2.707V4.5a.5.5 0 001 0v-3A.5.5 0 0013.5 1z"/><path d="M11 2.5H3A1.5 1.5 0 001.5 4v9A1.5 1.5 0 003 14.5h9a1.5 1.5 0 001.5-1.5V8a.5.5 0 00-1 0v4.5a.5.5 0 01-.5.5H3a.5.5 0 01-.5-.5V4a.5.5 0 01.5-.5h8a.5.5 0 000-1z"/></svg>
+    Powered by <strong>mermaid.js.org</strong>
+  </a>
+  <a class="h-link editor-credit" href="https://mermaid.live/" target="_blank" rel="noopener noreferrer" title="Officiell live-editor">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 1h-3a.5.5 0 000 1h1.793L6.146 8.146a.5.5 0 00.708.708L13 2.707V4.5a.5.5 0 001 0v-3A.5.5 0 0013.5 1z"/><path d="M11 2.5H3A1.5 1.5 0 001.5 4v9A1.5 1.5 0 003 14.5h9a1.5 1.5 0 001.5-1.5V8a.5.5 0 00-1 0v4.5a.5.5 0 01-.5.5H3a.5.5 0 01-.5-.5V4a.5.5 0 01.5-.5h8a.5.5 0 000-1z"/></svg>
+    <strong>mermaid.live</strong>
+  </a>
+
   <div class="header-spacer"></div>
 
   <button class="h-btn h-btn-accent h-btn-embed" type="button" onclick="embedSave()" title="Spara tillbaka till kortet">✓ Spara till kort</button>
   <button class="h-btn h-btn-embed" type="button" onclick="embedCancel()" title="Stäng utan att spara">✕ Avbryt</button>
-
-  <!-- External links (standalone) -->
-  <a class="h-link" href="https://mermaid.live/" target="_blank" title="Öppna mermaid.live">
-    <svg viewBox="0 0 16 16"><path d="M13.5 1h-3a.5.5 0 000 1h1.793L6.146 8.146a.5.5 0 00.708.708L13 2.707V4.5a.5.5 0 001 0v-3A.5.5 0 0013.5 1z"/><path d="M11 2.5H3A1.5 1.5 0 001.5 4v9A1.5 1.5 0 003 14.5h9a1.5 1.5 0 001.5-1.5V8a.5.5 0 00-1 0v4.5a.5.5 0 01-.5.5H3a.5.5 0 01-.5-.5V4a.5.5 0 01.5-.5h8a.5.5 0 000-1z"/></svg>
-    mermaid.live
-  </a>
-  <a class="h-link" href="https://mermaid.ai/open-source/intro" target="_blank" title="Öppna mermaid.ai">
-    <svg viewBox="0 0 16 16"><path d="M13.5 1h-3a.5.5 0 000 1h1.793L6.146 8.146a.5.5 0 00.708.708L13 2.707V4.5a.5.5 0 001 0v-3A.5.5 0 0013.5 1z"/><path d="M11 2.5H3A1.5 1.5 0 001.5 4v9A1.5 1.5 0 003 14.5h9a1.5 1.5 0 001.5-1.5V8a.5.5 0 00-1 0v4.5a.5.5 0 01-.5.5H3a.5.5 0 01-.5-.5V4a.5.5 0 01.5-.5h8a.5.5 0 000-1z"/></svg>
-    mermaid.ai
-  </a>
 
   <div class="toolbar-sep" style="background:rgba(255,255,255,.15);height:20px;margin:0 4px;"></div>
 

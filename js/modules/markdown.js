@@ -110,9 +110,10 @@ const MarkdownModule = (() => {
   async function openAdd() {
     const pos = centerPos();
     await Modal.openFromType(TYPE, 'add', {}, async () => {
-      const fields = Modal.readFields({ title: 'md-title', width: 'md-width', content: 'md-content' });
+      const fields = Modal.readFields({ title: 'md-title', width: 'md-width', height: 'md-height', content: 'md-content' });
       const defaults = nodeDefaults();
       const width = parseInt(fields.width, 10) || defaults.width || 720;
+      const height = parseMarkdownHeight(fields.height);
       const id = genId();
       const filename = `${defaults.fileDir || 'nodes'}/${id}.${defaults.fileExt || 'md'}`;
 
@@ -127,6 +128,7 @@ const MarkdownModule = (() => {
         file: filename,
         _ownFile: true,
       };
+      if (height) node.height = height;
       nodes.push(node);
       await buildNodeEl(node);
       markDirty();
@@ -145,22 +147,27 @@ const MarkdownModule = (() => {
     await Modal.openFromType(TYPE, 'edit', {
       title: node.title || '',
       width: node.width || nodeDefaults().width || 720,
+      height: node.height || '',
       content,
     }, async () => {
-      const fields = Modal.readFields({ title: 'md-title', width: 'md-width', content: 'md-content' });
+      const fields = Modal.readFields({ title: 'md-title', width: 'md-width', height: 'md-height', content: 'md-content' });
       const defaults = nodeDefaults();
       node.title = fields.title;
       node.width = parseInt(fields.width, 10) || defaults.width || 720;
+      const height = parseMarkdownHeight(fields.height);
+      if (height) node.height = height;
+      else delete node.height;
       if (node.file) {
         files[node.file] = new TextEncoder().encode(fields.content);
       } else {
         node.content = fields.content;
       }
       node._el.style.width = node.width + 'px';
-      const htitle = node._el.querySelector('.node-handle span:nth-child(2)');
+      const htitle = node._el.querySelector('.node-handle-title');
       if (htitle) htitle.textContent = node.title || '';
       const body = node._el.querySelector('.node-body');
       await renderNodeContent(node, body);
+      applyMarkdownNodeLayout(node, node._el);
       markDirty();
       Modal.close();
       showToast(cfg().editToast || 'Sparad');

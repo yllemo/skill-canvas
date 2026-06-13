@@ -34,6 +34,8 @@ return [
             'width' => 720,
             'minWidth' => 160,
             'maxWidth' => 1200,
+            'minHeight' => 120,
+            'maxHeight' => 1600,
             'fileDir' => 'nodes',
             'fileExt' => 'md',
         ],
@@ -68,6 +70,12 @@ return [
             'fontSize' => 14,
         ],
         'drawio' => [
+            'width' => 480,
+            'minWidth' => 200,
+            'maxWidth' => 1200,
+            'fileDir' => 'diagrams',
+        ],
+        'bpmn' => [
             'width' => 480,
             'minWidth' => 200,
             'maxWidth' => 1200,
@@ -116,10 +124,13 @@ return [
                 'title' => 'Titel',
                 'titleOptional' => 'Titel (valfri)',
                 'width' => 'Bredd (px)',
+                'height' => 'Höjd (px)',
+                'heightHint' => 'Tomt = automatisk höjd. Ange px för fast höjd — scroll vid mer innehåll.',
                 'content' => 'Markdown-innehåll',
             ],
             'placeholders' => [
                 'title' => 'Rubrik för handtaget…',
+                'height' => 'Automatisk',
                 'content' => "## Rubrik\n\nText, **fetstil**, _kursiv_, listor, tabeller…",
             ],
             'editorUrl' => 'html/markdown.php',
@@ -213,6 +224,23 @@ return [
             ],
             'placeholders' => [
                 'title' => 'Diagramtitel…',
+            ],
+        ],
+        'bpmn' => [
+            'addTitle' => 'Lägg till BPMN',
+            'editTitle' => 'BPMN — titel',
+            'okLabel' => 'Skapa',
+            'addToast' => 'BPMN-nod tillagd',
+            'saveToast' => 'BPMN-diagram sparat',
+            'editorUrl' => 'html/bpmn-skill-editor.php',
+            'labels' => [
+                'titleOptional' => 'Titel (valfri)',
+                'width' => 'Bredd på kort (px)',
+                'addHint' => 'BPMN-editorn öppnas direkt efter att noden skapats.',
+                'editHint' => 'Diagrammet redigeras i BPMN-editorn.',
+            ],
+            'placeholders' => [
+                'title' => 'Processtitel…',
             ],
         ],
         'html' => [

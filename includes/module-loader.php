@@ -91,7 +91,7 @@ function registered_module_scripts(): array
     }
 
     // JS ska laddas även om PHP-modulregistrering misslyckats
-    foreach (['annotation', 'bild', 'drawio', 'html', 'label', 'markdown', 'mermaid', 'notes'] as $name) {
+    foreach (['annotation', 'bild', 'bpmn', 'drawio', 'html', 'label', 'markdown', 'mermaid', 'notes'] as $name) {
         $rel = "js/modules/{$name}.js";
         $full = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rel);
         if (!in_array($rel, $scripts, true) && is_file($full)) {

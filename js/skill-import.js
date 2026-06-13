@@ -76,6 +76,7 @@ const SkillImport = (() => {
     if (ext === 'md') return 'markdown';
     if (ext === 'mmd' || ext === 'mermaid') return 'mermaid';
     if (ext === 'drawio' || ext === 'dio') return 'drawio';
+    if (ext === 'bpmn') return 'bpmn';
     if (ext === 'html' || ext === 'htm') return 'html';
     if (IMAGE_EXT.has(ext)) return 'image';
     return null;
@@ -90,9 +91,18 @@ const SkillImport = (() => {
     return null;
   }
 
+  function findBpmnPreview(path, filesMap) {
+    const base = path.replace(/\.bpmn$/i, '');
+    for (const ext of ['png', 'svg', 'jpg', 'jpeg']) {
+      const candidate = `${base}.${ext}`;
+      if (filesMap[candidate]) return candidate;
+    }
+    return null;
+  }
+
   function defaultWidth(type) {
     const nodes = window.SC_DEFAULTS?.nodes || {};
-    return nodes[type]?.width || { markdown: 720, mermaid: 500, image: 400, drawio: 480, html: 640 }[type] || 400;
+    return nodes[type]?.width || { markdown: 720, mermaid: 500, image: 400, drawio: 480, bpmn: 480, html: 640 }[type] || 400;
   }
 
   function layoutNodes(list, opts = {}) {
@@ -157,6 +167,19 @@ const SkillImport = (() => {
           previewFile: preview || undefined,
           title: titleFromPath(path),
           width: defaultWidth('drawio'),
+        });
+        continue;
+      }
+
+      if (type === 'bpmn') {
+        const preview = findBpmnPreview(path, filesMap);
+        if (preview) usedPaths.add(preview);
+        addNode({
+          type: 'bpmn',
+          file: path,
+          previewFile: preview || undefined,
+          title: titleFromPath(path),
+          width: defaultWidth('bpmn'),
         });
         continue;
       }
