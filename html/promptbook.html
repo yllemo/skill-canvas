@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="sv" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptBook — Göteborgs Stad</title>
+<style>
+:root {
+  --gs-blue:#0077bc; --bg:#FFFFFE; --bg-f:#F5F5F5; --bg-n:#F4F9FC;
+  --bg-i:#F2F9F9; --tx:#333; --tx2:#6E6E6E; --brd:#D0D0D0;
+  --ok:#5a8b3b; --err:#d24723; --warn:#f2a900;
+  --user-bg:#e3f0fb; --ai-bg:#F4F9FC; --ai-brd:#D0D8E0;
+  --shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+[data-theme="dark"] {
+  --bg:#1a1a1a; --bg-f:#111; --bg-n:#222; --bg-i:#252525;
+  --tx:#eee; --tx2:#aaa; --brd:#3a3a3a;
+  --user-bg:#1c3a52; --ai-bg:#252525; --ai-brd:#3a3a3a;
+  --shadow: 0 1px 4px rgba(0,0,0,.3);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.5;
+  color:var(--tx);background:var(--bg);display:flex;flex-direction:column}
+
+/* ── Header ── */
+header{background:var(--gs-blue);color:#fff;height:50px;padding:0 1rem;
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50}
+.logo{display:flex;align-items:center;gap:.5rem}
+.logo-name{font-size:.9rem;font-weight:700}
+.logo-sub{font-size:.85rem;opacity:.8;padding-left:.5rem;border-left:1px solid rgba(255,255,255,.3)}
+.hbtns{display:flex;align-items:center;gap:.35rem}
+.hbtn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;
+  border-radius:4px;padding:.25rem .65rem;cursor:pointer;font-size:.78rem;font-family:inherit;transition:background .15s}
+.hbtn:hover{background:rgba(255,255,255,.25)}
+
+/* ── Three-column layout ── */
+.app{flex:1;display:grid;grid-template-columns:260px 1fr 320px;overflow:hidden;min-height:0}
+
+/* ── Column shared ── */
+.col{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--brd)}
+.col:last-child{border-right:none}
+.col-header{background:var(--bg-n);border-bottom:1px solid var(--brd);padding:.5rem .75rem;
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;min-height:40px}
+.col-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2)}
+.col-body{flex:1;overflow-y:auto;overflow-x:hidden}
+
+/* ── LEFT: PromptBook list ── */
+#pbList{display:flex;flex-direction:column;gap:0}
+.pb-item{padding:.6rem .75rem;cursor:pointer;border-bottom:1px solid var(--brd);
+  transition:background .12s;position:relative}
+.pb-item:hover{background:var(--bg-i)}
+.pb-item.active{background:var(--user-bg);border-left:3px solid var(--gs-blue)}
+.pb-item.active .pb-name{color:var(--gs-blue)}
+.pb-name{font-size:.85rem;font-weight:600;margin-bottom:.2rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-cat{display:inline-block;font-size:.68rem;padding:.1rem .4rem;border-radius:10px;
+  background:var(--gs-blue);color:#fff;margin-bottom:.25rem}
+.pb-preview{font-size:.75rem;color:var(--tx2);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pb-actions{position:absolute;top:.4rem;right:.4rem;display:none;gap:.2rem}
+.pb-item:hover .pb-actions{display:flex}
+.pb-del{background:none;border:none;cursor:pointer;font-size:.85rem;padding:.1rem .3rem;
+  color:var(--tx2);border-radius:3px;transition:color .12s}
+.pb-del:hover{color:var(--err)}
+.empty-list{padding:1.5rem .75rem;text-align:center;color:var(--tx2);font-size:.82rem}
+
+/* Buttons */
+.btn{border:none;border-radius:4px;padding:.38rem .8rem;font-size:.8rem;font-weight:600;
+  cursor:pointer;font-family:inherit;transition:background .15s,opacity .15s;white-space:nowrap}
+.btn-primary{background:var(--gs-blue);color:#fff}.btn-primary:hover{background:#005fa3}
+.btn-secondary{background:var(--bg);color:var(--tx);border:1px solid var(--brd)}
+.btn-secondary:hover{background:var(--bg-n)}
+.btn-sm{padding:.25rem .55rem;font-size:.74rem}
+.btn-danger{background:var(--err);color:#fff}.btn-danger:hover{opacity:.85}
+.btn-ok{background:var(--ok);color:#fff}.btn-ok:hover{opacity:.85}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ── MIDDLE: Chat ── */
+.chat-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* Provider badge */
+.provider-bar{background:var(--bg-i);border-bottom:1px solid var(--brd);
+  padding:.3rem .75rem;display:flex;align-items:center;gap:.5rem;flex-shrink:0;flex-wrap:wrap}
+.prov-badge{font-size:.72rem;padding:.15rem .5rem;border-radius:10px;font-weight:600;
+  border:1px solid var(--brd);color:var(--tx2);background:var(--bg)}
+.prov-badge.active{background:var(--gs-blue);color:#fff;border-color:var(--gs-blue)}
+.prov-model{font-size:.72rem;color:var(--tx2);margin-left:auto}
+
+/* System prompt preview */
+.sys-collapse{background:var(--bg-n);border-bottom:1px solid var(--brd);flex-shrink:0}
+.sys-toggle{width:100%;background:none;border:none;cursor:pointer;
+  padding:.4rem .75rem;display:flex;align-items:center;gap:.4rem;text-align:left;
+  font-size:.75rem;color:var(--tx2);font-family:inherit;transition:background .12s}
+.sys-toggle:hover{background:var(--bg-i)}
+.sys-toggle .arrow{transition:transform .2s;font-size:.7rem}
+.sys-toggle.open .arrow{transform:rotate(90deg)}
+.sys-content{padding:.5rem .75rem;font-size:.75rem;font-family:'Courier New',monospace;
+  color:var(--tx2);background:var(--bg-n);white-space:pre-wrap;max-height:120px;
+  overflow-y:auto;border-bottom:1px solid var(--brd)}
+
+/* Messages */
+#msgArea{flex:1;overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:.6rem}
+.msg{display:flex;flex-direction:column;max-width:88%}
+.msg.user{align-self:flex-end;align-items:flex-end}
+.msg.assistant{align-self:flex-start;align-items:flex-start}
+.msg-bubble{padding:.55rem .8rem;border-radius:8px;font-size:.85rem;line-height:1.55;word-break:break-word}
+.msg.user .msg-bubble{background:var(--user-bg);border-bottom-right-radius:2px}
+.msg.assistant .msg-bubble{background:var(--ai-bg);border:1px solid var(--ai-brd);border-bottom-left-radius:2px}
+.msg-bubble pre{background:var(--bg-f);border:1px solid var(--brd);border-radius:4px;
+  padding:.5rem .65rem;overflow-x:auto;font-size:.8rem;margin:.4rem 0}
+.msg-bubble code{background:var(--bg-f);padding:.1rem .3rem;border-radius:3px;font-size:.82em}
+.msg-bubble p{margin-bottom:.4rem}.msg-bubble p:last-child{margin-bottom:0}
+.msg-meta{font-size:.66rem;color:var(--tx2);margin-top:.18rem;padding:0 .2rem}
+.msg-role{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--tx2);margin-bottom:.15rem;padding:0 .2rem}
+.thinking{display:flex;gap:.3rem;padding:.55rem .8rem;background:var(--ai-bg);
+  border:1px solid var(--ai-brd);border-radius:8px;border-bottom-left-radius:2px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--tx2);animation:bounce .8s infinite}
+.dot:nth-child(2){animation-delay:.15s}.dot:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+.no-pb{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;gap:.5rem;color:var(--tx2);font-size:.9rem;text-align:center;padding:2rem}
+.no-pb-icon{font-size:2.5rem;margin-bottom:.25rem}
+
+/* Input */
+.chat-input-wrap{border-top:1px solid var(--brd);padding:.6rem .75rem;
+  display:flex;gap:.5rem;align-items:flex-end;flex-shrink:0;background:var(--bg)}
+#userInput{flex:1;resize:none;border:1px solid var(--brd);border-radius:6px;
+  padding:.45rem .65rem;font-size:.85rem;font-family:inherit;background:var(--bg);
+  color:var(--tx);line-height:1.45;max-height:120px;overflow-y:auto;min-height:36px;transition:border-color .15s}
+#userInput:focus{outline:none;border-color:var(--gs-blue);box-shadow:0 0 0 3px rgba(0,119,188,.1)}
+#userInput:disabled{opacity:.5}
+.send-col{display:flex;flex-direction:column;gap:.3rem}
+#sendBtn{width:70px}
+.char-hint{font-size:.65rem;color:var(--tx2);text-align:center}
+
+/* Variables bar */
+.vars-bar{background:var(--bg-n);border-bottom:1px solid var(--brd);
+  padding:.45rem .75rem;flex-shrink:0;display:none}
+.vars-bar.visible{display:block}
+.vars-bar-title{font-size:.7rem;font-weight:700;color:var(--tx2);text-transform:uppercase;
+  letter-spacing:.05em;margin-bottom:.4rem}
+.vars-grid{display:flex;flex-wrap:wrap;gap:.4rem}
+.var-field{display:flex;flex-direction:column;gap:.15rem;min-width:120px;flex:1}
+.var-field label{font-size:.7rem;font-weight:600;color:var(--tx2)}
+.var-field input{padding:.3rem .5rem;border:1px solid var(--brd);border-radius:4px;
+  font-size:.78rem;background:var(--bg);color:var(--tx);font-family:inherit}
+.var-field input:focus{outline:none;border-color:var(--gs-blue)}
+
+/* ── RIGHT: Markdown output ── */
+.md-toolbar{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap}
+#mdOut{flex:1;width:100%;resize:none;border:none;padding:.65rem .75rem;
+  font-family:'Courier New',monospace;font-size:.78rem;line-height:1.65;
+  background:var(--bg);color:var(--tx);overflow-y:auto}
+#mdOut:focus{outline:none}
+
+/* ── Modals ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+  z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg);border:1px solid var(--brd);border-radius:8px;
+  padding:1.4rem 1.5rem;width:min(560px,94vw);max-height:90vh;overflow-y:auto;
+  box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal h2{font-size:1rem;font-weight:700;margin-bottom:1rem;display:flex;
+  align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--tx2)}
+.form-row{margin-bottom:.8rem}
+.form-row label{display:block;font-size:.75rem;font-weight:700;color:var(--tx2);
+  text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:.42rem .65rem;
+  border:1px solid var(--brd);border-radius:4px;background:var(--bg);color:var(--tx);
+  font-size:.85rem;font-family:inherit;transition:border-color .15s}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{
+  outline:none;border-color:var(--gs-blue);box-shadow:0 0 0 3px rgba(0,119,188,.1)}
+.form-row textarea{resize:vertical;min-height:80px}
+.form-row.code textarea{font-family:'Courier New',monospace;font-size:.8rem;min-height:140px}
+.modal-acts{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1.1rem;flex-wrap:wrap}
+.hint-text{font-size:.72rem;color:var(--tx2);margin-top:.25rem}
+.section-sep{border:none;border-top:1px solid var(--brd);margin:.9rem 0}
+
+/* LLM config sections */
+.llm-section{display:none}.llm-section.visible{display:block}
+.provider-btns{display:flex;gap:.4rem;flex-wrap:wrap}
+.prov-btn{flex:1;min-width:80px;padding:.4rem .5rem;border:2px solid var(--brd);
+  border-radius:5px;background:var(--bg);color:var(--tx);cursor:pointer;
+  font-size:.78rem;font-weight:600;font-family:inherit;transition:all .15s;text-align:center}
+.prov-btn:hover{border-color:var(--gs-blue);color:var(--gs-blue)}
+.prov-btn.on{border-color:var(--gs-blue);background:var(--gs-blue);color:#fff}
+
+/* Status */
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--brd);flex-shrink:0}
+.status-dot.ok{background:var(--ok)}.status-dot.err{background:var(--err)}
+.status-dot.warn{background:var(--warn)}
+
+/* Toast */
+#toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--tx);color:var(--bg);padding:.5rem 1.1rem;border-radius:20px;
+  font-size:.82rem;pointer-events:none;opacity:0;transition:all .25s;z-index:999}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px}
+
+/* Markdown rendered view */
+.md-preview{display:none;padding:.65rem .75rem;font-size:.82rem;line-height:1.65;overflow-y:auto;flex:1}
+.md-preview.visible{display:block}
+.md-preview h1,.md-preview h2,.md-preview h3{margin:.6rem 0 .3rem;font-weight:700}
+.md-preview h1{font-size:1.1rem}.md-preview h2{font-size:.95rem}.md-preview h3{font-size:.88rem}
+.md-preview p{margin-bottom:.4rem}
+.md-preview code{background:var(--bg-f);padding:.1rem .3rem;border-radius:3px;font-size:.8em}
+.md-preview pre{background:var(--bg-f);border:1px solid var(--brd);border-radius:4px;
+  padding:.5rem .65rem;overflow-x:auto;margin:.4rem 0}
+.md-preview blockquote{border-left:3px solid var(--gs-blue);padding-left:.7rem;color:var(--tx2);margin:.4rem 0}
+.md-preview ul,.md-preview ol{padding-left:1.2rem;margin:.3rem 0}
+.md-preview hr{border:none;border-top:1px solid var(--brd);margin:.6rem 0}
+.md-preview table{border-collapse:collapse;width:100%;font-size:.8rem}
+.md-preview th,.md-preview td{border:1px solid var(--brd);padding:.3rem .5rem}
+.md-preview th{background:var(--bg-n);font-weight:700}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-sub">📖 PromptBook</span>
+  </div>
+  <div class="hbtns">
+    <button class="hbtn" onclick="openPbModal()">+ Ny Prompt</button>
+    <button class="hbtn" onclick="openLLMModal()">⚙ LLM-inställningar</button>
+    <button class="hbtn" onclick="toggleTheme()">🌓</button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ── LEFT: PromptBook Library ── -->
+  <div class="col">
+    <div class="col-header">
+      <span class="col-title">📚 PromptBooks</span>
+      <button class="btn btn-primary btn-sm" onclick="openPbModal()">+ Ny</button>
+    </div>
+    <div class="col-body">
+      <div id="pbList"><div class="empty-list">Inga prompts än.<br>Klicka "+ Ny" för att börja.</div></div>
+    </div>
+  </div>
+
+  <!-- ── MIDDLE: Chat ── -->
+  <div class="col chat-wrap">
+    <div class="col-header">
+      <span class="col-title" id="chatTitle">💬 Chatt</span>
+      <div style="display:flex;gap:.3rem">
+        <button class="btn btn-secondary btn-sm" id="clearChatBtn" onclick="clearChat()" title="Rensa chatt">🗑 Rensa</button>
+        <button class="btn btn-secondary btn-sm" id="appendMdBtn" onclick="appendToMd()" title="Lägg till i markdown">→ MD</button>
+      </div>
+    </div>
+
+    <div id="noPromptMsg" class="no-pb">
+      <div class="no-pb-icon">📖</div>
+      <div>Välj en prompt från listan<br>för att börja chatta</div>
+    </div>
+
+    <div id="chatArea" style="display:none;flex:1;display:none;flex-direction:column;overflow:hidden;min-height:0">
+      <!-- Provider bar -->
+      <div class="provider-bar" id="provBar">
+        <div class="status-dot" id="provDot"></div>
+        <span id="provName" style="font-size:.75rem;color:var(--tx2)">Ingen LLM konfigurerad</span>
+        <span class="prov-model" id="provModel"></span>
+      </div>
+
+      <!-- System prompt collapse -->
+      <div class="sys-collapse">
+        <button class="sys-toggle" id="sysToggle" onclick="toggleSysPrompt()">
+          <span class="arrow">▶</span>
+          <span>Systemprompt</span>
+          <span style="margin-left:auto;font-size:.68rem;color:var(--tx2)" id="sysPreview"></span>
+        </button>
+        <div class="sys-content" id="sysContent" style="display:none"></div>
+      </div>
+
+      <!-- Variables -->
+      <div class="vars-bar" id="varsBar">
+        <div class="vars-bar-title">📝 Variabler</div>
+        <div class="vars-grid" id="varsGrid"></div>
+      </div>
+
+      <!-- Messages -->
+      <div id="msgArea"></div>
+
+      <!-- Input -->
+      <div class="chat-input-wrap">
+        <textarea id="userInput" rows="1" placeholder="Skriv meddelande… (Shift+Enter = ny rad)"
+          oninput="autoResize(this)" onkeydown="handleKey(event)" disabled></textarea>
+        <div class="send-col">
+          <button class="btn btn-primary btn-sm" id="sendBtn" onclick="sendMsg()" disabled>Skicka</button>
+          <span class="char-hint" id="charHint"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: Markdown output ── -->
+  <div class="col" style="display:flex;flex-direction:column">
+    <div class="col-header">
+      <span class="col-title">📄 Markdown</span>
+      <div class="md-toolbar">
+        <button class="btn btn-secondary btn-sm" onclick="toggleMdView()" id="mdViewBtn">👁 Förhandsgranska</button>
+        <button class="btn btn-secondary btn-sm" onclick="copyMd()">📋 Kopiera</button>
+        <button class="btn btn-primary btn-sm" onclick="downloadMd()">⬇ Spara</button>
+        <button class="btn btn-secondary btn-sm" onclick="clearMd()" title="Rensa">🗑</button>
+      </div>
+    </div>
+    <textarea id="mdOut" placeholder="# PromptBook session
+
+Svar från chatten läggs till här med → MD-knappen.
+Du kan också redigera direkt."></textarea>
+    <div id="mdPreview" class="md-preview"></div>
+  </div>
+
+</div>
+
+<!-- ── PromptBook modal ── -->
+<div class="modal-bg" id="pbModal">
+  <div class="modal">
+    <h2><span id="pbModalTitle">📖 Ny PromptBook</span>
+      <button class="modal-close" onclick="closePbModal()">✕</button></h2>
+    <input type="hidden" id="pbEditId">
+    <div class="form-row">
+      <label>Titel *</label>
+      <input type="text" id="pbTitle" placeholder="Namn på prompten">
+    </div>
+    <div class="form-row">
+      <label>Kategori</label>
+      <select id="pbCat">
+        <option value="general">General</option>
+        <option value="creative">Creative</option>
+        <option value="analytical">Analytical</option>
+        <option value="strategic">Strategic</option>
+        <option value="technical">Technical</option>
+        <option value="arkitektur">Arkitektur</option>
+        <option value="dokumentation">Dokumentation</option>
+      </select>
+    </div>
+    <div class="form-row code">
+      <label>Systemprompt *</label>
+      <textarea id="pbContent" placeholder="Du är en expert på...
+
+Använd [variabel] för parametrar som användaren fyller i.
+Exempel: Analysera [område] ur ett [perspektiv]-perspektiv."></textarea>
+      <div class="hint-text">Tips: Använd [variabelnamn] för dynamiska fält. Dessa visas som inmatningsfält i chatten.</div>
+    </div>
+    <div class="form-row">
+      <label>Variabelforklaringar (JSON, valfritt)</label>
+      <textarea id="pbVars" rows="2" placeholder='{"område": "Ange ämnesområde", "perspektiv": "Välj perspektiv"}'></textarea>
+      <div class="hint-text">Beskrivningar till variablerna. Lämna tomt för att auto-detektera.</div>
+    </div>
+    <div class="form-row">
+      <label>Markdown-header (valfri, läggs till i Markdown-filen)</label>
+      <textarea id="pbMdHeader" rows="2" placeholder="## Analysresultat
+
+*Genererat av PromptBook*"></textarea>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-secondary" onclick="closePbModal()">Avbryt</button>
+      <button class="btn btn-primary" onclick="savePb()">💾 Spara PromptBook</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── LLM Config modal ── -->
+<div class="modal-bg" id="llmModal">
+  <div class="modal">
+    <h2>⚙ LLM-inställningar
+      <button class="modal-close" onclick="closeLLMModal()">✕</button></h2>
+    <div class="form-row">
+      <label>Provider</label>
+      <div class="provider-btns">
+        <button class="prov-btn" data-p="claude" onclick="selectProv('claude')">Claude</button>
+        <button class="prov-btn" data-p="openai" onclick="selectProv('openai')">OpenAI</button>
+        <button class="prov-btn" data-p="gemini" onclick="selectProv('gemini')">Gemini</button>
+        <button class="prov-btn" data-p="ollama" onclick="selectProv('ollama')">Ollama</button>
+        <button class="prov-btn" data-p="lmstudio" onclick="selectProv('lmstudio')">LM Studio</button>
+      </div>
+    </div>
+    <hr class="section-sep">
+
+    <!-- External API -->
+    <div class="llm-section" id="sec-apikey">
+      <div class="form-row">
+        <label>API-nyckel</label>
+        <input type="password" id="llmApiKey" placeholder="sk-…" autocomplete="off">
+        <div class="hint-text">Sparas lokalt i browsern via IndexedDB. Skickas aldrig till vår server.</div>
+      </div>
+    </div>
+
+    <!-- Local LLM -->
+    <div class="llm-section" id="sec-local">
+      <div class="form-row">
+        <label>Base URL</label>
+        <input type="text" id="llmBaseUrl" placeholder="http://localhost:11434">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Modell</label>
+      <input type="text" id="llmModel" placeholder="t.ex. claude-sonnet-4-6, gpt-4o, llama3.1">
+      <div class="hint-text" id="modelHint"></div>
+    </div>
+
+    <div class="form-row">
+      <label>Max tokens (svar)</label>
+      <input type="number" id="llmMaxTokens" value="4000" min="100" max="32000">
+    </div>
+
+    <div class="form-row">
+      <label>Temperatur (0 = deterministisk, 1 = kreativ)</label>
+      <input type="range" id="llmTemp" min="0" max="1" step="0.05" value="0.7"
+        oninput="document.getElementById('tempVal').textContent=this.value">
+      <div style="font-size:.75rem;color:var(--tx2);margin-top:.2rem">
+        Värde: <span id="tempVal">0.7</span>
+      </div>
+    </div>
+
+    <div class="modal-acts">
+      <button class="btn btn-secondary" onclick="closeLLMModal()">Avbryt</button>
+      <button class="btn btn-secondary" onclick="testLLM()">🔌 Testa anslutning</button>
+      <button class="btn btn-primary" onclick="saveLLM()">💾 Spara</button>
+    </div>
+    <div id="llmTestResult" style="margin-top:.6rem;font-size:.78rem"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// IndexedDB
+// ═══════════════════════════════════════════════════════════
+const DB_NAME = 'PromptBookGS';
+const DB_VER  = 2;
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('promptbooks')) {
+        const s = d.createObjectStore('promptbooks', { keyPath: 'id' });
+        s.createIndex('cat', 'category', { unique: false });
+      }
+      if (!d.objectStoreNames.contains('llmSettings')) {
+        d.createObjectStore('llmSettings', { keyPath: 'id' });
+      }
+      if (!d.objectStoreNames.contains('chatHistory')) {
+        const h = d.createObjectStore('chatHistory', { keyPath: 'id' });
+        h.createIndex('pbId', 'pbId', { unique: false });
+      }
+    };
+    req.onsuccess  = e => { db = e.target.result; resolve(db); };
+    req.onerror    = e => reject(e.target.error);
+  });
+}
+
+function txGet(store, key) {
+  return new Promise((res, rej) => {
+    const r = db.transaction(store,'readonly').objectStore(store).get(key);
+    r.onsuccess = () => res(r.result);
+    r.onerror   = () => rej(r.error);
+  });
+}
+function txGetAll(store) {
+  return new Promise((res, rej) => {
+    const r = db.transaction(store,'readonly').objectStore(store).getAll();
+    r.onsuccess = () => res(r.result);
+    r.onerror   = () => rej(r.error);
+  });
+}
+function txPut(store, obj) {
+  return new Promise((res, rej) => {
+    const r = db.transaction(store,'readwrite').objectStore(store).put(obj);
+    r.onsuccess = () => res(r.result);
+    r.onerror   = () => rej(r.error);
+  });
+}
+function txDelete(store, key) {
+  return new Promise((res, rej) => {
+    const r = db.transaction(store,'readwrite').objectStore(store).delete(key);
+    r.onsuccess = () => res();
+    r.onerror   = () => rej(r.error);
+  });
+}
+function txGetIndex(store, index, key) {
+  return new Promise((res, rej) => {
+    const r = db.transaction(store,'readonly').objectStore(store).index(index).getAll(key);
+    r.onsuccess = () => res(r.result);
+    r.onerror   = () => rej(r.error);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════
+let activePb   = null;   // currently selected promptbook
+let chatMsgs   = [];     // [{role, content, ts}]
+let llmSettings = {};
+let mdViewMode  = false; // preview vs edit
+
+// ═══════════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════════
+async function init() {
+  await openDB();
+  llmSettings = (await txGet('llmSettings','default')) || {};
+  updateProvBar();
+  await renderPbList();
+  document.documentElement.setAttribute('data-theme', localStorage.getItem('gs-theme')||'light');
+}
+
+// ═══════════════════════════════════════════════════════════
+// PromptBook CRUD
+// ═══════════════════════════════════════════════════════════
+async function renderPbList() {
+  const pbs = await txGetAll('promptbooks');
+  const list = document.getElementById('pbList');
+  if (!pbs.length) {
+    list.innerHTML = '<div class="empty-list">Inga prompts än.<br>Klicka "+ Ny" för att börja.</div>';
+    return;
+  }
+  pbs.sort((a,b) => (b.updated||0) - (a.updated||0));
+  const CAT_COLORS = {
+    general:'#607d8b',creative:'#9c27b0',analytical:'#2196f3',
+    strategic:'#ff9800',technical:'#4caf50',arkitektur:'#0077bc',dokumentation:'#795548'
+  };
+  list.innerHTML = pbs.map(p => `
+    <div class="pb-item ${activePb?.id===p.id?'active':''}" onclick="selectPb('${p.id}')">
+      <div class="pb-actions">
+        <button class="pb-del" onclick="event.stopPropagation();editPb('${p.id}')" title="Redigera">✏</button>
+        <button class="pb-del" onclick="event.stopPropagation();deletePb('${p.id}')" title="Ta bort">🗑</button>
+      </div>
+      <div class="pb-name">${esc(p.title)}</div>
+      <span class="pb-cat" style="background:${CAT_COLORS[p.category]||'#607d8b'}">${esc(p.category)}</span>
+      <div class="pb-preview">${esc(p.content?.slice(0,80)||'')}</div>
+    </div>
+  `).join('');
+}
+
+async function savePb() {
+  const title   = document.getElementById('pbTitle').value.trim();
+  const content = document.getElementById('pbContent').value.trim();
+  if (!title || !content) { toast('Titel och systemprompt krävs','err'); return; }
+
+  let vars = {};
+  try { vars = JSON.parse(document.getElementById('pbVars').value||'{}'); } catch(e) {}
+
+  // Auto-detect variables from content
+  const autoVars = [...content.matchAll(/\[([^\]]+)\]/g)].map(m=>m[1]);
+  autoVars.forEach(v => { if(!vars[v]) vars[v] = v; });
+
+  const id = document.getElementById('pbEditId').value || crypto.randomUUID();
+  await txPut('promptbooks', {
+    id, title,
+    category : document.getElementById('pbCat').value,
+    content,
+    variables: vars,
+    mdHeader : document.getElementById('pbMdHeader').value.trim(),
+    updated  : Date.now(),
+  });
+  closePbModal();
+  await renderPbList();
+  // Select the newly created one
+  await selectPb(id);
+  toast('PromptBook sparat ✓');
+}
+
+async function deletePb(id) {
+  if (!confirm('Ta bort denna prompt?')) return;
+  await txDelete('promptbooks', id);
+  // Also delete chat history
+  const hist = await txGetIndex('chatHistory','pbId',id);
+  for (const h of hist) await txDelete('chatHistory', h.id);
+  if (activePb?.id === id) { activePb = null; hideChatArea(); }
+  await renderPbList();
+  toast('Borttagen');
+}
+
+async function editPb(id) {
+  const pb = await txGet('promptbooks', id);
+  if (!pb) return;
+  document.getElementById('pbEditId').value  = id;
+  document.getElementById('pbTitle').value   = pb.title;
+  document.getElementById('pbCat').value     = pb.category;
+  document.getElementById('pbContent').value = pb.content;
+  document.getElementById('pbVars').value    = Object.keys(pb.variables||{}).length
+    ? JSON.stringify(pb.variables, null, 2) : '';
+  document.getElementById('pbMdHeader').value = pb.mdHeader||'';
+  document.getElementById('pbModalTitle').textContent = '✏ Redigera PromptBook';
+  document.getElementById('pbModal').classList.add('open');
+}
+
+async function selectPb(id) {
+  activePb = await txGet('promptbooks', id);
+  if (!activePb) return;
+
+  // Load chat history
+  const hist = await txGetIndex('chatHistory','pbId',id);
+  chatMsgs = hist.sort((a,b)=>a.ts-b.ts).map(h=>({role:h.role,content:h.content,ts:h.ts}));
+
+  await renderPbList(); // re-render to show active
+  showChatArea();
+  renderChat();
+  renderVars();
+  updateSysPreview();
+}
+
+// ═══════════════════════════════════════════════════════════
+// Chat UI
+// ═══════════════════════════════════════════════════════════
+function showChatArea() {
+  document.getElementById('noPromptMsg').style.display = 'none';
+  const ca = document.getElementById('chatArea');
+  ca.style.display = 'flex';
+  ca.style.flexDirection = 'column';
+  ca.style.overflow = 'hidden';
+  ca.style.minHeight = '0';
+  ca.style.flex = '1';
+  document.getElementById('chatTitle').textContent = '💬 ' + activePb.title;
+  document.getElementById('userInput').disabled = false;
+  document.getElementById('sendBtn').disabled   = false;
+}
+
+function hideChatArea() {
+  document.getElementById('noPromptMsg').style.display = 'flex';
+  document.getElementById('chatArea').style.display = 'none';
+  document.getElementById('chatTitle').textContent = '💬 Chatt';
+  document.getElementById('userInput').disabled = true;
+  document.getElementById('sendBtn').disabled   = true;
+}
+
+function updateSysPreview() {
+  if (!activePb) return;
+  const preview = activePb.content?.slice(0,50) + (activePb.content?.length>50?'…':'');
+  document.getElementById('sysPreview').textContent = preview;
+  document.getElementById('sysContent').textContent = activePb.content||'';
+}
+
+function toggleSysPrompt() {
+  const btn  = document.getElementById('sysToggle');
+  const body = document.getElementById('sysContent');
+  const open = btn.classList.toggle('open');
+  body.style.display = open ? 'block' : 'none';
+}
+
+function renderVars() {
+  if (!activePb) return;
+  const vars   = activePb.variables || {};
+  const keys   = Object.keys(vars);
+  const bar    = document.getElementById('varsBar');
+  const grid   = document.getElementById('varsGrid');
+  if (!keys.length) { bar.classList.remove('visible'); return; }
+  bar.classList.add('visible');
+  grid.innerHTML = keys.map(k => `
+    <div class="var-field">
+      <label>${esc(k)}</label>
+      <input type="text" data-var="${esc(k)}" placeholder="${esc(vars[k]||k)}">
+    </div>
+  `).join('');
+}
+
+function getVarValues() {
+  const vals = {};
+  document.querySelectorAll('[data-var]').forEach(el => {
+    vals[el.dataset.var] = el.value.trim();
+  });
+  return vals;
+}
+
+function renderChat() {
+  const area = document.getElementById('msgArea');
+  if (!chatMsgs.length) {
+    area.innerHTML = `<div style="text-align:center;color:var(--tx2);font-size:.8rem;margin-top:1.5rem">
+      Starta chatten genom att skriva ett meddelande nedan.
+    </div>`;
+    return;
+  }
+  area.innerHTML = chatMsgs.map(m => renderMsg(m)).join('');
+  area.scrollTop = area.scrollHeight;
+}
+
+function renderMsg(m) {
+  const isUser = m.role === 'user';
+  const ts = m.ts ? new Date(m.ts).toLocaleTimeString('sv',{hour:'2-digit',minute:'2-digit'}) : '';
+  const formatted = formatMd(m.content);
+  return `
+    <div class="msg ${m.role}">
+      <div class="msg-role">${isUser?'Du':'AI'}</div>
+      <div class="msg-bubble">${formatted}</div>
+      <div class="msg-meta">${ts}</div>
+    </div>`;
+}
+
+function showThinking() {
+  const area = document.getElementById('msgArea');
+  const el = document.createElement('div');
+  el.className = 'msg assistant';
+  el.id = 'thinkingDots';
+  el.innerHTML = `<div class="msg-role">AI</div>
+    <div class="thinking"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  area.appendChild(el);
+  area.scrollTop = area.scrollHeight;
+}
+
+function hideThinking() {
+  document.getElementById('thinkingDots')?.remove();
+}
+
+// ═══════════════════════════════════════════════════════════
+// Send message
+// ═══════════════════════════════════════════════════════════
+async function sendMsg() {
+  const inp = document.getElementById('userInput');
+  const txt = inp.value.trim();
+  if (!txt || !activePb) return;
+
+  if (!llmSettings.provider) { toast('Konfigurera LLM-inställningar först','err'); openLLMModal(); return; }
+
+  inp.value = '';
+  autoResize(inp);
+
+  const ts = Date.now();
+  const userMsg = { role:'user', content:txt, ts };
+  chatMsgs.push(userMsg);
+  await txPut('chatHistory', { id: crypto.randomUUID(), pbId: activePb.id, role:'user', content:txt, ts });
+  renderChat();
+  showThinking();
+
+  document.getElementById('sendBtn').disabled  = true;
+  document.getElementById('userInput').disabled = true;
+
+  try {
+    // Build system prompt with variable substitution
+    const varVals = getVarValues();
+    let sysPrompt = activePb.content || '';
+    Object.entries(varVals).forEach(([k,v]) => {
+      if (v) sysPrompt = sysPrompt.replace(new RegExp(`\\[${k}\\]`,'g'), v);
+    });
+
+    const response = await callLLM(sysPrompt, chatMsgs.slice(0,-1).map(m=>({role:m.role,content:m.content})), txt);
+    hideThinking();
+
+    const aiMsg = { role:'assistant', content:response, ts: Date.now() };
+    chatMsgs.push(aiMsg);
+    await txPut('chatHistory', { id: crypto.randomUUID(), pbId: activePb.id, role:'assistant', content:response, ts: aiMsg.ts });
+    renderChat();
+  } catch(err) {
+    hideThinking();
+    const errMsg = { role:'assistant', content:`❌ **Fel:** ${err.message}`, ts: Date.now() };
+    chatMsgs.push(errMsg);
+    renderChat();
+    toast('LLM-fel: ' + err.message, 'err');
+  }
+
+  document.getElementById('sendBtn').disabled  = false;
+  document.getElementById('userInput').disabled = false;
+  document.getElementById('userInput').focus();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  document.getElementById('charHint').textContent = el.value.length ? el.value.length + ' tkn' : '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// LLM Calls
+// ═══════════════════════════════════════════════════════════
+async function callLLM(systemPrompt, history, userMsg) {
+  const s = llmSettings;
+  const messages = [...history, { role:'user', content: userMsg }];
+
+  switch (s.provider) {
+    case 'claude':    return callClaude(systemPrompt, messages);
+    case 'openai':    return callOpenAI(systemPrompt, messages);
+    case 'gemini':    return callGemini(systemPrompt, messages);
+    case 'ollama':    return callOllama(systemPrompt, messages);
+    case 'lmstudio':  return callLMStudio(systemPrompt, messages);
+    default: throw new Error('Välj en LLM-provider i inställningarna');
+  }
+}
+
+async function callClaude(system, messages) {
+  const s = llmSettings;
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key': s.apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true',
+    },
+    body: JSON.stringify({
+      model: s.model || 'claude-sonnet-4-6',
+      system: system,
+      messages: messages,
+      max_tokens: parseInt(s.maxTokens)||4000,
+      temperature: parseFloat(s.temperature)||0.7,
+    })
+  });
+  if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message||r.statusText); }
+  const d = await r.json();
+  return d.content?.[0]?.text || '';
+}
+
+async function callOpenAI(system, messages) {
+  const s = llmSettings;
+  const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':'Bearer '+s.apiKey,
+    },
+    body: JSON.stringify({
+      model: s.model || 'gpt-4o',
+      messages: [{ role:'system', content:system }, ...messages],
+      max_tokens: parseInt(s.maxTokens)||4000,
+      temperature: parseFloat(s.temperature)||0.7,
+    })
+  });
+  if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message||r.statusText); }
+  const d = await r.json();
+  return d.choices?.[0]?.message?.content || '';
+}
+
+async function callGemini(system, messages) {
+  const s = llmSettings;
+  const model = s.model || 'gemini-2.0-flash';
+  // Combine system + messages for Gemini format
+  const contents = messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }));
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${s.apiKey}`,
+    {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        systemInstruction: { parts:[{text:system}] },
+        contents,
+        generationConfig: { maxOutputTokens:parseInt(s.maxTokens)||4000, temperature:parseFloat(s.temperature)||0.7 }
+      })
+    }
+  );
+  if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message||r.statusText); }
+  const d = await r.json();
+  return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+async function callOllama(system, messages) {
+  const s = llmSettings;
+  const base = (s.baseUrl||'http://localhost:11434').replace(/\/$/,'');
+  const r = await fetch(`${base}/api/chat`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: s.model || 'llama3.1',
+      messages: [{ role:'system', content:system }, ...messages],
+      stream: false,
+      options: { temperature: parseFloat(s.temperature)||0.7 }
+    })
+  });
+  if (!r.ok) throw new Error('Ollama: ' + r.statusText);
+  const d = await r.json();
+  return d.message?.content || '';
+}
+
+async function callLMStudio(system, messages) {
+  const s = llmSettings;
+  const base = (s.baseUrl||'http://localhost:1234').replace(/\/$/,'');
+  const r = await fetch(`${base}/v1/chat/completions`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: s.model || 'default',
+      messages: [{ role:'system', content:system }, ...messages],
+      max_tokens: parseInt(s.maxTokens)||4000,
+      temperature: parseFloat(s.temperature)||0.7,
+    })
+  });
+  if (!r.ok) throw new Error('LM Studio: ' + r.statusText);
+  const d = await r.json();
+  return d.choices?.[0]?.message?.content || '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// Test LLM connection
+// ═══════════════════════════════════════════════════════════
+async function testLLM() {
+  const res = document.getElementById('llmTestResult');
+  res.textContent = '⏳ Testar…';
+  // Read current form values for test (not yet saved)
+  const testSettings = buildLLMSettingsFromForm();
+  const orig = llmSettings;
+  llmSettings = testSettings;
+  try {
+    const reply = await callLLM('Svara bara: OK', [], 'Hej, testar anslutningen. Svara med ett ord.');
+    res.innerHTML = `<span style="color:var(--ok)">✓ Anslutning OK: "${reply.slice(0,50)}"</span>`;
+  } catch(e) {
+    res.innerHTML = `<span style="color:var(--err)">✗ Fel: ${esc(e.message)}</span>`;
+  }
+  llmSettings = orig;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Markdown output
+// ═══════════════════════════════════════════════════════════
+function appendToMd() {
+  if (!activePb || !chatMsgs.length) { toast('Ingen chatt att exportera','warn'); return; }
+  const out   = document.getElementById('mdOut');
+  const ts    = new Date().toLocaleString('sv');
+  const header = activePb.mdHeader
+    ? activePb.mdHeader + '\n\n'
+    : `## ${activePb.title}\n\n*${ts} — Kategori: ${activePb.category}*\n\n`;
+
+  let md = (out.value ? out.value + '\n\n---\n\n' : '') + header;
+
+  chatMsgs.forEach(m => {
+    const role = m.role === 'user' ? '**Du**' : `**${activePb.title}**`;
+    md += `${role}\n\n${m.content}\n\n`;
+  });
+
+  out.value = md.trim();
+  toast('Lagt till i Markdown ✓');
+  if (mdViewMode) renderMdPreview();
+}
+
+function clearMd() {
+  if (!confirm('Rensa Markdown-filen?')) return;
+  document.getElementById('mdOut').value = '';
+  document.getElementById('mdPreview').innerHTML = '';
+  toast('Markdown rensad');
+}
+
+function copyMd() {
+  const txt = document.getElementById('mdOut').value;
+  if (!txt) { toast('Inget att kopiera','warn'); return; }
+  navigator.clipboard.writeText(txt);
+  toast('Kopierat ✓');
+}
+
+function downloadMd() {
+  const txt  = document.getElementById('mdOut').value;
+  if (!txt) { toast('Inget att spara','warn'); return; }
+  const name = (activePb?.title||'promptbook').replace(/[^a-z0-9]/gi,'_').toLowerCase();
+  const ts   = new Date().toISOString().slice(0,10);
+  const fn   = `${name}_${ts}.md`;
+  const blob = new Blob([txt],{type:'text/markdown;charset=utf-8'});
+  const a    = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = fn; a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Sparar ' + fn);
+}
+
+function toggleMdView() {
+  mdViewMode = !mdViewMode;
+  const btn  = document.getElementById('mdViewBtn');
+  const area = document.getElementById('mdOut');
+  const prev = document.getElementById('mdPreview');
+  if (mdViewMode) {
+    renderMdPreview();
+    area.style.display = 'none';
+    prev.classList.add('visible');
+    btn.textContent = '✏ Redigera';
+  } else {
+    area.style.display = 'block';
+    prev.classList.remove('visible');
+    btn.textContent = '👁 Förhandsgranska';
+  }
+}
+
+function renderMdPreview() {
+  const raw  = document.getElementById('mdOut').value;
+  document.getElementById('mdPreview').innerHTML = markdownToHtml(raw);
+}
+
+// ═══════════════════════════════════════════════════════════
+// Clear chat
+// ═══════════════════════════════════════════════════════════
+async function clearChat() {
+  if (!activePb) return;
+  if (!confirm('Rensa chatthistoriken?')) return;
+  const hist = await txGetIndex('chatHistory','pbId',activePb.id);
+  for (const h of hist) await txDelete('chatHistory', h.id);
+  chatMsgs = [];
+  renderChat();
+  toast('Chatt rensad');
+}
+
+// ═══════════════════════════════════════════════════════════
+// LLM Settings
+// ═══════════════════════════════════════════════════════════
+function buildLLMSettingsFromForm() {
+  const provider = document.querySelector('.prov-btn.on')?.dataset.p || llmSettings.provider;
+  return {
+    id:'default', provider,
+    apiKey:    document.getElementById('llmApiKey').value.trim(),
+    baseUrl:   document.getElementById('llmBaseUrl').value.trim(),
+    model:     document.getElementById('llmModel').value.trim(),
+    maxTokens: document.getElementById('llmMaxTokens').value,
+    temperature: document.getElementById('llmTemp').value,
+  };
+}
+
+async function saveLLM() {
+  const settings = buildLLMSettingsFromForm();
+  if (!settings.provider) { toast('Välj en provider','err'); return; }
+  llmSettings = settings;
+  await txPut('llmSettings', settings);
+  updateProvBar();
+  closeLLMModal();
+  toast('LLM-inställningar sparade ✓');
+}
+
+function updateProvBar() {
+  const s = llmSettings;
+  const dot  = document.getElementById('provDot');
+  const name = document.getElementById('provName');
+  const model= document.getElementById('provModel');
+  if (s.provider) {
+    dot.className  = 'status-dot ok';
+    name.textContent = s.provider.charAt(0).toUpperCase() + s.provider.slice(1);
+    model.textContent = s.model || '';
+    // Update header badges
+    document.querySelectorAll('.prov-badge').forEach(b => {
+      b.classList.toggle('active', b.dataset.p === s.provider);
+    });
+  } else {
+    dot.className  = 'status-dot';
+    name.textContent = 'Ingen LLM konfigurerad — klicka ⚙';
+    model.textContent = '';
+  }
+}
+
+function selectProv(p) {
+  document.querySelectorAll('.prov-btn').forEach(b => b.classList.toggle('on', b.dataset.p===p));
+  const isLocal = p==='ollama'||p==='lmstudio';
+  document.getElementById('sec-apikey').classList.toggle('visible', !isLocal);
+  document.getElementById('sec-local').classList.toggle('visible', isLocal);
+  // Model hints
+  const hints = {
+    claude:'claude-sonnet-4-6 / claude-opus-4-6',
+    openai:'gpt-4o / gpt-4o-mini',
+    gemini:'gemini-2.0-flash / gemini-1.5-pro',
+    ollama:'llama3.1 / mistral / phi3',
+    lmstudio:'Modellnamn från LM Studio (eller lämna tomt)',
+  };
+  document.getElementById('modelHint').textContent = 'Förslag: ' + (hints[p]||'');
+  // Defaults for base url
+  if (p==='ollama' && !document.getElementById('llmBaseUrl').value) document.getElementById('llmBaseUrl').value='http://localhost:11434';
+  if (p==='lmstudio' && !document.getElementById('llmBaseUrl').value) document.getElementById('llmBaseUrl').value='http://localhost:1234';
+}
+
+// ═══════════════════════════════════════════════════════════
+// Modal helpers
+// ═══════════════════════════════════════════════════════════
+function openPbModal() {
+  document.getElementById('pbEditId').value = '';
+  document.getElementById('pbTitle').value  = '';
+  document.getElementById('pbContent').value= '';
+  document.getElementById('pbVars').value   = '';
+  document.getElementById('pbMdHeader').value = '';
+  document.getElementById('pbCat').value    = 'general';
+  document.getElementById('pbModalTitle').textContent = '📖 Ny PromptBook';
+  document.getElementById('pbModal').classList.add('open');
+  setTimeout(()=>document.getElementById('pbTitle').focus(),100);
+}
+function closePbModal() { document.getElementById('pbModal').classList.remove('open'); }
+
+async function openLLMModal() {
+  const s = llmSettings;
+  if (s.provider) {
+    selectProv(s.provider);
+    document.getElementById('llmApiKey').value    = s.apiKey||'';
+    document.getElementById('llmBaseUrl').value   = s.baseUrl||'';
+    document.getElementById('llmModel').value     = s.model||'';
+    document.getElementById('llmMaxTokens').value = s.maxTokens||4000;
+    document.getElementById('llmTemp').value      = s.temperature||0.7;
+    document.getElementById('tempVal').textContent = s.temperature||0.7;
+  } else {
+    selectProv('claude');
+  }
+  document.getElementById('llmTestResult').textContent = '';
+  document.getElementById('llmModal').classList.add('open');
+}
+function closeLLMModal() { document.getElementById('llmModal').classList.remove('open'); }
+
+// Close on backdrop click
+['pbModal','llmModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    if (e.target.id === id) e.target.classList.remove('open');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// Markdown formatter (simple)
+// ═══════════════════════════════════════════════════════════
+function formatMd(text) {
+  return markdownToHtml(text);
+}
+
+function markdownToHtml(md) {
+  if (!md) return '';
+  let h = esc(md);
+  // code blocks
+  h = h.replace(/```[\w]*\n?([\s\S]*?)```/g, (_,c)=>`<pre><code>${c}</code></pre>`);
+  // inline code
+  h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // headers
+  h = h.replace(/^######\s+(.+)$/gm,'<h6>$1</h6>');
+  h = h.replace(/^#####\s+(.+)$/gm,'<h5>$1</h5>');
+  h = h.replace(/^####\s+(.+)$/gm,'<h4>$1</h4>');
+  h = h.replace(/^###\s+(.+)$/gm,'<h3>$1</h3>');
+  h = h.replace(/^##\s+(.+)$/gm,'<h2>$1</h2>');
+  h = h.replace(/^#\s+(.+)$/gm,'<h1>$1</h1>');
+  // bold/italic
+  h = h.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>');
+  h = h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  h = h.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  h = h.replace(/__(.+?)__/g,'<strong>$1</strong>');
+  h = h.replace(/_(.+?)_/g,'<em>$1</em>');
+  // strikethrough
+  h = h.replace(/~~(.+?)~~/g,'<del>$1</del>');
+  // horizontal rule
+  h = h.replace(/^---+$/gm,'<hr>');
+  // blockquote
+  h = h.replace(/^&gt;\s?(.+)$/gm,'<blockquote>$1</blockquote>');
+  // unordered list
+  h = h.replace(/^[-*+]\s+(.+)$/gm,'<li>$1</li>');
+  h = h.replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>');
+  // ordered list
+  h = h.replace(/^\d+\.\s+(.+)$/gm,'<li>$1</li>');
+  // links
+  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank">$1</a>');
+  // paragraphs
+  h = h.replace(/\n\n+/g,'</p><p>');
+  h = h.replace(/\n/g,'<br>');
+  h = '<p>' + h + '</p>';
+  h = h.replace(/<p>(<h[1-6]>)/g,'$1');
+  h = h.replace(/(<\/h[1-6]>)<\/p>/g,'$1');
+  h = h.replace(/<p>(<ul>)/g,'$1');
+  h = h.replace(/(<\/ul>)<\/p>/g,'$1');
+  h = h.replace(/<p>(<pre>)/g,'$1');
+  h = h.replace(/(<\/pre>)<\/p>/g,'$1');
+  h = h.replace(/<p>(<hr>)<\/p>/g,'$1');
+  h = h.replace(/<p>(<blockquote>)/g,'$1');
+  h = h.replace(/(<\/blockquote>)<\/p>/g,'$1');
+  return h;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Utils
+// ═══════════════════════════════════════════════════════════
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type==='err'?'var(--err)':type==='warn'?'var(--warn)':'var(--tx)';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',next);
+  localStorage.setItem('gs-theme',next);
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') {
+    closePbModal(); closeLLMModal();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// Start
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

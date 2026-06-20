@@ -4,7 +4,9 @@
 
 ## Skill Canvas
 
-En PHP-baserad whiteboard-app för team som vill paketera kompetens till tydliga, visuella skills. Bygg och redigera storyboards med Markdown, Mermaid-diagram, Draw.io-ritningar, **BPMN-processdiagram**, bilder (inkl. inbyggd målare), labels, annotations (text+pil), notes, **HTML/iframe** (extern webb eller egen `.html`-fil i paketet) och **relationer mellan moduler**, och exportera allt som en .zip med SKILL.md och YAML frontmatter.
+En PHP-baserad whiteboard-app för team som vill paketera kompetens till tydliga, visuella skills. Bygg och redigera storyboards med Markdown, Mermaid-diagram, **ArchiMate 4 (ArchiCode)**, Draw.io-ritningar, **BPMN-processdiagram**, bilder (inkl. inbyggd målare), labels, annotations (text+pil), notes, **HTML/iframe**, **PromptBook** (chattkort med LLM) och **relationer mellan moduler**, och exportera allt som en .zip med SKILL.md och YAML frontmatter.
+
+> Se [CHANGELOG.md](CHANGELOG.md) för senaste ändringar.
 
 Kompatibel med Claude Skills-formatet — name och description är obligatoriska. name används som canvas-titel i verktygsraden (ingen separat title i metadata).
 
@@ -41,7 +43,7 @@ Se CONTRIBUTING.md för riktlinjer kring issues, pull requests och rekommenderat
 1. Kör appen via PHP (t.ex. `php -S localhost:8080` i projektroten) och öppna `index.php`
 2. **Öppna** en befintlig `.zip` eller `.skill`-fil (samma format), dra den till fönstret, eller välj **Ny tom canvas** via öppna-menyn
 3. Fyll i skill-metadata (`name`, `description`, …) vid ny canvas — standardvärden fylls i automatiskt (standardnamn t.ex. `my-skill-2026-05-31` med dagens datum)
-4. Lägg till noder via toolbaren längst ner. **⋯** (längst till höger) innehåller **HTML / iframe** och **BPMN**; fler moduler (Prompt book, ArchiMate) kommer snart. **Draw.io** har egen knapp i verktygsraden. Koppla moduler med **länk-ikonen** i handtaget.
+4. Lägg till noder via toolbaren längst ner. **⋯** (längst till höger) innehåller **HTML / iframe**, **BPMN**, **PromptBook** och **ArchiCode**. **Draw.io** och **Mermaid** har egna knappar. Koppla moduler med **länk-ikonen** i handtaget.
 5. **Exportera** som `.zip` (eller `Ctrl+S`) — eller som `.png` för en bild av canvasen
 
 Körs som en PHP-webbapp och gör det enkelt att ta en idé till en delbar, visuellt förankrad skill.
@@ -81,14 +83,14 @@ Ny canvas får som standard `name` med datum-suffix (`my-skill-YYYY-MM-DD`). Sty
 | Centrera allt | **Centrera** |
 | Fokusera en nod | Dubbelklick på handtaget, eller fokus-ikonen (ej Notes) |
 | Markera nod | Klick |
-| Flytta nod | Dra i handtaget (Markdown, Mermaid, Bild, Draw.io, BPMN, HTML, Annotation) — eller direkt på ytan (Label, Note) |
+| Flytta nod | Dra i handtaget (Markdown, Mermaid, ArchiCode, Bild, Draw.io, BPMN, HTML, PromptBook, Annotation) — eller direkt på ytan (Label, Note) |
 | Ändra storlek | Resize-hörn nere till höger (Note, Annotation, HTML: bredd och höjd; övriga: bredd) |
 | Kontextmeny | Högerklick på nod — inkl. **Spara som .png** (enskilt kort) och **Flytta längst fram** (z-ordning på canvas och exportordning) |
 | Ta bort markerad | `Delete` / `Backspace` |
 | Duplicera markerad | `Ctrl+D` |
 | Spara .zip | `Ctrl+S` |
 
-Handtaget på Markdown, Mermaid, Bild, Draw.io, BPMN och HTML ligger ovanför kortet (trycker inte ner innehållet vid hover). En osynlig hover-brygga gör det lättare att nå handtaget utan att träffa noden.
+Handtaget på Markdown, Mermaid, ArchiCode, Bild, Draw.io, BPMN, HTML och PromptBook ligger ovanför kortet (trycker inte ner innehållet vid hover). En osynlig hover-brygga gör det lättare att nå handtaget utan att träffa noden.
 
 På **Markdown-kort** med fast höjd scrollar mushjulet innehållet i kortet i stället för att zooma canvas.
 
@@ -105,8 +107,16 @@ Full Markdown-support: rubriker, listor, tabeller, kodblock, citat, länkar. Inn
 ### Mermaid
 Diagram med [Mermaid](https://mermaid.js.org/)-syntax. Kod sparas som `.mmd` under `diagrams/`.
 
-- **Mermaid-editor** — knapp nere till vänster i redigeringsmodalen öppnar inbyggd fullskärmseditor (`html/mermaid-editor.php`): Monaco med Mermaid-syntax, live-förhandsvisning, exempeldiagram (flöde, sekvens, Gantt, C4 m.m.), zoom/pan, kopiera kod, PNG/SVG-export. Tema följer Skill Canvas (ljust/mörkt).
+- **Mermaid-editor** — knapp nere till vänster i redigeringsmodalen öppnar inbyggd fullskärmseditor (`html/mermaid-editor.php`): Monaco med Mermaid-syntax, live-förhandsvisning, exempeldiagram (flöde, sekvens, Gantt, C4 m.m.), **ArchiMate 4 (C260)**-exempel i egen dropdown (domänöversikt + sju domäner, [referens](https://archimate.yllemo.com/archimate-mermaid.html)), zoom/pan, kopiera kod, PNG/SVG-export. Tema följer Skill Canvas (ljust/mörkt).
 - Headern länkar till [mermaid.js.org](https://mermaid.js.org/) och [mermaid.live](https://mermaid.live/) (även i embed-läge från canvas).
+
+### ArchiCode
+ArchiMate 4-diagram med [ArchiCode](https://github.com/yllemo/ArchiCode)-syntax. Källkod sparas som `.ac` under `diagrams/`.
+
+- Lägg till via **⋯ → ArchiCode**
+- **Kortet** renderar diagrammet live från källkoden (samma motor som editorn), inpassat så att hela diagrammet syns utan klippning; ikoner följer med
+- **ArchiCode-editor** — knapp nere till vänster i redigeringsmodalen, eller öppnas direkt efter skapande: fullskärm (`html/archicode.php`) med Monaco, live diagram, exempel-dropdown och **Spara till kort**
+- Bibliotek (`archicode.js` / `archicode.css`) laddas från CDN vid behov
 
 ### Draw.io
 Ritningar via inbäddad [diagrams.net](https://embed.diagrams.net/) i fullskärm. XML sparas som `.drawio` under `diagrams/`; kortet visar en PNG-förhandsvisning.
@@ -186,6 +196,14 @@ Gemensamt för båda: höjd och kortbredd på canvas, samt live **iframe-kod** (
   iframeWidth: 100%
 ```
 
+### PromptBook
+Chattkort med en konfigurerbar prompt — anslut till OpenAI, LM Studio eller Ollama. LLM-inställningar sparas i webbläsarens `localStorage` (exporteras inte i zip); nodens prompt och chatt sparas i `promptbook/{id}.json`.
+
+- Lägg till via **⋯ → PromptBook**
+- **Kortet** visar chattgränssnittet (iframe); LLM visas i nodhandtaget
+- **Redigera** öppnar fullskärmseditor (`html/promptbook.php`) för systemprompt, variabler och inställningar
+- Lokala LLM-tjänster (Ollama m.m.) kan kräva proxy eller LAN-URL — se `api/llm-proxy.php`
+
 ---
 
 ## Mobila enheter
@@ -200,7 +218,7 @@ Gränssnittet är anpassat för telefon och surfplatta utan att ändra canvas-mo
 - **Header och lägg-till-panel** — horisontell scroll; ikoner utan text på smala skärmar
 - **Modaler** — fullskärm på mobil; metadata-fält i en kolumn
 
-Fullskärmseditorer (Markdown, Mermaid, Draw.io, BPMN, målare) har redan `viewport` och egna responsiva verktygsrader. Diagram-editorerna visar diskret **credit** med länk till respektive open source-projekt i headern.
+Fullskärmseditorer (Markdown, Mermaid, ArchiCode, Draw.io, BPMN, PromptBook, målare) har redan `viewport` och egna responsiva verktygsrader. Diagram-editorerna visar diskret **credit** med länk till respektive open source-projekt i headern.
 
 ### Inställningar
 
@@ -227,9 +245,11 @@ Flera moduler använder overlay med iframe och `postMessage`-protokoll:
 |-------|-----|---------------------|
 | Markdown | `html/markdown.php` | `sc-markdown-ready`, `sc-markdown-init`, `sc-markdown-save` |
 | Mermaid | `html/mermaid-editor.php` | `sc-mermaid-ready`, `sc-mermaid-init`, `sc-mermaid-save` |
+| ArchiCode | `html/archicode.php` | `sc-archicode-ready`, `sc-archicode-init`, `sc-archicode-save` |
 | Draw.io | `html/drawio-skill-editor.php` | `sc-drawio-ready`, `sc-drawio-init`, `sc-drawio-save` |
 | BPMN | `html/bpmn-skill-editor.php` | `sc-bpmn-ready`, `sc-bpmn-init`, `sc-bpmn-save` |
 | Bild (målare) | `html/paint-skill-editor.php` | `sc-paint-ready`, `sc-paint-init`, `sc-paint-save` |
+| PromptBook | `html/promptbook.php` | `sc-promptbook-ready`, `sc-promptbook-init`, `sc-promptbook-save` |
 
 DOCX-import använder `html/docx-to-skill.php` och `js/docx-import.js` med samma overlay-mönster.
 
@@ -257,11 +277,13 @@ skill-canvas/
 │   ├── app.php            ← apptitel, språk, tema, favicon
 │   ├── defaults.php       ← standardvärden för skill, canvas, nodtyper, moduler
 │   ├── settings.php       ← app-inställningar (schema, standardvärden)
-│   └── add-menu.php       ← ⋯-menyn: HTML/iframe, BPMN; Prompt book, ArchiMate m.fl.
+│   └── add-menu.php       ← ⋯-menyn: HTML, BPMN, PromptBook, ArchiCode
 ├── includes/              ← bootstrap, modul-laddare, settings/add-menu, head-meta, hjälpfunktioner
 ├── modules/               ← PHP: modal-HTML per nodtyp
 │   ├── markdown.php
 │   ├── mermaid.php
+│   ├── archicode.php
+│   ├── promptbook.php
 │   ├── bild.php
 │   ├── drawio.php
 │   ├── bpmn.php
@@ -277,15 +299,20 @@ skill-canvas/
 │   ├── connections.js     ← relationer mellan moduler (SVG)
 │   ├── docx-import.js
 │   └── modules/           ← JS: add/edit/render per nodtyp
-├── api/modal.php          ← returnerar modal-HTML som JSON
+├── api/
+│   ├── modal.php          ← returnerar modal-HTML som JSON
+│   └── llm-proxy.php      ← proxy för lokala LLM (PromptBook)
 └── html/
     ├── markdown.php       ← Monaco fullskärm
-    ├── mermaid-editor.php ← Mermaid Monaco + live preview
+    ├── mermaid-editor.php ← Mermaid Monaco + live preview + AM4-exempel
+    ├── archicode.php      ← ArchiCode Monaco + live diagram
+    ├── promptbook.php     ← PromptBook chatt + inställningar
     ├── drawio-skill-editor.php
     ├── bpmn-skill-editor.php
     ├── bpmn-skill-editor.html ← fristående BPMN → SKILL.md / ZIP
     ├── paint-skill-editor.php
     ├── docx-to-skill.php
+    ├── archicode.html     ← fristående ArchiCode-demo (legacy)
     ├── js/
     │   ├── drawio-embed.js
     │   ├── bpmn-embed.js
@@ -305,7 +332,7 @@ Nya nodtyper läggs till som par av `modules/<slug>.php` + `js/modules/<slug>.js
 
 Varje `.zip` eller `.skill` (samma format) bör innehålla `SKILL.md` med YAML frontmatter och en `nodes`-array för full Skill Canvas-layout. Övriga filer refereras via `file`- (och vid Draw.io/BPMN även `previewFile`-) fält i noderna.
 
-**Import:** Om frontmatter saknas eller inte har `nodes` importeras filen ändå — `SKILL.md` och övriga `.md` blir markdown-noder, `.mmd` mermaid, `.drawio` draw.io, `.bpmn` BPMN (med matchande `.png` som förhandsbild om den finns), `.html` html-noder (intern fil), bilder blir bild-noder. Metadata från giltig YAML (namn, beskrivning m.m.) används när den går att läsa.
+**Import:** Om frontmatter saknas eller inte har `nodes` importeras filen ändå — `SKILL.md` och övriga `.md` blir markdown-noder, `.mmd` mermaid, `.ac` archicode, `.drawio` draw.io, `.bpmn` BPMN (med matchande `.png` som förhandsbild om den finns), `.html` html-noder (intern fil), `.json` under `promptbook/` promptbook-noder, bilder blir bild-noder. Metadata från giltig YAML (namn, beskrivning m.m.) används när den går att läsa.
 
 ### Metadata
 
@@ -374,11 +401,11 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
 | Fält | Typ | Beskrivning |
 |------|-----|-------------|
 | `id` | sträng | Unikt ID, genereras automatiskt |
-| `type` | sträng | `markdown` \| `mermaid` \| `drawio` \| `bpmn` \| `image` \| `label` \| `annotation` \| `note` \| `html` |
+| `type` | sträng | `markdown` \| `mermaid` \| `archicode` \| `drawio` \| `bpmn` \| `image` \| `label` \| `annotation` \| `note` \| `html` \| `promptbook` |
 | `x`, `y` | heltal | Position i px |
 | `width` | heltal | Bredd i px |
 | `height` | heltal | Höjd i px (Note, Annotation, HTML; Markdown vid fast höjd) |
-| `title` | sträng | Valfri rubrik i nodhandtaget (Markdown, Mermaid, Bild, Draw.io, BPMN, HTML) |
+| `title` | sträng | Valfri rubrik i nodhandtaget (Markdown, Mermaid, ArchiCode, Bild, Draw.io, BPMN, HTML, PromptBook) |
 
 ### Markdown
 
@@ -402,6 +429,18 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
   width: 500
   title: "Systemlandskap"
   file: diagrams/n002.mmd
+```
+
+### ArchiCode
+
+```yaml
+- id: n011
+  type: archicode
+  x: 100
+  y: 180
+  width: 520
+  title: "Orderflöde"
+  file: diagrams/n011.ac
 ```
 
 ### Draw.io
@@ -526,10 +565,13 @@ my-skill-2026-05-31.zip
 │   └── min-sida.html
 ├── diagrams/
 │   ├── n002.mmd
+│   ├── n011.ac
 │   ├── n007.drawio
 │   ├── n007.png
 │   ├── n010.bpmn
 │   └── n010.png
+├── promptbook/
+│   └── n012.json
 └── images/
     └── 2026-05-31_14.30.45.png
 ```
@@ -558,7 +600,7 @@ Apptitel, språk, favicon och SEO-meta (`description`, `keywords`, författare):
 
 Ljust och mörkt tema. Favicon: `favicon.svg` (konfigurerbar i `config/app.php`).
 
-CDN-bibliotek: Mermaid 11, marked, JSZip, js-yaml, html2canvas (PNG-export), Monaco Editor (markdown fullskärm), bpmn-js 18 (BPMN fullskärm).
+CDN-bibliotek: Mermaid 11, marked, JSZip, js-yaml, html2canvas (PNG-export), Monaco Editor (markdown fullskärm), bpmn-js 18 (BPMN fullskärm), ArchiCode ([yllemo/ArchiCode](https://github.com/yllemo/ArchiCode) via jsDelivr).
 
 Externa tjänster vid redigering: [diagrams.net](https://www.diagrams.net/) (Draw.io embed), [bpmn.io](https://bpmn.io/) (bpmn-js via CDN). Paint-editorn och BPMN/Draw.io-sparning sker lokalt i zip-minnet; Draw.io embed kräver internet.
 

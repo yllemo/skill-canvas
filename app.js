@@ -121,6 +121,11 @@ cw.addEventListener('wheel',e=>{
       return;
     }
   }
+  const pbFrame=e.target.closest('.promptbook-embed-wrap iframe,.promptbook-embed-frame');
+  if(pbFrame){
+    const pbNode=pbFrame.closest('.node.promptbook');
+    if(pbNode?.classList.contains('selected'))return;
+  }
   e.preventDefault();
   const r=cw.getBoundingClientRect();
   zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY<0?1.1:.909);
@@ -165,12 +170,15 @@ function onPointerMove(e){
   }
   if(resizeNode){
     const dx=(e.clientX-resizeSX)/scale, dy=(e.clientY-resizeSY)/scale;
-    if(resizeNode.type==='note'||resizeNode.type==='annotation'||resizeNode.type==='html'){
+    if(resizeNode.type==='note'||resizeNode.type==='annotation'||resizeNode.type==='html'||resizeNode.type==='promptbook'){
       const defs=window.SC_DEFAULTS?.nodes?.[resizeNode.type]||{};
       let minW=defs.minWidth||140, maxW=defs.maxWidth||480;
       let minH=defs.minHeight||120, maxH=defs.maxHeight||480;
       if(resizeNode.type==='html'){
         minW=defs.minWidth||200; maxW=defs.maxWidth||1400; maxH=defs.maxHeight||1200;
+      }
+      if(resizeNode.type==='promptbook'){
+        minW=defs.minWidth||320; maxW=defs.maxWidth||1400; maxH=defs.maxHeight||900;
       }
       const nw=Math.max(minW,Math.min(maxW,Math.round(resizeOW+dx)));
       const nh=Math.max(minH,Math.min(maxH,Math.round(resizeOH+dy)));
@@ -181,6 +189,11 @@ function onPointerMove(e){
         const body=resizeNode._el.querySelector('.node-body');
         if(body)body.style.height=nh+'px';
         const iframe=resizeNode._el.querySelector('.html-embed-frame');
+        if(iframe)iframe.style.height=nh+'px';
+      }else if(resizeNode.type==='promptbook'){
+        const body=resizeNode._el.querySelector('.node-body');
+        if(body)body.style.height=nh+'px';
+        const iframe=resizeNode._el.querySelector('.promptbook-embed-frame');
         if(iframe)iframe.style.height=nh+'px';
       }else{
         resizeNode._el.style.height=nh+'px';
@@ -335,10 +348,12 @@ document.querySelectorAll('[data-open]').forEach(btn=>{
   btn.onclick=()=>{
     openWrap.classList.remove('open');
     if(btn.dataset.open==='zip')openZipPicker();
+    else if(btn.dataset.open==='url')openUrlModal();
     else newCanvas();
   };
 });
 document.getElementById('btn-open-dz').onclick=openZipPicker;
+document.getElementById('btn-open-url-dz')?.addEventListener('click',()=>openUrlModal());
 fileInput.onchange=e=>{if(e.target.files[0])loadZip(e.target.files[0]);e.target.value=''};
 
 // Drag-drop anywhere
@@ -413,48 +428,219 @@ async function applyCanvasFromSkill(meta, options={}){
   applyTf();
 }
 
+async function loadArchiveFromBuffer(arrayBuffer,fileName){
+  const zip=await JSZip.loadAsync(arrayBuffer);
+  files={};
+  const promises=[];
+  zip.forEach((path,entry)=>{
+    if(entry.dir)return;
+    const norm=SkillImport.normalizeZipPath(path);
+    if(SkillImport.shouldSkipPath(norm))return;
+    promises.push(entry.async('uint8array').then(d=>{files[norm]=d}));
+  });
+  await Promise.all(promises);
+
+  const skillPath=SkillImport.findSkillMdPath(files);
+  let skillRaw=null;
+  if(skillPath)skillRaw=await readTextFile(skillPath);
+
+  if(skillRaw){
+    const parsed=SkillImport.tryParseSkillYaml(skillRaw);
+    if(parsed.ok&&SkillImport.isSkillCanvasFormat(parsed.meta)){
+      await applyCanvasFromSkill(parsed.meta);
+      showCanvas();
+      setTimeout(fitView,250);
+      showToast('Öppnad: '+fileName);
+      return;
+    }
+  }
+
+  const imported=SkillImport.buildImportFromArchive(files,skillRaw,fileName);
+  await applyCanvasFromSkill(imported.meta,{nodes:imported.nodes,edges:imported.edges});
+  showCanvas();
+  setTimeout(fitView,250);
+  showToast('Importerad: '+fileName);
+}
+
 async function loadZip(file){
   if(!isArchiveFile(file)){
     showToast('Välj en .zip- eller .skill-fil',4000);
-    return;
+    return false;
   }
   loading.classList.add('on');
   try{
-    const zip=await JSZip.loadAsync(file);
-    files={};
-    const promises=[];
-    zip.forEach((path,entry)=>{
-      if(entry.dir)return;
-      const norm=SkillImport.normalizeZipPath(path);
-      if(SkillImport.shouldSkipPath(norm))return;
-      promises.push(entry.async('uint8array').then(d=>{files[norm]=d}));
-    });
-    await Promise.all(promises);
-
-    const skillPath=SkillImport.findSkillMdPath(files);
-    let skillRaw=null;
-    if(skillPath)skillRaw=await readTextFile(skillPath);
-
-    if(skillRaw){
-      const parsed=SkillImport.tryParseSkillYaml(skillRaw);
-      if(parsed.ok&&SkillImport.isSkillCanvasFormat(parsed.meta)){
-        await applyCanvasFromSkill(parsed.meta);
-        showCanvas();
-        setTimeout(fitView,250);
-        showToast('Öppnad: '+file.name);
-        return;
-      }
-    }
-
-    const imported=SkillImport.buildImportFromArchive(files,skillRaw,file.name);
-    await applyCanvasFromSkill(imported.meta,{nodes:imported.nodes,edges:imported.edges});
-    showCanvas();
-    setTimeout(fitView,250);
-    showToast('Importerad: '+file.name);
+    await loadArchiveFromBuffer(await file.arrayBuffer(),file.name);
+    return true;
   }catch(err){
     console.error(err);showToast('Fel: '+err.message,4000);
+    return false;
   }finally{loading.classList.remove('on')}
 }
+
+async function loadArchiveFromUrl(urlInput){
+  const parsed=SkillImport.parseRemoteArchiveUrl(urlInput);
+  if(!parsed.ok){
+    showToast(parsed.error,4000);
+    return false;
+  }
+  loading.classList.add('on');
+  try{
+    const buf=await fetchArchiveBuffer(parsed.url);
+    const fileName=SkillImport.fileNameFromUrl(parsed.url);
+    await loadArchiveFromBuffer(buf,fileName);
+    return true;
+  }catch(err){
+    console.error(err);
+    showToast(err?.message||'Kunde inte hämta filen',5000);
+    return false;
+  }finally{loading.classList.remove('on')}
+}
+
+function archiveProxyEndpoint(){
+  const base=window.SC_APP?.basePath??'';
+  return base+'api/fetch-archive.php';
+}
+
+async function fetchArchiveBuffer(remoteUrl){
+  async function readBuffer(res){
+    if(!res.ok){
+      const ct=res.headers.get('content-type')||'';
+      if(ct.includes('application/json')){
+        const data=await res.json().catch(()=>null);
+        throw new Error(data?.error||('HTTP '+res.status));
+      }
+      throw new Error('HTTP '+res.status);
+    }
+    return res.arrayBuffer();
+  }
+
+  function isCrossOrigin(url){
+    try{return new URL(url).origin!==location.origin}catch{return true}
+  }
+
+  if(isCrossOrigin(remoteUrl)){
+    const proxyUrl=archiveProxyEndpoint()+'?url='+encodeURIComponent(remoteUrl);
+    try{
+      return await readBuffer(await fetch(proxyUrl));
+    }catch(err){
+      if(err?.name==='TypeError'){
+        throw new Error('Kunde inte hämta filen. Kör via PHP-servern (api/fetch-archive.php) eller aktivera CORS på källan.');
+      }
+      throw err;
+    }
+  }
+
+  try{
+    return await readBuffer(await fetch(remoteUrl));
+  }catch(err){
+    if(err?.name!=='TypeError')throw err;
+    const proxyUrl=archiveProxyEndpoint()+'?url='+encodeURIComponent(remoteUrl);
+    return await readBuffer(await fetch(proxyUrl));
+  }
+}
+
+function getRemoteFileParam(){
+  const params=new URLSearchParams(window.location.search);
+  const raw=params.get('file')||params.get('url')||params.get('skill');
+  return raw?String(raw).trim():'';
+}
+
+function clearRemoteFileParam(){
+  const url=new URL(window.location.href);
+  ['file','url','skill'].forEach(k=>url.searchParams.delete(k));
+  const qs=url.searchParams.toString();
+  history.replaceState(null,'',url.pathname+(qs?'?'+qs:'')+url.hash);
+}
+
+function shareArchivePageUrl(remoteFileUrl){
+  const page=new URL(window.location.href);
+  page.search='';
+  page.hash='';
+  if(remoteFileUrl)page.searchParams.set('file',String(remoteFileUrl).trim());
+  return page.href;
+}
+
+function updateUrlShareLink(){
+  const input=document.getElementById('url-open-input');
+  const link=document.getElementById('url-open-share');
+  if(!input||!link)return;
+
+  const remote=String(input.value??'').trim();
+  const parsed=remote?SkillImport.parseRemoteArchiveUrl(remote):{ok:false};
+
+  if(parsed.ok){
+    const shareUrl=shareArchivePageUrl(parsed.url);
+    link.href=shareUrl;
+    link.textContent=shareUrl;
+    link.classList.remove('is-disabled');
+    link.removeAttribute('aria-disabled');
+    link.title='Öppna delbar länk i ny flik';
+    return;
+  }
+
+  const placeholder=shareArchivePageUrl('https://…/skill.skill');
+  link.href='#';
+  link.textContent=remote?shareArchivePageUrl(remote):placeholder;
+  link.classList.add('is-disabled');
+  link.setAttribute('aria-disabled','true');
+  link.title=remote?'Ogiltig URL — delbar länk blir klickbar när adressen är giltig':'Fyll i en giltig .zip- eller .skill-URL ovan';
+}
+
+function openUrlModal(prefill){
+  const bg=document.getElementById('url-open-bg');
+  const input=document.getElementById('url-open-input');
+  if(!bg||!input)return;
+  input.value=typeof prefill==='string'?prefill.trim():'';
+  updateUrlShareLink();
+  bg.classList.add('open');
+  bg.setAttribute('aria-hidden','false');
+  setTimeout(()=>input.focus(),50);
+}
+
+function closeUrlModal(){
+  const bg=document.getElementById('url-open-bg');
+  if(!bg)return;
+  bg.classList.remove('open');
+  bg.setAttribute('aria-hidden','true');
+}
+
+async function submitUrlModal(){
+  const input=document.getElementById('url-open-input');
+  const url=String(input?.value??'').trim();
+  if(!url){
+    showToast('Ange en URL',3000);
+    input?.focus();
+    return;
+  }
+  closeUrlModal();
+  await loadArchiveFromUrl(url);
+}
+
+function wireUrlOpenModal(){
+  document.getElementById('url-open-close')?.addEventListener('click',closeUrlModal);
+  document.getElementById('url-open-cancel')?.addEventListener('click',closeUrlModal);
+  document.getElementById('url-open-submit')?.addEventListener('click',submitUrlModal);
+  document.getElementById('url-open-input')?.addEventListener('input',updateUrlShareLink);
+  document.getElementById('url-open-share')?.addEventListener('click',e=>{
+    if(e.currentTarget?.classList.contains('is-disabled'))e.preventDefault();
+  });
+  document.getElementById('url-open-input')?.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();submitUrlModal()}
+    if(e.key==='Escape'){e.preventDefault();closeUrlModal()}
+  });
+  document.getElementById('url-open-bg')?.addEventListener('click',e=>{
+    if(e.target?.id==='url-open-bg')closeUrlModal();
+  });
+}
+
+async function initRemoteArchiveLoad(){
+  const remote=getRemoteFileParam();
+  if(!remote)return;
+  clearRemoteFileParam();
+  await loadArchiveFromUrl(remote);
+}
+
+wireUrlOpenModal();
 
 // ════════════════════════════════════════════════════════════
 //  PARSE SKILL.md (intern)
@@ -512,7 +698,7 @@ async function buildNodeEl(node){
   // body
   const body=document.createElement('div');body.className='node-body';
   if(node.type==='markdown'||node.type==='mermaid'||node.type==='image'
-    ||node.type==='drawio'||node.type==='bpmn'||node.type==='html'||node.type==='annotation'){
+    ||node.type==='drawio'||node.type==='bpmn'||node.type==='html'||node.type==='promptbook'||node.type==='archicode'||node.type==='annotation'){
     body.setAttribute('contenteditable','false');
     body.setAttribute('aria-readonly','true');
   }
@@ -584,6 +770,67 @@ function trimEmptyLeadingBlocks(container){
   }
 }
 
+const MD_FRONTMATTER_RE=/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
+
+function splitMarkdownFrontmatter(raw){
+  const md=String(raw??'').trim();
+  const m=md.match(MD_FRONTMATTER_RE);
+  if(!m)return{meta:null,body:md};
+  let meta=null;
+  try{
+    const parsed=typeof jsyaml!=='undefined'?jsyaml.load(m[1]):null;
+    if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))meta=parsed;
+  }catch{/* keep meta null */}
+  return{meta,body:md.slice(m[0].length).trim(),rawYaml:m[1].trim()};
+}
+
+function formatMarkdownFrontmatterValue(value){
+  if(value==null||value==='')return'';
+  if(Array.isArray(value)){
+    if(!value.length)return'';
+    if(typeof value[0]==='object')return value.length+' poster';
+    return value.map(v=>String(v)).join(', ');
+  }
+  if(typeof value==='object'){
+    return typeof jsyaml!=='undefined'
+      ?jsyaml.dump(value,{lineWidth:72,noRefs:true}).trim()
+      :JSON.stringify(value,null,2);
+  }
+  return String(value).trim();
+}
+
+function renderMarkdownFrontmatter(meta,rawYaml){
+  const block=document.createElement('div');
+  block.className='md-frontmatter';
+  const title=document.createElement('div');
+  title.className='md-fm-title';
+  title.textContent='YAML frontmatter';
+  block.appendChild(title);
+
+  if(meta&&Object.keys(meta).length){
+    for(const[key,value]of Object.entries(meta)){
+      const text=formatMarkdownFrontmatterValue(value);
+      if(!text)continue;
+      const row=document.createElement('div');
+      row.className='md-fm-row';
+      const k=document.createElement('span');
+      k.className='md-fm-key';
+      k.textContent=key;
+      const v=document.createElement('span');
+      v.className='md-fm-val';
+      v.textContent=text;
+      row.append(k,v);
+      block.appendChild(row);
+    }
+  }else if(rawYaml){
+    const pre=document.createElement('pre');
+    pre.className='md-fm-raw';
+    pre.textContent=rawYaml;
+    block.appendChild(pre);
+  }
+  return block;
+}
+
 function parseMarkdownHeight(raw){
   const s=String(raw??'').trim();
   if(!s)return undefined;
@@ -631,12 +878,17 @@ async function renderNodeContent(node,body){
   if(type==='markdown'){
     let md=node.content||'';
     if(!md&&node.file){md=await readTextFile(node.file)}
+    const{meta,body:mdBody,rawYaml}=splitMarkdownFrontmatter(md);
     const div=document.createElement('div');div.className='md';
     div.setAttribute('contenteditable','false');
-    div.innerHTML=marked.parse(String(md).trim());
-    trimEmptyLeadingBlocks(div);
-    resolveMarkdownImages(div,node);
-    div.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noopener';a.tabIndex=-1});
+    if(meta||rawYaml)div.appendChild(renderMarkdownFrontmatter(meta,rawYaml));
+    const bodyWrap=document.createElement('div');
+    bodyWrap.className='md-content';
+    bodyWrap.innerHTML=marked.parse(mdBody||(!meta&&!rawYaml?String(md).trim():''));
+    trimEmptyLeadingBlocks(bodyWrap);
+    div.appendChild(bodyWrap);
+    resolveMarkdownImages(bodyWrap,node);
+    bodyWrap.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noopener';a.tabIndex=-1});
     div.querySelectorAll('input,textarea,select,button,[contenteditable]').forEach(el=>{
       el.removeAttribute('contenteditable');
       el.tabIndex=-1;
@@ -657,6 +909,11 @@ async function renderNodeContent(node,body){
       wrap.innerHTML=`<pre style="color:#d24723;font-size:12px;padding:8px;background:var(--bg-nav);border-radius:4px;">Mermaid-fel:\n${e.message}</pre>`;
     }
     body.appendChild(wrap);
+
+  }else if(type==='archicode'){
+    if(typeof ArchicodeModule!=='undefined'&&ArchicodeModule.renderContent){
+      await ArchicodeModule.renderContent(node,body);
+    }
 
   }else if(type==='image'){
     let src='';
@@ -713,6 +970,11 @@ async function renderNodeContent(node,body){
     if(typeof HtmlModule!=='undefined'&&HtmlModule.renderContent){
       await HtmlModule.renderContent(node,body);
     }
+
+  }else if(type==='promptbook'){
+    if(typeof PromptbookModule!=='undefined'&&PromptbookModule.renderContent){
+      await PromptbookModule.renderContent(node,body);
+    }
   }
 }
 
@@ -755,7 +1017,7 @@ function startResize(node,el,e){
   resizeNode=node;
   resizeSX=e.clientX;resizeSY=e.clientY;
   resizeOW=node.width||el.offsetWidth;
-  resizeOH=node.height||(node.type==='markdown'?markdownBodyHeight(node,el):(node.type==='html'?(nodeDefaultsHeight(node)||400):el.offsetHeight));
+  resizeOH=node.height||(node.type==='markdown'?markdownBodyHeight(node,el):(node.type==='html'||node.type==='promptbook'?(nodeDefaultsHeight(node)||400):el.offsetHeight));
 }
 function nodeDefaultsHeight(node){
   return window.SC_DEFAULTS?.nodes?.[node.type]?.height;
@@ -774,17 +1036,19 @@ window.attachNodeResize=attachNodeResize;
 function attachNodeEvents(node,el,handle,rz){
   const isLabel=node.type==='label';
   const readOnlyBody=node.type==='markdown'||node.type==='mermaid'||node.type==='image'
-    ||node.type==='drawio'||node.type==='bpmn'||node.type==='html'||node.type==='annotation';
+    ||node.type==='drawio'||node.type==='bpmn'||node.type==='html'||node.type==='promptbook'||node.type==='archicode'||node.type==='annotation';
   const body=el.querySelector('.node-body');
 
   function isSelectablePreviewTarget(target){
     if(node.type==='markdown')return !!target.closest('.md');
     if(node.type==='mermaid')return !!target.closest('.mermaid-wrap');
+    if(node.type==='archicode')return !!target.closest('.archicode-viewport,.archicode-placeholder');
     return false;
   }
 
   function blockReadOnlyFocus(e){
     if(node.type==='html'&&el.classList.contains('selected')&&e.target.closest('.html-embed-wrap iframe'))return;
+    if(node.type==='promptbook'&&el.classList.contains('selected')&&e.target.closest('.promptbook-embed-wrap'))return;
     if(e.target.closest('.node-handle'))return;
     if(isSelectablePreviewTarget(e.target))return;
     window.getSelection?.()?.removeAllRanges();
@@ -797,6 +1061,7 @@ function attachNodeEvents(node,el,handle,rz){
     if(e.target.closest('.node-handle')||e.target.closest('[data-action]'))return false;
     if(e.target.closest('a'))return false;
     if(node.type==='html'&&el.classList.contains('selected')&&e.target.closest('.html-embed-wrap'))return false;
+    if(node.type==='promptbook'&&el.classList.contains('selected')&&e.target.closest('.promptbook-embed-wrap'))return false;
     return true;
   }
 
@@ -889,6 +1154,9 @@ function selectNode(id){
       }
     }
   }
+  if(typeof PromptbookModule!=='undefined'&&PromptbookModule.refreshAllChatActive){
+    PromptbookModule.refreshAllChatActive();
+  }
 }
 
 function focusCanvasSurface(){
@@ -909,6 +1177,9 @@ window.focusCanvasSurface=focusCanvasSurface;
 function clearNodeSelection(){
   document.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
   selectedId=null;
+  if(typeof PromptbookModule!=='undefined'&&PromptbookModule.refreshAllChatActive){
+    PromptbookModule.refreshAllChatActive();
+  }
   focusCanvasSurface();
 }
 
@@ -1116,7 +1387,7 @@ async function exportNodePng(id){
     clone.querySelectorAll('.node-resize,.node-handle').forEach(x=>{x.style.display='none'});
     const w=n.width||el.offsetWidth;
     if(w)clone.style.width=w+'px';
-    if(n.height&&(n.type==='note'||n.type==='annotation'||n.type==='html')){
+    if(n.height&&(n.type==='note'||n.type==='annotation'||n.type==='html'||n.type==='promptbook')){
       clone.style.height=n.height+'px';
     }
     layer.appendChild(clone);
@@ -1256,7 +1527,7 @@ async function saveZip(){
         rest.x=parseInt(_el.style.left)||n.x||0;
         rest.y=parseInt(_el.style.top)||n.y||0;
         rest.width=_el.offsetWidth||n.width;
-        if(n.type==='html'){
+        if(n.type==='html'||n.type==='promptbook'){
           rest.height=n.height||parseInt(_el.querySelector('.node-body')?.style.height,10)||400;
         }else if(n.type==='markdown'&&n.height){
           rest.height=n.height;
@@ -1335,7 +1606,7 @@ function mimeFromPath(p){
   return{png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'}[e]||'application/octet-stream';
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function typeLabel(t){return{markdown:'MD',mermaid:'MM',image:'IMG',label:'LBL',note:'Note',annotation:'ANN',drawio:'DIO',bpmn:'BPMN',html:'HTML'}[t]||'?'}
+function typeLabel(t){return{markdown:'MD',mermaid:'MM',image:'IMG',label:'LBL',note:'Note',annotation:'ANN',drawio:'DIO',bpmn:'BPMN',html:'HTML',promptbook:'PB',archicode:'AC'}[t]||'?'}
 function iconEdit(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 3.5l2 2-10 10H4.5v-2L14.5 3.5z"/></svg>`}
 function iconFocus(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3H3v3M14 3h3v3M17 14v3h-3M6 17H3v-3"/><rect x="7" y="7" width="6" height="6" rx="1"/></svg>`}
 function iconDel(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h12M9 7V4h2v3M6 7l1 9h6l1-9"/></svg>`}
@@ -1373,3 +1644,4 @@ window.addEventListener('keydown',e=>{
 });
 
 applyTf();
+initRemoteArchiveLoad();

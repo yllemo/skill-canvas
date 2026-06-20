@@ -38,6 +38,7 @@ require_once __DIR__ . '/includes/bootstrap.php';
     </div>
     <div class="hdr-export-menu" id="open-menu">
       <button type="button" data-open="zip">Öppna .zip / .skill</button>
+      <button type="button" data-open="url">Öppna från URL</button>
       <button type="button" data-open="new">Ny tom canvas</button>
     </div>
   </div>
@@ -81,10 +82,13 @@ require_once __DIR__ . '/includes/bootstrap.php';
   <div id="dz-inner">
     <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="var(--gs-blue)" stroke-width="1.5"><path d="M3 7a2 2 0 012-2h2l2-2h4l2 2h2a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/><path d="M12 11v5M9.5 13.5L12 11l2.5 2.5"/></svg>
     <h2><?= h($app['title']) ?></h2>
-    <p>Öppna en befintlig <strong>.zip</strong> eller <strong>.skill</strong>-fil, dra den till fönstret, eller skapa en ny canvas från grunden.</p>
-    <button class="openbtn" id="btn-open-dz">Öppna fil</button>
-    <button class="openbtn" id="btn-new" style="background:var(--gs-blue-dark)">Ny tom canvas</button>
-    <p style="font-size:11px;color:var(--text-sec)">Allt sker lokalt — inget laddas upp.</p>
+    <p>Öppna en befintlig <strong>.zip</strong> eller <strong>.skill</strong>-fil, dra den till fönstret, hämta från en URL, eller skapa en ny canvas från grunden.</p>
+    <div class="dz-actions">
+      <button class="openbtn" id="btn-open-dz">Öppna fil</button>
+      <button class="openbtn openbtn-secondary" id="btn-open-url-dz">Öppna från URL</button>
+      <button class="openbtn openbtn-new" id="btn-new">Ny tom canvas</button>
+    </div>
+    <p class="dz-footnote">Allt sker lokalt i webbläsaren — inget laddas upp till servern.</p>
   </div>
 </div>
 
@@ -175,6 +179,29 @@ require_once __DIR__ . '/includes/bootstrap.php';
 <div id="toast"></div>
 <input type="file" id="file-input" accept=".zip,.skill,application/zip">
 
+<!-- OPEN FROM URL -->
+<div id="url-open-bg" aria-hidden="true">
+  <div class="url-open-modal" role="dialog" aria-labelledby="url-open-title">
+    <div class="url-open-head">
+      <h3 id="url-open-title">Öppna från URL</h3>
+      <button type="button" id="url-open-close" aria-label="Stäng">✕</button>
+    </div>
+    <div class="url-open-body">
+      <p class="url-open-hint">Ange en direktlänk till en <strong>.zip</strong>- eller <strong>.skill</strong>-fil. Vid externa länkar hämtas filen via servern om webbläsaren blockerar direktåtkomst (CORS).</p>
+      <label class="url-open-label" for="url-open-input">URL</label>
+      <input type="url" id="url-open-input" class="url-open-input" placeholder="https://example.com/path/skill.skill" autocomplete="url" spellcheck="false">
+      <div class="url-open-share-wrap">
+        <span class="url-open-share-label">Delbar länk</span>
+        <a href="#" id="url-open-share" class="url-open-share is-disabled" target="_blank" rel="noopener" aria-disabled="true"></a>
+      </div>
+    </div>
+    <div class="url-open-foot">
+      <button type="button" class="mbtn mbtn-cancel" id="url-open-cancel">Avbryt</button>
+      <button type="button" class="mbtn mbtn-primary" id="url-open-submit">Öppna</button>
+    </div>
+  </div>
+</div>
+
 <!-- MERMAID EDITOR -->
 <div id="mm-editor-overlay" aria-hidden="true">
   <iframe id="mm-editor-frame" title="Mermaid-editor"></iframe>
@@ -203,6 +230,16 @@ require_once __DIR__ . '/includes/bootstrap.php';
 <!-- PAINT EDITOR -->
 <div id="paint-editor-overlay" aria-hidden="true">
   <iframe id="paint-editor-frame" title="Måla / redigera bild"></iframe>
+</div>
+
+<!-- ARCHICODE EDITOR -->
+<div id="ac-editor-overlay" aria-hidden="true">
+  <iframe id="ac-editor-frame" title="ArchiCode-editor"></iframe>
+</div>
+
+<!-- PROMPTBOOK EDITOR -->
+<div id="pb-editor-overlay" aria-hidden="true">
+  <iframe id="pb-editor-frame" title="PromptBook-editor"></iframe>
 </div>
 
 <script>

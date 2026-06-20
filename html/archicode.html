@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="sv" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArchiCode — Live ArchiMate 4 Editor</title>
+
+  <link id="archicode-css" rel="stylesheet" href="">
+
+  <script>
+    (function () {
+      var t = localStorage.getItem('acTheme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+      var grid = localStorage.getItem('acShowGrid');
+      document.documentElement.setAttribute('data-grid', grid === 'false' ? 'hidden' : 'visible');
+      var src = localStorage.getItem('acSource') || 'local';
+      var base = src === 'cdn' ? 'https://cdn.jsdelivr.net/gh/yllemo/ArchiCode@latest/' : '';
+      var link = document.getElementById('archicode-css');
+      link.href = base + 'archicode.css';
+      var s = document.createElement('script');
+      s.src = base + 'archicode.js';
+      s.async = false;
+      s.onload = function () { window.dispatchEvent(new CustomEvent('acloaded')); };
+      s.onerror = function () { window.__AC_FAILED__ = true; window.dispatchEvent(new CustomEvent('acerror')); };
+      document.head.appendChild(s);
+    })();
+  </script>
+
+  <!-- Monaco Editor (VS Code engine) -->
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs/loader.js"></script>
+
+  <style>
+    /* ── Reset & base ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #EFBD5D;
+      --gold-dim: rgba(239,189,93,.18);
+      --gold-text: #1a1200;
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2130;
+      --surface3: #21262d;
+      --border: rgba(255,255,255,.08);
+      --border2: rgba(255,255,255,.13);
+      --text: #e6edf3;
+      --text-muted: rgba(230,237,243,.5);
+      --text-faint: rgba(230,237,243,.3);
+      --accent: #79c0ff;
+      --drag-bg: #0d1117;
+      --grid-line: rgba(255,255,255,.04);
+      --shadow: rgba(0,0,0,.55);
+      --status-bg: #0d1117;
+    }
+
+    html[data-theme="light"] {
+      --bg: #f0f2f5;
+      --surface: #ffffff;
+      --surface2: #f6f8fa;
+      --surface3: #eaeef2;
+      --border: #d0d7de;
+      --border2: #bbc1c9;
+      --text: #1f2328;
+      --text-muted: rgba(31,35,40,.55);
+      --text-faint: rgba(31,35,40,.35);
+      --drag-bg: #f0f2f5;
+      --grid-line: rgba(0,0,0,.06);
+      --shadow: rgba(0,0,0,.18);
+      --status-bg: #f0f2f5;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* ── App shell ────────────────────────────────────── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      min-height: 0;
+    }
+
+    /* ── Top bar ──────────────────────────────────────── */
+    #topBar {
+      flex-shrink: 0;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      z-index: 50;
+      user-select: none;
+    }
+
+    /* Logo */
+    .tb-logo {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    .tb-logo-word {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -.03em;
+      color: var(--gold);
+    }
+    .tb-logo-badge {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      color: var(--text-muted);
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      padding: 1px 6px;
+      white-space: nowrap;
+    }
+
+    /* Sep */
+    .tb-sep {
+      width: 1px;
+      height: 24px;
+      background: var(--border2);
+      margin: 0 12px;
+      flex-shrink: 0;
+    }
+
+    /* Example dropdown */
+    .tb-examples-wrap { position: relative; flex-shrink: 0; }
+    .tb-examples-wrap select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--surface3);
+      color: var(--text);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      padding: 5px 28px 5px 10px;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      outline: none;
+      height: 32px;
+      min-width: 210px;
+    }
+    .tb-examples-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .tb-examples-wrap select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
+    .tb-examples-wrap select option { background: #1c2130; color: var(--text); }
+    html[data-theme="light"] .tb-examples-wrap select option { background: #fff; }
+
+    /* Spacer */
+    .tb-spacer { flex: 1; }
+
+    /* Spinner */
+    #tbSpinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+      flex-shrink: 0;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Action buttons */
+    .tb-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      background: var(--surface3);
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s, border-color .15s, box-shadow .15s;
+      outline: none;
+      text-decoration: none;
+    }
+    .btn:hover { background: var(--surface2); border-color: var(--border2); box-shadow: 0 2px 8px var(--shadow); }
+    .btn:active { opacity: .82; }
+    .btn.btn-primary {
+      background: var(--gold);
+      color: var(--gold-text);
+      border-color: transparent;
+      font-weight: 700;
+    }
+    .btn.btn-primary:hover { filter: brightness(1.07); box-shadow: 0 3px 12px rgba(239,189,93,.4); }
+    .btn.btn-icon {
+      width: 32px;
+      padding: 0;
+      justify-content: center;
+      font-size: 15px;
+    }
+
+    /* ── Content area ─────────────────────────────────── */
+    #content {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+
+    /* ── Editor pane ──────────────────────────────────── */
+    #editorPane {
+      width: 42%;
+      min-width: 25%;
+      max-width: 75%;
+      display: flex;
+      flex-direction: column;
+      background: #0d1117;
+      border-right: 1px solid var(--border);
+      min-height: 0;
+      flex-shrink: 0;
+    }
+    html[data-theme="light"] #editorPane { background: #f6f8fa; }
+
+    .pane-header {
+      flex-shrink: 0;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .pane-header-title { flex: 1; }
+
+    /* Auto-render toggle */
+    .toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: 0;
+      cursor: pointer;
+    }
+    .toggle {
+      position: relative;
+      width: 30px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      transition: background .2s;
+      cursor: pointer;
+    }
+    .toggle-slider::after {
+      content: '';
+      position: absolute;
+      width: 10px; height: 10px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      top: 2px; left: 2px;
+      transition: left .2s, background .2s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--gold); border-color: var(--gold); }
+    .toggle input:checked + .toggle-slider::after { left: 16px; background: #1a1200; }
+
+    /* Editor body + Monaco container */
+    .editor-body {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      overflow: hidden;
+    }
+    #monacoContainer {
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+    }
+
+    /* ── Drag handle ──────────────────────────────────── */
+    #dragHandle {
+      width: 5px;
+      flex-shrink: 0;
+      background: var(--border);
+      cursor: col-resize;
+      position: relative;
+      z-index: 10;
+      transition: background .15s;
+    }
+    #dragHandle:hover, #dragHandle.dragging { background: var(--gold); }
+
+    /* ── Diagram pane ─────────────────────────────────── */
+    #diagramPane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      min-width: 0;
+      background: var(--surface2);
+    }
+
+    .diagram-pane-header {
+      flex-shrink: 0;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    /* Diagram viewport */
+    #diagramViewport {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+      background-color: var(--surface2);
+      background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 28px 28px;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #diagramViewport.is-panning { cursor: grabbing; }
+    html[data-grid="hidden"] #diagramViewport {
+      background-color: #000;
+      background-image: none;
+    }
+    html[data-theme="light"][data-grid="hidden"] #diagramViewport { background-color: #fff; }
+
+    #diagram {
+      display: inline-block;
+      padding: 32px;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+
+    #diagram svg {
+      display: block;
+      max-width: none;
+      height: auto;
+      filter: drop-shadow(0 4px 24px var(--shadow));
+      opacity: 0;
+      transition: opacity .2s ease;
+    }
+    #diagram svg.visible { opacity: 1; }
+
+    /* Empty state */
+    #emptyState {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      pointer-events: none;
+    }
+    .empty-icon {
+      font-size: 48px;
+      opacity: .18;
+      line-height: 1;
+    }
+    .empty-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .empty-hint {
+      font-size: 12px;
+      color: var(--text-faint);
+      text-align: center;
+      line-height: 1.6;
+      max-width: 280px;
+    }
+    kbd {
+      display: inline-block;
+      padding: 1px 6px;
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      font: 11px/1.5 'Consolas', monospace;
+      color: var(--text-muted);
+    }
+
+    /* ── Floating zoom controls ───────────────────────── */
+    #zoomControls {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 4px;
+      box-shadow: 0 4px 16px var(--shadow);
+      z-index: 20;
+    }
+    .zoom-btn {
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent;
+      border: none;
+      border-radius: 5px;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .12s, color .12s;
+    }
+    .zoom-btn:hover { background: var(--surface3); color: var(--text); }
+    #zoomLabel {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      min-width: 38px;
+      text-align: center;
+      padding: 0 2px;
+    }
+    .zoom-sep { width: 1px; height: 18px; background: var(--border); margin: 0 2px; }
+
+    /* ── Status bar ───────────────────────────────────── */
+    #statusBar {
+      flex-shrink: 0;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-muted);
+      overflow: hidden;
+    }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--text-faint);
+      flex-shrink: 0;
+      transition: background .3s;
+    }
+    .status-dot.ok { background: #3fb950; }
+    .status-dot.err { background: #f85149; }
+    .status-dot.busy { background: var(--gold); animation: pulse .8s ease-in-out infinite alternate; }
+    @keyframes pulse { from { opacity: .4; } to { opacity: 1; } }
+
+    #statusText { white-space: nowrap; }
+
+    .status-sep { color: var(--border2); margin: 0 2px; }
+
+    #statusCounts { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+
+    #domainBadges { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+
+    .domain-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(0,0,0,.75);
+      white-space: nowrap;
+    }
+
+    .sb-spacer { flex: 1; }
+    .sb-link { color: var(--text-faint); text-decoration: none; font-size: 10.5px; white-space: nowrap; }
+    .sb-link:hover { color: var(--text-muted); }
+
+    /* ── Toast notifications ──────────────────────────── */
+    #toastContainer {
+      position: fixed;
+      bottom: 44px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 500;
+      box-shadow: 0 8px 32px rgba(0,0,0,.45);
+      animation: toastIn .22s cubic-bezier(.34,1.56,.64,1) forwards;
+      white-space: nowrap;
+      pointer-events: auto;
+    }
+    .toast.out { animation: toastOut .18s ease forwards; }
+
+    .toast-success { background: #0f2d13; color: #3fb950; border: 1px solid rgba(63,185,80,.25); }
+    .toast-error   { background: #2d0f0f; color: #f85149; border: 1px solid rgba(248,81,73,.25); }
+    .toast-info    { background: var(--surface); color: var(--text); border: 1px solid var(--border2); }
+
+    @keyframes toastIn  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(8px); } }
+
+    /* ── Scrollbar normalise ──────────────────────────── */
+    * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.12) transparent; }
+    html[data-theme="light"] * { scrollbar-color: rgba(0,0,0,.15) transparent; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════════════ TOP BAR ═════════════════════ -->
+  <div id="topBar">
+    <a class="tb-logo" href="#" onclick="return false;">
+      <span class="tb-logo-word">ArchiCode</span>
+      <span class="tb-logo-badge">ArchiMate 4 · C260</span>
+    </a>
+
+    <div class="tb-sep"></div>
+
+    <div class="tb-examples-wrap">
+      <select id="exampleSelect" onchange="loadSelectedExample()" title="Ladda exempeldiagram">
+        <option value="">Välj exempel…</option>
+        <optgroup label="Kom igång">
+          <option value="quick-start">Snabbstart — tre domäner</option>
+          <option value="all-domains" selected>Alla sju domäner</option>
+          <option value="common-domain">Common-domän (nytt i AM4)</option>
+        </optgroup>
+        <optgroup label="Affärsarkitektur">
+          <option value="business-process">Affärsprocess</option>
+          <option value="strategy-motivation">Strategi &amp; motivation</option>
+        </optgroup>
+        <optgroup label="Systemarkitektur">
+          <option value="ecommerce">E-handel (fullstack)</option>
+          <option value="app-crud">Applikation: CRUD-flöde</option>
+          <option value="tech-infra">Teknisk infrastruktur</option>
+        </optgroup>
+        <optgroup label="Referens">
+          <option value="relationships">Relationstyper</option>
+          <option value="inline-one-line">Inline-syntax</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="tb-spacer"></div>
+
+    <div id="tbSpinner"></div>
+
+    <div class="tb-actions">
+      <button class="btn" onclick="downloadSVG()" title="Ladda ner SVG-fil">↓ SVG</button>
+      <button class="btn" onclick="copySVG()" title="Kopiera SVG till urklipp">⎘ Kopiera</button>
+      <button class="btn" onclick="exportToDrawIO()" title="Exportera Draw.io XML">⤢ Draw.io</button>
+      <div class="tb-sep"></div>
+      <label class="toggle-wrap" title="Visa grid i diagrambakgrunden">
+        Grid
+        <span class="toggle">
+          <input type="checkbox" id="gridToggle" checked>
+          <span class="toggle-slider"></span>
+        </span>
+      </label>
+      <button class="btn btn-icon" id="themeBtn" onclick="toggleTheme()" title="Växla tema"></button>
+      <button class="btn btn-primary" onclick="renderDiagram()" title="Rita diagram (Ctrl+Enter)">▶ Rita</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ CONTENT ═════════════════════ -->
+  <div id="content">
+
+    <!-- ── Editor pane ── -->
+    <div id="editorPane">
+      <div class="pane-header">
+        <span class="pane-header-title">ArchiCode</span>
+        <label class="toggle-wrap" title="Auto-rita efter 700 ms inaktivitet">
+          Auto
+          <span class="toggle">
+            <input type="checkbox" id="autoRender" checked>
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="editor-body">
+        <div id="monacoContainer"></div>
+      </div>
+    </div>
+
+    <!-- ── Drag handle ── -->
+    <div id="dragHandle"></div>
+
+    <!-- ── Diagram pane ── -->
+    <div id="diagramPane">
+      <div class="diagram-pane-header">
+        <span>Diagram</span>
+      </div>
+
+      <div style="position:relative; flex:1; min-height:0; display:flex; flex-direction:column;">
+        <div id="diagramViewport">
+          <div id="diagram"></div>
+          <div id="emptyState">
+            <div class="empty-icon">◈</div>
+            <div class="empty-title">Inget diagram ännu</div>
+            <div class="empty-hint">
+              Välj ett exempel ovan eller skriv ArchiCode-syntax i editorn,<br>
+              tryck sedan <kbd>Ctrl</kbd>+<kbd>Enter</kbd> eller klicka <strong>▶ Rita</strong>.
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating zoom controls -->
+        <div id="zoomControls">
+          <button class="zoom-btn" onclick="adjustZoom(1/1.2)" title="Zooma ut">−</button>
+          <span id="zoomLabel">100%</span>
+          <button class="zoom-btn" onclick="adjustZoom(1.2)" title="Zooma in">+</button>
+          <div class="zoom-sep"></div>
+          <button class="zoom-btn" onclick="fitView()" title="Anpassa till fönster" style="font-size:12px;">⟳</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ STATUS BAR ══════════════════ -->
+  <div id="statusBar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Redo</span>
+    <span class="status-sep">·</span>
+    <div id="statusCounts">
+      <span id="elemCount">–</span>
+      <span class="status-sep">·</span>
+      <span id="relCount">–</span>
+    </div>
+    <span class="status-sep">·</span>
+    <div id="domainBadges"></div>
+    <div class="sb-spacer"></div>
+    <a class="sb-link" href="https://github.com/yllemo/ArchiCode" target="_blank" rel="noopener">
+      github.com/yllemo/ArchiCode
+    </a>
+  </div>
+
+</div>
+
+<!-- ═══════════════ TOAST CONTAINER ══════════════════ -->
+<div id="toastContainer"></div>
+
+<!-- ══════════════════════ SCRIPT ═══════════════════ -->
+<script>
+/* ─── Domain config ─────────────────────────────────── */
+const DOMAINS = {
+  motivation:     { fill: '#D8C1E4', badge: 'M' },
+  strategy:       { fill: '#EFBD5D', badge: 'S' },
+  common:         { fill: '#C4BFA6', badge: 'C' },
+  business:       { fill: '#F4DE7F', badge: 'B' },
+  application:    { fill: '#B6D7E1', badge: 'A' },
+  technology:     { fill: '#C3E1B4', badge: 'T' },
+  implementation: { fill: '#F8C2BE', badge: 'I' }
+};
+const DOMAIN_ORDER = ['motivation','strategy','common','business','application','technology','implementation'];
+
+const DOMAIN_HL = {
+  motivation: '#D8C1E4', strategy: '#EFBD5D', common: '#C4BFA6',
+  business: '#F4DE7F', application: '#B6D7E1', technology: '#C3E1B4',
+  implementation: '#F8C2BE'
+};
+
+/* ─── Examples ──────────────────────────────────────── */
+const EXAMPLES = {
+  'all-domains': `// ArchiMate 4 — Alla sju domäner
+#spacing: 85
+#showBadges: true
+
+[<motivation:stakeholder> CTO]
+[<motivation:goal> GDPR-efterlevnad]
+[<strategy:capability> Dataskydd]
+[<strategy:course-of-action> Privacy-by-Design]
+[<common:process> Dataskyddsprocess]
+[<common:service> Krypteringstjänst]
+[<business:actor> Kund]
+[<business:object> Persondata]
+[<application:component> Dataskydds-API]
+[<application:data> Krypterad databas]
+[<technology:node> HSM-server]
+[<technology:system-software> Vault]
+[<implementation:workpackage> Fas 1 Kartläggning]
+[<implementation:deliverable> Kravspec]
+
+[CTO] --> [GDPR-efterlevnad]
+[GDPR-efterlevnad] -> [Dataskydd]
+[Privacy-by-Design] -> [Dataskyddsprocess]
+[Dataskydd] --:> [Dataskyddsprocess]
+[Dataskyddsprocess] -> [Krypteringstjänst]
+[Kund] <-> [Persondata]
+[Persondata] -> [Dataskydds-API]
+[Dataskydds-API] --:> [Krypteringstjänst]
+[Dataskydds-API] <-> [Krypterad databas]
+[Krypterad databas] -> [HSM-server]
+[HSM-server] -> [Vault]
+[Fas 1 Kartläggning] --> [Kravspec]`,
+
+  'quick-start': `// ArchiMate 4 — Snabbstart
+// Tre domäner: business, application, technology
+#spacing: 90
+
+[<business:actor> Kund]
+[<business:process> Bokningsprocess]
+[<business:service> Bokningstjänst]
+
+[<application:component> Bokningsapp]
+[<application:service> REST API]
+[<application:data> Bokningsdatabas]
+
+[<technology:node> Webbserver]
+[<technology:node> Databasserver]
+
+[Kund] -> [Bokningsprocess]
+[Bokningsprocess] -> [Bokningstjänst]
+[Bokningsapp] --:> [Bokningstjänst]
+[Bokningsapp] -> [REST API]
+[REST API] -> [Bokningsdatabas]
+[Bokningsapp] -> [Webbserver]
+[Webbserver] -> [Databasserver]`,
+
+  'common-domain': `// ArchiMate 4 — Common-domän
+// Gemensamma beteendeelement (process, tjänst, händelse)
+// kan nu användas i alla skikt via <common:...>
+#spacing: 85
+#showBadges: true
+
+// Motivation
+[<motivation:driver> Kundkrav på snabbhet]
+[<motivation:goal> Effektivare orderflöde]
+
+// Strategy
+[<strategy:capability> Order & leverans]
+
+// Common — delade beteendeelement (beige)
+[<common:process> Orderprocess]
+[<common:service> Ordertjänst]
+[<common:event> Order mottagen]
+
+// Business
+[<business:actor> Kund]
+[<business:object> Beställning]
+
+// Application
+[<application:component> Ordersystem]
+[<application:data> Orderdatabas]
+
+[Kundkrav på snabbhet] -> [Effektivare orderflöde]
+[Effektivare orderflöde] -> [Order & leverans]
+[Order & leverans] --:> [Ordertjänst]
+[Kund] -> [Orderprocess]
+[Order mottagen] -|> [Orderprocess]
+[Orderprocess] -> [Ordertjänst]
+[Ordertjänst] --:> [Ordersystem]
+[Ordersystem] <-> [Orderdatabas]
+[Orderprocess] -> [Beställning]`,
+
+  'business-process': `// ArchiMate 4 — Affärsprocess
+// Komplett kund-till-faktura-flöde med roller och objekt
+#spacing: 80
+#showBadges: true
+
+[<motivation:stakeholder> Styrelse]
+[<motivation:goal> Ökad lönsamhet]
+
+[<business:actor> Kund]
+[<business:actor> Säljare]
+[<business:role> Projektledare]
+[<business:role> Ekonomiansvarig]
+[<business:process> Behovsanalys]
+[<business:process> Offerthantering]
+[<business:process> Avtalssignering]
+[<business:process> Fakturering]
+[<business:service> Kundtjänst]
+[<business:object> Offert]
+[<business:object> Avtal]
+[<business:object> Faktura]
+
+[Styrelse] --> [Ökad lönsamhet]
+[Kund] -> [Behovsanalys]
+[Säljare] -> [Behovsanalys]
+[Behovsanalys] --> [Offerthantering]
+[Offerthantering] -> [Offert]
+[Offert] -> [Avtalssignering]
+[Avtalssignering] -> [Avtal]
+[Projektledare] .-- [Avtalssignering]
+[Avtal] --> [Fakturering]
+[Fakturering] -> [Faktura]
+[Ekonomiansvarig] -> [Fakturering]
+[Kundtjänst] -> [Kund]`,
+
+  'strategy-motivation': `// ArchiMate 4 — Strategi & Motivation
+// Digital transformation för ökad kundnöjdhet
+#spacing: 85
+#showBadges: true
+
+[<motivation:stakeholder> VD]
+[<motivation:driver> Digital konkurrens]
+[<motivation:assessment> NPS under branschmål]
+[<motivation:goal> Öka kundnöjdhet 20%]
+[<motivation:outcome> Fler återkommande köp]
+[<motivation:principle> Kund i centrum]
+[<motivation:requirement> WCAG 2.2 AA]
+
+[<strategy:capability> Kundnära digital försäljning]
+[<strategy:resource> Kunddata & CRM]
+[<strategy:course-of-action> Utöka självservice]
+[<strategy:value-stream> Lead till nöjd kund]
+
+[<common:service> Självserviceportal]
+[<common:process> Kundresa online]
+
+[VD] --> [Öka kundnöjdhet 20%]
+[Digital konkurrens] -> [NPS under branschmål]
+[NPS under branschmål] -> [Öka kundnöjdhet 20%]
+[Öka kundnöjdhet 20%] -> [Fler återkommande köp]
+[Öka kundnöjdhet 20%] -> [Kundnära digital försäljning]
+[Kund i centrum] -> [Utöka självservice]
+[WCAG 2.2 AA] -> [Självserviceportal]
+[Kundnära digital försäljning] --:> [Självserviceportal]
+[Kunddata & CRM] -> [Självserviceportal]
+[Utöka självservice] -> [Självserviceportal]
+[Självserviceportal] -> [Kundresa online]
+[Kundresa online] --> [Fler återkommande köp]
+[Kundnära digital försäljning] -> [Lead till nöjd kund]`,
+
+  'ecommerce': `// ArchiMate 4 — E-handel (fullstack)
+// Komplett arkitektur: motivation → business → app → tech
+#spacing: 78
+#showBadges: true
+
+[<motivation:goal> Höja konverteringsgrad]
+[<strategy:capability> Digital handel]
+
+[<business:actor> Kund]
+[<business:actor> Handlare]
+[<business:process> Orderhantering]
+[<business:process> Betalning]
+[<business:service> Webbutik]
+[<business:object> Varukorg]
+[<business:object> Order]
+
+[<application:component> Webbfrontend]
+[<application:component> Mobilapp]
+[<application:component> Orderservice]
+[<application:component> Betalservice]
+[<application:component> Lagerservice]
+[<application:service> REST API]
+[<application:data> Produktdatabas]
+[<application:data> Orderdatabas]
+
+[<technology:node> Lastbalanserare]
+[<technology:node> App-server]
+[<technology:node> DB-server]
+[<technology:device> CDN]
+
+[Höja konverteringsgrad] -> [Digital handel]
+[Kund] -> [Webbutik]
+[Handlare] -> [Orderhantering]
+[Webbutik] -> [Orderhantering]
+[Orderhantering] -> [Betalning]
+[Orderhantering] -> [Varukorg]
+[Varukorg] -> [Order]
+
+[Webbfrontend] --:> [Webbutik]
+[Mobilapp] --:> [Webbutik]
+[Webbutik] -> [REST API]
+[REST API] -> [Orderservice]
+[REST API] -> [Betalservice]
+[REST API] -> [Lagerservice]
+[Orderservice] <-> [Orderdatabas]
+[Lagerservice] <-> [Produktdatabas]
+
+[Webbfrontend] -> [Lastbalanserare]
+[Mobilapp] -> [Lastbalanserare]
+[Lastbalanserare] -> [App-server]
+[App-server] -> [DB-server]
+[Webbfrontend] -> [CDN]`,
+
+  'app-crud': `// ArchiMate 4 — Applikation: CRUD-flöde
+// Identitets- och användarhantering
+#spacing: 80
+#showBadges: true
+
+[<motivation:requirement> Rollbaserad åtkomstkontroll]
+
+[<business:actor> Administratör]
+[<business:actor> Slutanvändare]
+[<business:process> Hantera användare]
+[<business:process> Hantera roller]
+[<business:service> Administrationstjänst]
+
+[<application:component> Admin UI]
+[<application:component> Identity API]
+[<application:component> E-posttjänst]
+[<application:data> Användartabell]
+[<application:data> Rolltabell]
+[<application:service> OAuth2-server]
+
+[<technology:node> App-server]
+[<technology:system-software> PostgreSQL]
+
+[Rollbaserad åtkomstkontroll] -> [Hantera roller]
+[Administratör] -> [Hantera användare]
+[Slutanvändare] -> [OAuth2-server]
+[Hantera användare] -> [Administrationstjänst]
+[Hantera roller] -> [Administrationstjänst]
+[Admin UI] --:> [Administrationstjänst]
+[Admin UI] -> [Identity API]
+[Identity API] <-> [Användartabell]
+[Identity API] <-> [Rolltabell]
+[Identity API] -> [E-posttjänst]
+[Identity API] --:> [OAuth2-server]
+[Admin UI] -> [App-server]
+[App-server] -> [PostgreSQL]`,
+
+  'tech-infra': `// ArchiMate 4 — Teknisk infrastruktur
+// Kubernetes-baserad molnplattform
+#spacing: 85
+#showBadges: true
+
+[<strategy:capability> Skalbar driftplattform]
+
+[<application:component> Mikrotjänst A]
+[<application:component> Mikrotjänst B]
+[<application:component> API Gateway]
+
+[<technology:node> Kubernetes-kluster]
+[<technology:node> Master-nod]
+[<technology:node> Worker-nod 1]
+[<technology:node> Worker-nod 2]
+[<technology:node> Backup-server]
+[<technology:node> Loggserver]
+[<technology:device> Brandvägg]
+[<technology:device> Load Balancer]
+[<technology:system-software> PostgreSQL]
+[<technology:system-software> Redis]
+[<technology:system-software> Prometheus]
+
+[<implementation:workpackage> Klustermigration]
+[<implementation:deliverable> Driftsättningsplan]
+
+[Skalbar driftplattform] --:> [Kubernetes-kluster]
+[Brandvägg] -> [Load Balancer]
+[Load Balancer] -> [API Gateway]
+[API Gateway] -> [Mikrotjänst A]
+[API Gateway] -> [Mikrotjänst B]
+[Mikrotjänst A] -> [Kubernetes-kluster]
+[Mikrotjänst B] -> [Kubernetes-kluster]
+[Kubernetes-kluster] -> [Master-nod]
+[Kubernetes-kluster] -> [Worker-nod 1]
+[Kubernetes-kluster] -> [Worker-nod 2]
+[Worker-nod 1] -> [PostgreSQL]
+[Worker-nod 2] -> [Redis]
+[Worker-nod 1] -> [Prometheus]
+[Loggserver] -> [Kubernetes-kluster]
+[Kubernetes-kluster] -> [Backup-server]
+[Klustermigration] --> [Driftsättningsplan]`,
+
+  'relationships': `// ArchiMate 4 — Relationstyper
+// Alla stödda relationer i ArchiCode
+#spacing: 72
+#fontSize: 13
+#showBadges: false
+
+// Associering (linje)
+[<business:actor> Aktör A]
+[<business:actor> Aktör B]
+[Aktör A] --- [Aktör B]
+
+// Serving (->)
+[<common:service> Tjänst]
+[<business:process> Process]
+[Tjänst] -> [Process]
+
+// Triggering (-->)
+[<common:process> Start]
+[<common:process> Nästa steg]
+[Start] --> [Nästa steg]
+
+// Realization (--:>)
+[<application:component> Komponent]
+[<common:service> Realiserad tjänst]
+[Komponent] --:> [Realiserad tjänst]
+
+// Specialization (-|>)
+[<common:process> Generell process]
+[<common:process> Specifik process]
+[Specifik process] -|> [Generell process]
+
+// Association directed (-:>)
+[<strategy:capability> Förmåga]
+[<strategy:resource> Resurs]
+[Förmåga] -:> [Resurs]
+
+// Influence (.-- )
+[<motivation:goal> Mål]
+[<business:process> Påverkad process]
+[Mål] .-- [Påverkad process]
+
+// Access (o-)
+[<common:service> Åtkomsttjänst]
+[<application:data> Datakälla]
+[Åtkomsttjänst] o- [Datakälla]
+
+// Bidirectional (<->)
+[<application:component> System A]
+[<application:component> System B]
+[System A] <-> [System B]`,
+
+  'inline-one-line': `// ArchiMate 4 — Inline-syntax
+// Definiera element direkt i relationer (en rad)
+#spacing: 88
+
+// Godkännandeflöde med inline-definitioner
+[<business:actor> Beställare] -> [<business:process> Behovsanalys]
+[<business:process> Behovsanalys] --> [<business:process> Godkännande]
+[<business:process> Godkännande] -|> [<business:event> Kontrakt signerat]
+[<business:event> Kontrakt signerat] --> [<business:service> Aktivering]
+[<business:service> Aktivering] --:> [<application:component> Onboardingsystem]
+[<application:component> Onboardingsystem] <-> [<application:data> Kundregister]
+[<application:component> Onboardingsystem] -> [<technology:node> Produktionsserver]`
+};
+
+/* ─── Domain types + docs for IntelliSense ──────────── */
+const DOMAIN_TYPES = {
+  motivation:     ['goal','driver','assessment','stakeholder','requirement','principle','value','meaning','outcome'],
+  strategy:       ['capability','resource','course-of-action','value-stream'],
+  common:         ['process','function','service','event','collaboration','role','interaction'],
+  business:       ['actor','role','collaboration','interface','object','product'],
+  application:    ['component','collaboration','interface','function','event','service','data'],
+  technology:     ['node','device','system-software','path','network','service','artifact','equipment','facility','material'],
+  implementation: ['workpackage','deliverable','plateau']
+};
+
+const DOMAIN_DOCS = {
+  motivation:     '**Motivationsdomänen** — Varför arkitekturen existerar.\n\nElement: goal, driver, assessment, stakeholder, requirement, principle, value, meaning, outcome',
+  strategy:       '**Strategidomänen** — Hur organisationen skapar värde.\n\nElement: capability, resource, course-of-action, value-stream',
+  common:         '**Common-domänen** *(nytt i AM4)* — Delade beteendeelement för alla domäner.\n\nElement: process, function, service, event, collaboration, role, interaction',
+  business:       '**Verksamhetsdomänen** — Aktörer, roller och affärsprodukter.\n\nElement: actor, role, collaboration, interface, object, product',
+  application:    '**Applikationsdomänen** — IT-system och mjukvarukomponenter.\n\nElement: component, collaboration, interface, function, event, service, data',
+  technology:     '**Teknologidomänen** — Infrastruktur och systemmjukvara (inkl. Physical).\n\nElement: node, device, system-software, path, network, service, artifact, equipment, facility, material',
+  implementation: '**Implementeringsdomänen** — Transformationsarbete och migrationsplanering.\n\nElement: workpackage, deliverable, plateau'
+};
+
+const REL_DOCS = {
+  '->':   '**Serving** — A levererar tjänst eller stöd till B',
+  '-->':  '**Flow** — Information eller resurser flödar från A till B',
+  '--:>': '**Realization** — A implementerar eller realiserar B',
+  '-|>':  '**Triggering** — A initierar eller triggar B',
+  '.--':  '**Assignment** — A är tilldelad roll eller funktion B',
+  'o-':   '**Aggregation** — B är en lös del av A',
+  '-:>':  '**Specialization** — A är en specialisering av B',
+  '<->':  '**Access** — A läser och/eller skriver till B',
+  '---':  '**Association** — Generell, odefinierbar relation'
+};
+
+/* ─── State ─────────────────────────────────────────── */
+let monacoEditor   = null;
+let archiCodeReady = false;
+let monacoReady    = false;
+let panX = 0, panY = 0, scale = 1;
+let isPanning = false, panStartX = 0, panStartY = 0, panStartPanX = 0, panStartPanY = 0;
+let lastTouchDist  = 0;
+let autoDebounce   = null;
+let firstRender    = true;
+
+/* ─── DOM refs ──────────────────────────────────────── */
+const diagram      = document.getElementById('diagram');
+const diagramVP    = document.getElementById('diagramViewport');
+const statusDot    = document.getElementById('statusDot');
+const statusText   = document.getElementById('statusText');
+const elemCount    = document.getElementById('elemCount');
+const relCount     = document.getElementById('relCount');
+const domainBadges = document.getElementById('domainBadges');
+const tbSpinner    = document.getElementById('tbSpinner');
+const themeBtn     = document.getElementById('themeBtn');
+const zoomLabel    = document.getElementById('zoomLabel');
+const autoRenderCb = document.getElementById('autoRender');
+const gridToggleCb = document.getElementById('gridToggle');
+
+/* ─── getCode helper ────────────────────────────────── */
+function getCode() { return monacoEditor ? monacoEditor.getValue() : ''; }
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ─── Theme ─────────────────────────────────────────── */
+function syncThemeIcon() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  themeBtn.textContent = isDark ? '☀️' : '🌙';
+  themeBtn.title = isDark ? 'Byt till ljust tema' : 'Byt till mörkt tema';
+}
+
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('acTheme', next);
+  syncThemeIcon();
+  if (typeof monaco !== 'undefined') monaco.editor.setTheme(next === 'dark' ? 'archicode-dark' : 'archicode-light');
+}
+
+window.toggleTheme = toggleTheme;
+syncThemeIcon();
+
+/* Background grid */
+function syncGridSetting() {
+  const showGrid = localStorage.getItem('acShowGrid') !== 'false';
+  document.documentElement.setAttribute('data-grid', showGrid ? 'visible' : 'hidden');
+  gridToggleCb.checked = showGrid;
+}
+
+function toggleGrid() {
+  const showGrid = gridToggleCb.checked;
+  localStorage.setItem('acShowGrid', showGrid ? 'true' : 'false');
+  document.documentElement.setAttribute('data-grid', showGrid ? 'visible' : 'hidden');
+}
+
+gridToggleCb.addEventListener('change', toggleGrid);
+syncGridSetting();
+
+/* ─── Pan + Zoom ────────────────────────────────────── */
+function applyTransform() {
+  diagram.style.transform = 'translate(' + panX + 'px,' + panY + 'px) scale(' + scale + ')';
+  zoomLabel.textContent = Math.round(scale * 100) + '%';
+}
+
+function fitView() {
+  const svg = diagram.querySelector('svg');
+  if (!svg) { panX = 0; panY = 0; scale = 1; applyTransform(); return; }
+  const vw = diagramVP.clientWidth;
+  const vh = diagramVP.clientHeight;
+  const svgW = parseFloat(svg.getAttribute('width'))  || svg.getBoundingClientRect().width;
+  const svgH = parseFloat(svg.getAttribute('height')) || svg.getBoundingClientRect().height;
+  const dw = svgW + 64;
+  const dh = svgH + 64;
+  scale = Math.min(1, vw / dw, vh / dh);
+  panX = Math.round((vw - dw * scale) / 2);
+  panY = Math.round((vh - dh * scale) / 2);
+  applyTransform();
+}
+
+function zoomAt(cx, cy, factor) {
+  const newScale = Math.min(5, Math.max(0.1, scale * factor));
+  panX = cx - (cx - panX) * (newScale / scale);
+  panY = cy - (cy - panY) * (newScale / scale);
+  scale = newScale;
+  applyTransform();
+}
+
+function adjustZoom(f) {
+  zoomAt(diagramVP.clientWidth / 2, diagramVP.clientHeight / 2, f);
+}
+
+window.adjustZoom = adjustZoom;
+window.fitView    = fitView;
+
+/* Mouse pan */
+diagramVP.addEventListener('mousedown', function(e) {
+  if (e.button !== 0) return;
+  isPanning = true;
+  panStartX = e.clientX; panStartY = e.clientY;
+  panStartPanX = panX;   panStartPanY = panY;
+  diagramVP.classList.add('is-panning');
+  e.preventDefault();
+});
+document.addEventListener('mousemove', function(e) {
+  if (!isPanning) return;
+  panX = panStartPanX + (e.clientX - panStartX);
+  panY = panStartPanY + (e.clientY - panStartY);
+  applyTransform();
+});
+document.addEventListener('mouseup', function() {
+  if (!isPanning) return;
+  isPanning = false;
+  diagramVP.classList.remove('is-panning');
+});
+
+/* Wheel: Ctrl/Meta = zoom centred on cursor, plain scroll = pan */
+diagramVP.addEventListener('wheel', function(e) {
+  e.preventDefault();
+  const rect = diagramVP.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+  if (e.ctrlKey || e.metaKey) {
+    zoomAt(cx, cy, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+  } else {
+    panX -= e.deltaX;
+    panY -= e.deltaY;
+    applyTransform();
+  }
+}, { passive: false });
+
+/* Touch: 1-finger pan, 2-finger pinch-zoom */
+diagramVP.addEventListener('touchstart', function(e) {
+  if (e.touches.length === 2) {
+    lastTouchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  } else if (e.touches.length === 1) {
+    isPanning = true;
+    panStartX = e.touches[0].clientX; panStartY = e.touches[0].clientY;
+    panStartPanX = panX; panStartPanY = panY;
+  }
+}, { passive: true });
+diagramVP.addEventListener('touchmove', function(e) {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const rect = diagramVP.getBoundingClientRect();
+    const cx = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+    const cy = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+    if (lastTouchDist) zoomAt(cx, cy, dist / lastTouchDist);
+    lastTouchDist = dist;
+  } else if (e.touches.length === 1 && isPanning) {
+    panX = panStartPanX + (e.touches[0].clientX - panStartX);
+    panY = panStartPanY + (e.touches[0].clientY - panStartY);
+    applyTransform();
+  }
+}, { passive: false });
+diagramVP.addEventListener('touchend', function() { isPanning = false; lastTouchDist = 0; }, { passive: true });
+
+/* Double-click to fit */
+diagramVP.addEventListener('dblclick', function() { fitView(); });
+
+/* ─── Status bar ────────────────────────────────────── */
+function updateStatus(type, msg) {
+  statusDot.className = 'status-dot' + (type ? ' ' + type : '');
+  statusText.textContent = msg;
+}
+
+function updateCounts(pr) {
+  const elems = pr.elements || [], rels = pr.relations || [];
+  elemCount.textContent = elems.length + ' element';
+  relCount.textContent  = rels.length + ' relation' + (rels.length === 1 ? '' : 'er');
+  const counts = {};
+  elems.forEach(function(el) { if (el.layer) counts[el.layer] = (counts[el.layer] || 0) + 1; });
+  let html = '';
+  DOMAIN_ORDER.forEach(function(d) {
+    if (!counts[d]) return;
+    const c = DOMAINS[d];
+    html += '<span class="domain-pill" style="background:' + c.fill + '">' + c.badge +
+      ' <span style="font-weight:400;opacity:.75">' + counts[d] + '</span></span>';
+  });
+  domainBadges.innerHTML = html;
+}
+
+/* ─── Render ────────────────────────────────────────── */
+function renderDiagram() {
+  const code = getCode().trim();
+  if (!code) { toast('info', 'Skriv ArchiCode-syntax i editorn.'); return; }
+  if (typeof ArchiCode === 'undefined') { toast('error', 'ArchiCode laddades inte — archicode.js saknas.'); return; }
+
+  tbSpinner.style.display = 'block';
+  updateStatus('busy', 'Ritar…');
+  const t0 = performance.now();
+
+  try {
+    const pr = ArchiCode.parse(code);
+    ArchiCode.render(code, '#diagram');
+    const svg = diagram.querySelector('svg');
+    if (svg) {
+      svg.classList.remove('visible');
+      requestAnimationFrame(function() { requestAnimationFrame(function() {
+        svg.classList.add('visible');
+        fitView();
+      }); });
+    }
+    if (firstRender) { var es = document.getElementById('emptyState'); if (es) es.remove(); firstRender = false; }
+    updateStatus('ok', 'Renderat på ' + Math.round(performance.now() - t0) + ' ms');
+    updateCounts(pr);
+    // Clear any error markers
+    if (monacoEditor) monaco.editor.setModelMarkers(monacoEditor.getModel(), 'archicode', []);
+  } catch(err) {
+    updateStatus('err', 'Fel: ' + err.message);
+    toast('error', 'Renderingsfel: ' + err.message);
+    console.error('[ArchiCode]', err);
+  } finally {
+    tbSpinner.style.display = 'none';
+  }
+}
+
+window.renderDiagram = renderDiagram;
+
+/* ─── Export ────────────────────────────────────────── */
+function downloadSVG() {
+  const code = getCode().trim();
+  if (!code) { toast('info', 'Rita ett diagram först.'); return; }
+  try {
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(new Blob([ArchiCode.exportSVG(code)], {type:'image/svg+xml'})),
+      download: 'archicode.svg'
+    });
+    a.click(); URL.revokeObjectURL(a.href);
+    toast('success', 'SVG nedladdad.');
+  } catch(e) { toast('error', 'SVG-export misslyckades: ' + e.message); }
+}
+
+async function copySVG() {
+  const code = getCode().trim();
+  if (!code) { toast('info', 'Rita ett diagram först.'); return; }
+  try { await navigator.clipboard.writeText(ArchiCode.exportSVG(code)); toast('success', 'SVG kopierat till urklipp.'); }
+  catch(e) { toast('error', 'Kopiera misslyckades.'); }
+}
+
+function exportToDrawIO() {
+  const code = getCode().trim();
+  if (!code) { toast('info', 'Rita ett diagram först.'); return; }
+  try {
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(new Blob([ArchiCode.exportDrawIO(code)], {type:'application/xml'})),
+      download: 'archicode.drawio'
+    });
+    a.click(); URL.revokeObjectURL(a.href);
+    toast('success', 'Draw.io-fil exporterad.');
+  } catch(e) { toast('error', 'Draw.io-export misslyckades: ' + e.message); }
+}
+
+window.downloadSVG = downloadSVG;
+window.copySVG = copySVG;
+window.exportToDrawIO = exportToDrawIO;
+
+/* ─── Examples ──────────────────────────────────────── */
+function loadSelectedExample() {
+  const key = document.getElementById('exampleSelect').value;
+  if (!key || !EXAMPLES[key] || !monacoEditor) return;
+  monacoEditor.setValue(EXAMPLES[key]);
+  monacoEditor.revealLine(1);
+  renderDiagram();
+}
+
+window.loadSelectedExample = loadSelectedExample;
+
+/* ─── Drag to resize ────────────────────────────────── */
+(function() {
+  const handle = document.getElementById('dragHandle');
+  const edPane = document.getElementById('editorPane');
+  const cont   = document.getElementById('content');
+  let dragging = false, startX = 0, startW = 0;
+
+  handle.addEventListener('mousedown', function(e) {
+    dragging = true; startX = e.clientX; startW = edPane.offsetWidth;
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    const pct = Math.min(75, Math.max(25, ((startW + e.clientX - startX) / cont.offsetWidth) * 100));
+    edPane.style.width = pct + '%';
+    if (monacoEditor) monacoEditor.layout();
+  });
+  document.addEventListener('mouseup', function() {
+    if (!dragging) return;
+    dragging = false; handle.classList.remove('dragging');
+    document.body.style.cursor = ''; document.body.style.userSelect = '';
+  });
+})();
+
+/* ─── Toast ─────────────────────────────────────────── */
+function toast(type, msg) {
+  const div = document.createElement('div');
+  div.className = 'toast toast-' + type;
+  div.innerHTML = '<span>' + {success:'✓',error:'✕',info:'ℹ'}[type] + '</span><span>' + escapeHtml(String(msg)) + '</span>';
+  document.getElementById('toastContainer').appendChild(div);
+  setTimeout(function() {
+    div.classList.add('out');
+    div.addEventListener('animationend', function() { div.remove(); }, {once:true});
+  }, 2800);
+}
+
+/* ─── Monaco setup ──────────────────────────────────── */
+require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs' } });
+
+require(['vs/editor/editor.main'], function() {
+
+  /* Language */
+  monaco.languages.register({ id: 'archicode' });
+
+  /* Monarch tokenizer */
+  monaco.languages.setMonarchTokensProvider('archicode', {
+    defaultToken: '',
+    tokenPostfix: '.archicode',
+    tokenizer: {
+      root: [
+        [/\/\/.*$/, 'comment'],
+        [/#[a-zA-Z]+/, 'keyword.directive'],
+        [/:\s*(true|false|down|right|\d+)/, 'constant.numeric'],
+        [/\[/, { token: 'delimiter.bracket', next: '@element' }],
+        [/--:>/, 'keyword.operator'],
+        [/-\|>/, 'keyword.operator'],
+        [/-:>/, 'keyword.operator'],
+        [/<->/, 'keyword.operator'],
+        [/-->/, 'keyword.operator'],
+        [/->/, 'keyword.operator'],
+        [/\.--/, 'keyword.operator'],
+        [/o-(?!\w)/, 'keyword.operator'],
+        [/---/, 'keyword.operator'],
+      ],
+      element: [
+        [/\]/, { token: 'delimiter.bracket', next: '@pop' }],
+        [/<motivation:[a-z-]*>/, 'type.motivation'],
+        [/<strategy:[a-z-]*>/, 'type.strategy'],
+        [/<common:[a-z-]*>/, 'type.common'],
+        [/<business:[a-z-]*>/, 'type.business'],
+        [/<application:[a-z-]*>/, 'type.application'],
+        [/<technology:[a-z-]*>/, 'type.technology'],
+        [/<implementation:[a-z-]*>/, 'type.implementation'],
+        [/[^\]<]+/, 'string'],
+      ]
+    }
+  });
+
+  /* Language configuration */
+  monaco.languages.setLanguageConfiguration('archicode', {
+    comments: { lineComment: '//' },
+    brackets: [['[',']'],['<','>']],
+    autoClosingPairs: [{open:'[',close:']'},{open:'<',close:'>'}],
+    surroundingPairs: [{open:'[',close:']'},{open:'<',close:'>'}],
+  });
+
+  /* Dark theme */
+  monaco.editor.defineTheme('archicode-dark', {
+    base: 'vs-dark', inherit: true,
+    rules: [
+      { token: 'comment.archicode',             foreground: '6e7681', fontStyle: 'italic' },
+      { token: 'keyword.directive.archicode',   foreground: '79c0ff' },
+      { token: 'constant.numeric.archicode',    foreground: 'a5d6ff' },
+      { token: 'delimiter.bracket.archicode',   foreground: '484f58' },
+      { token: 'string.archicode',              foreground: 'e6edf3' },
+      { token: 'keyword.operator.archicode',    foreground: 'ffa657', fontStyle: 'bold' },
+      { token: 'type.motivation.archicode',     foreground: 'D8C1E4' },
+      { token: 'type.strategy.archicode',       foreground: 'EFBD5D' },
+      { token: 'type.common.archicode',         foreground: 'C4BFA6' },
+      { token: 'type.business.archicode',       foreground: 'F4DE7F' },
+      { token: 'type.application.archicode',    foreground: 'B6D7E1' },
+      { token: 'type.technology.archicode',     foreground: 'C3E1B4' },
+      { token: 'type.implementation.archicode', foreground: 'F8C2BE' },
+    ],
+    colors: {
+      'editor.background':                 '#0d1117',
+      'editor.foreground':                 '#e6edf3',
+      'editorLineNumber.foreground':       '#3d4451',
+      'editorLineNumber.activeForeground': '#8b949e',
+      'editor.selectionBackground':        '#264f7860',
+      'editor.lineHighlightBackground':    '#161b2230',
+      'editorCursor.foreground':           '#EFBD5D',
+      'editorIndentGuide.background1':     '#21262d',
+      'scrollbarSlider.background':        '#484f5840',
+      'scrollbarSlider.hoverBackground':   '#484f5880',
+      'editorBracketMatch.background':     '#EFBD5D30',
+      'editorBracketMatch.border':         '#EFBD5D80',
+      'minimap.background':                '#0d1117',
+    }
+  });
+
+  /* Light theme */
+  monaco.editor.defineTheme('archicode-light', {
+    base: 'vs', inherit: true,
+    rules: [
+      { token: 'comment.archicode',             foreground: '8b949e', fontStyle: 'italic' },
+      { token: 'keyword.directive.archicode',   foreground: '0550ae' },
+      { token: 'constant.numeric.archicode',    foreground: '0a3069' },
+      { token: 'delimiter.bracket.archicode',   foreground: '8c959f' },
+      { token: 'string.archicode',              foreground: '1f2328' },
+      { token: 'keyword.operator.archicode',    foreground: 'bc4c00', fontStyle: 'bold' },
+      { token: 'type.motivation.archicode',     foreground: '7b5ea7' },
+      { token: 'type.strategy.archicode',       foreground: '9a6700' },
+      { token: 'type.common.archicode',         foreground: '6b6455' },
+      { token: 'type.business.archicode',       foreground: '7d6500' },
+      { token: 'type.application.archicode',    foreground: '0969da' },
+      { token: 'type.technology.archicode',     foreground: '2da44e' },
+      { token: 'type.implementation.archicode', foreground: 'cf222e' },
+    ],
+    colors: {
+      'editor.background':              '#ffffff',
+      'editor.foreground':              '#1f2328',
+      'editorLineNumber.foreground':    '#a7b6c2',
+      'editorCursor.foreground':        '#EFBD5D',
+      'editor.lineHighlightBackground': '#f6f8fa',
+      'editor.selectionBackground':     '#dde7f5',
+      'editorBracketMatch.background':  '#EFBD5D30',
+      'editorBracketMatch.border':      '#EFBD5D',
+    }
+  });
+
+  /* Completion provider (IntelliSense) */
+  monaco.languages.registerCompletionItemProvider('archicode', {
+    triggerCharacters: ['<', ':', '[', '#'],
+    provideCompletionItems: function(model, position) {
+      var lu = model.getLineContent(position.lineNumber).substring(0, position.column - 1);
+      var word = model.getWordUntilPosition(position);
+      var range = {
+        startLineNumber: position.lineNumber, endLineNumber: position.lineNumber,
+        startColumn: word.startColumn, endColumn: position.column,
+      };
+      var suggestions = [];
+
+      /* After [< — domain names */
+      if (/\[<\w*$/.test(lu)) {
+        DOMAIN_ORDER.forEach(function(d) {
+          suggestions.push({
+            label: d, kind: monaco.languages.CompletionItemKind.Enum,
+            detail: DOMAINS[d].badge + ' domän',
+            documentation: { value: DOMAIN_DOCS[d] },
+            insertText: d + ':', range: range,
+            sortText: '0' + d,
+          });
+        });
+        return { suggestions: suggestions };
+      }
+
+      /* After [<domain: — element types */
+      var dm = lu.match(/\[<(motivation|strategy|common|business|application|technology|implementation):(\w*)$/);
+      if (dm) {
+        (DOMAIN_TYPES[dm[1]] || []).forEach(function(t) {
+          suggestions.push({
+            label: t, kind: monaco.languages.CompletionItemKind.Class,
+            detail: dm[1] + ':' + t,
+            insertText: t + '> ', range: range,
+          });
+        });
+        return { suggestions: suggestions };
+      }
+
+      /* After ] — relation operators */
+      if (/\]\s*[-.<o]*$/.test(lu)) {
+        [
+          ['->', 'Serving — A levererar tjänst till B'],
+          ['-->', 'Flow — Information flödar från A till B'],
+          ['--:>', 'Realization — A implementerar B'],
+          ['-|>', 'Triggering — A initierar B'],
+          ['.--', 'Assignment — A tilldelas roll B'],
+          ['o-', 'Aggregation — B är del av A'],
+          ['-:>', 'Specialization — A specialiserar B'],
+          ['<->', 'Access — A läser/skriver till B'],
+          ['---', 'Association — Generell relation'],
+        ].forEach(function(r, i) {
+          suggestions.push({
+            label: r[0], kind: monaco.languages.CompletionItemKind.Operator,
+            detail: r[1], documentation: { value: REL_DOCS[r[0]] || r[1] },
+            insertText: r[0] + ' [', range: range,
+            sortText: String(i).padStart(2,'0'),
+          });
+        });
+        return { suggestions: suggestions };
+      }
+
+      /* Directives at start of line */
+      if (/^[ \t]*#\w*$/.test(lu)) {
+        [
+          ['#spacing',    '#spacing: 80',       'Avstånd mellan element (px)'],
+          ['#direction',  '#direction: down',   'Layoutriktning: down | right'],
+          ['#fontSize',   '#fontSize: 13',      'Teckenstorlek (px)'],
+          ['#showBadges', '#showBadges: true',  'Visa domänbokstav (M/S/C/B/A/T/I)'],
+          ['#showIcons',  '#showIcons: true',   'Visa elementikoner'],
+          ['#lineWidth',  '#lineWidth: 2',      'Linjetjocklek'],
+        ].forEach(function(d) {
+          suggestions.push({
+            label: d[0], kind: monaco.languages.CompletionItemKind.Property,
+            detail: d[2], insertText: d[1], range: range,
+          });
+        });
+        return { suggestions: suggestions };
+      }
+
+      /* Reference names from existing code */
+      if (/\[\w/.test(lu) && !/\[</.test(lu)) {
+        var seen = new Set(), re = /\[(?:<[^>]+>\s*)?([^\]<]+)\]/g, m;
+        var all = model.getValue();
+        while ((m = re.exec(all)) !== null) { var n = m[1].trim(); if (n) seen.add(n); }
+        seen.forEach(function(name) {
+          suggestions.push({
+            label: name, kind: monaco.languages.CompletionItemKind.Reference,
+            insertText: name + ']', range: range,
+          });
+        });
+        return { suggestions: suggestions };
+      }
+
+      return { suggestions: [] };
+    }
+  });
+
+  /* Hover provider */
+  monaco.languages.registerHoverProvider('archicode', {
+    provideHover: function(model, position) {
+      var line = model.getLineContent(position.lineNumber);
+      for (var i = 0; i < DOMAIN_ORDER.length; i++) {
+        if (line.indexOf('<' + DOMAIN_ORDER[i] + ':') >= 0) {
+          return { range: new monaco.Range(position.lineNumber,1,position.lineNumber,line.length+1),
+            contents: [{ value: DOMAIN_DOCS[DOMAIN_ORDER[i]] }] };
+        }
+      }
+      var rm = line.match(/(--:>|-\|>|-:>|<->|-->|->|\.--|o-|---)/);
+      if (rm && REL_DOCS[rm[1]]) {
+        return { range: new monaco.Range(position.lineNumber,1,position.lineNumber,line.length+1),
+          contents: [{ value: REL_DOCS[rm[1]] }] };
+      }
+    }
+  });
+
+  /* Create editor */
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  monacoEditor = monaco.editor.create(document.getElementById('monacoContainer'), {
+    value: '',
+    language: 'archicode',
+    theme: isDark ? 'archicode-dark' : 'archicode-light',
+    automaticLayout: true,
+    fontSize: 13,
+    lineHeight: 21,
+    fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, 'Courier New', monospace",
+    fontLigatures: true,
+    minimap: { enabled: true, maxColumn: 80, renderCharacters: false },
+    scrollBeyondLastLine: false,
+    wordWrap: 'off',
+    renderWhitespace: 'none',
+    cursorStyle: 'line',
+    cursorBlinking: 'smooth',
+    smoothScrolling: true,
+    lineNumbers: 'on',
+    glyphMargin: false,
+    folding: false,
+    renderLineHighlight: 'line',
+    occurrencesHighlight: 'off',
+    overviewRulerBorder: false,
+    hideCursorInOverviewRuler: true,
+    padding: { top: 16, bottom: 16 },
+    quickSuggestions: { other: true, comments: false, strings: false },
+    suggestOnTriggerCharacters: true,
+    tabSize: 2,
+    insertSpaces: true,
+    bracketPairColorization: { enabled: false },
+    guides: { indentation: false },
+    stickyScroll: { enabled: false },
+  });
+
+  /* Ctrl+Enter → render */
+  monacoEditor.addAction({
+    id: 'archicode-render',
+    label: 'Rendera ArchiCode-diagram',
+    keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
+    run: function() { renderDiagram(); }
+  });
+
+  /* Auto-render on change */
+  monacoEditor.onDidChangeModelContent(function() {
+    if (!autoRenderCb.checked) return;
+    clearTimeout(autoDebounce);
+    autoDebounce = setTimeout(renderDiagram, 700);
+  });
+
+  monacoReady = true;
+  tryInit();
+});
+
+/* ─── Init coordination ─────────────────────────────── */
+function tryInit() {
+  if (!archiCodeReady || !monacoReady || window.__DEMO_INIT__) return;
+  window.__DEMO_INIT__ = true;
+  updateStatus('', 'Redo');
+  zoomLabel.textContent = '100%';
+  monacoEditor.setValue(EXAMPLES['all-domains']);
+  renderDiagram();
+}
+
+window.addEventListener('acloaded', function() { archiCodeReady = true; tryInit(); }, { once: true });
+window.addEventListener('acerror',  function() {
+  updateStatus('err', 'Kunde inte ladda archicode.js');
+  toast('error', 'Kunde inte ladda archicode.js — kontrollera att filen finns i samma mapp.');
+}, { once: true });
+
+if (typeof ArchiCode !== 'undefined') { archiCodeReady = true; }
+</script>
+</body>
+</html>

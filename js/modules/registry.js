@@ -14,11 +14,14 @@ const ModuleRegistry = (() => {
     note: 'NotesModule',
     annotation: 'AnnotationModule',
     html: 'HtmlModule',
+    promptbook: 'PromptbookModule',
+    archicode: 'ArchicodeModule',
   };
 
   function normalizeType(type) {
     const s = String(type || 'markdown').trim().toLowerCase();
     if (s === 'draw.io' || s === 'draw_io') return 'drawio';
+    if (s === 'archimate') return 'archicode';
     return s;
   }
 

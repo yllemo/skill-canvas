@@ -510,6 +510,26 @@ body:not(.embed-mode) .h-btn-embed { display: none !important; }
     </div>
   </div>
 
+  <!-- ArchiMate 4 -->
+  <div class="dd" id="dd-am4">
+    <button class="tb-btn" onclick="ddToggle('dd-am4')">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="14" height="2.5" rx="0.5" fill="#D8C1E4" stroke="#B39BCF" stroke-width="0.6"/><rect x="1" y="5" width="14" height="2.5" rx="0.5" fill="#EFBD5D" stroke="#D4A43B" stroke-width="0.6"/><rect x="1" y="9" width="14" height="2.5" rx="0.5" fill="#F4DE7F" stroke="#E8C555" stroke-width="0.6"/><rect x="1" y="13" width="14" height="2" rx="0.5" fill="#B6D7E1" stroke="#8CC5D4" stroke-width="0.6"/></svg>
+      ArchiMate 4
+      <svg viewBox="0 0 10 6" style="width:9px;height:9px;"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+    </button>
+    <div class="dd-menu" id="dd-am4Menu">
+      <div class="dd-section">ArchiMate 4 (C260) — domäner</div>
+      <div class="dd-item" onclick="loadSample('am4-overview')"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1" stroke="currentColor" stroke-width="1.2" fill="none"/><line x1="8" y1="2" x2="8" y2="14" stroke="currentColor" stroke-width="0.8" opacity=".4"/><line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="0.8" opacity=".4"/></svg>Domänöversikt — sju domäner</div>
+      <div class="dd-item" onclick="loadSample('am4-motivation')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="#D8C1E4" stroke="#B39BCF" stroke-width="1"/></svg>Motivationsdomän</div>
+      <div class="dd-item" onclick="loadSample('am4-strategy')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="#EFBD5D" stroke="#D4A43B" stroke-width="1"/></svg>Strategidomän</div>
+      <div class="dd-item" onclick="loadSample('am4-common')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="#E8E5D3" stroke="#C4BFA6" stroke-width="1"/></svg>Common-domän</div>
+      <div class="dd-item" onclick="loadSample('am4-business')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="#F4DE7F" stroke="#E8C555" stroke-width="1"/></svg>Verksamhetsdomän</div>
+      <div class="dd-item" onclick="loadSample('am4-application')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="#B6D7E1" stroke="#8CC5D4" stroke-width="1"/></svg>Applikationsdomän</div>
+      <div class="dd-item" onclick="loadSample('am4-technology')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="#C3E1B4" stroke="#9BD083" stroke-width="1"/></svg>Teknologidomän</div>
+      <div class="dd-item" onclick="loadSample('am4-implementation')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="#F8C2BE" stroke="#F09B95" stroke-width="1"/></svg>Implementering &amp; migration</div>
+    </div>
+  </div>
+
   <div class="toolbar-sep"></div>
   <span class="toolbar-label">Åtgärder</span>
 
@@ -622,7 +642,7 @@ mermaid.registerIconPacks([
 ]);
 
 function initMermaid() {
-  mermaid.initialize({ startOnLoad:false, theme:mermaidTheme(), securityLevel:'loose', fontFamily:'Arial,sans-serif' });
+  mermaid.initialize({ startOnLoad:false, theme:mermaidTheme(), securityLevel:'loose', fontFamily:'Arial,sans-serif', flowchart:{ htmlLabels:true } });
 }
 /* initMermaid() is called in INIT after theme is applied */
 
@@ -1385,7 +1405,152 @@ ishikawa
     Bristande rutiner
   Material
     Inaktuella specifikationer
-    Saknade exempeldata`
+    Saknade exempeldata`,
+
+  /* ── ArchiMate 4 (C260) — från archimate.yllemo.com/archimate-mermaid.html ── */
+  'am4-overview': `%% ArchiMate 4 — Domänöversikt (sju domäner)
+flowchart TD
+    M["«motivation»<br/><b>Motivationsdomän</b><br/>(Varför)"]:::motivation
+    S["«strategi»<br/><b>Strategidomän</b><br/>(Hur vi skapar värde)"]:::strategy
+    Co["«common»<br/><b>Common-domän</b><br/>(Delade beteendeelement)"]:::common
+    V["«verksamhet»<br/><b>Verksamhetsdomän</b><br/>(Affär & organisation)"]:::business
+    A["«applikation»<br/><b>Applikationsdomän</b><br/>(IT-stöd)"]:::application
+    T["«teknologi»<br/><b>Teknologidomän</b><br/>(Infrastruktur & OT)"]:::technology
+    I["«implementering»<br/><b>Implementering & Migration</b><br/>(Förändring)"]:::implementation
+
+    M --> S
+    S --> Co
+    Co --> V
+    Co --> A
+    Co --> T
+    V & A & T --> I
+
+    V --> BO["«affärsobjekt»<br/><b>Kundärende</b>"]:::business
+    A --> DO["«dataobjekt»<br/><b>Ärendedata</b>"]:::application
+    BO -. realiseras av .-> DO
+
+    classDef motivation     fill:#D8C1E4,stroke:#B39BCF,stroke-width:1px,color:#000;
+    classDef strategy       fill:#EFBD5D,stroke:#D4A43B,stroke-width:1px,color:#000;
+    classDef common         fill:#E8E5D3,stroke:#C4BFA6,stroke-width:1px,color:#000;
+    classDef business       fill:#F4DE7F,stroke:#E8C555,stroke-width:1px,color:#000;
+    classDef application    fill:#B6D7E1,stroke:#8CC5D4,stroke-width:1px,color:#000;
+    classDef technology     fill:#C3E1B4,stroke:#9BD083,stroke-width:1px,color:#000;
+    classDef implementation fill:#F8C2BE,stroke:#F09B95,stroke-width:1px,color:#000;`,
+
+  'am4-motivation': `%% ArchiMate 4 — Motivationsdomän
+flowchart TD
+    Sh["«intressent»<br/><b>Ledning</b>"]:::motivation
+    Dr1["«drivkraft»<br/><b>Ökat marknadsvärde</b>"]:::motivation
+    Dr2["«drivkraft»<br/><b>Kostnadskontroll</b>"]:::motivation
+    Go1["«mål»<br/><b>Effektivare processer</b>"]:::motivation
+    Go2["«mål»<br/><b>Bättre datakvalitet</b>"]:::motivation
+    Req["«krav»<br/><b>GDPR-efterlevnad</b>"]:::motivation
+    Pri["«princip»<br/><b>Data som tillgång</b>"]:::motivation
+
+    Sh --> Dr1
+    Sh --> Dr2
+    Dr1 --> Go1
+    Dr2 --> Go2
+    Go1 --> Req
+    Go2 --> Pri
+
+    classDef motivation fill:#D8C1E4,stroke:#B39BCF,stroke-width:1px,color:#000;`,
+
+  'am4-strategy': `%% ArchiMate 4 — Strategidomän
+flowchart TD
+    Cap1["«förmåga»<br/><b>IT-hantering</b>"]:::strategy
+    Cap2["«förmåga»<br/><b>Processoptimering</b>"]:::strategy
+    Res1["«resurs»<br/><b>IT-team</b>"]:::strategy
+    Res2["«resurs»<br/><b>Konsulter</b>"]:::strategy
+    CoA["«handlingsplan»<br/><b>Digital transformation</b>"]:::strategy
+    VS["«värdeström»<br/><b>Kundresan</b>"]:::strategy
+
+    Res1 --> Cap1
+    Res2 --> Cap2
+    Cap1 --> CoA
+    Cap2 --> CoA
+    CoA --> VS
+
+    classDef strategy fill:#EFBD5D,stroke:#D4A43B,stroke-width:1px,color:#000;`,
+
+  'am4-common': `%% ArchiMate 4 — Common-domän
+flowchart TD
+    Proc["«process»<br/><b>Försäljningsprocess</b>"]:::common
+    Func["«funktion»<br/><b>Kalkylatorfunktion</b>"]:::common
+    Svc["«tjänst»<br/><b>Offerthantering</b>"]:::common
+    Evt["«händelse»<br/><b>Affär avslutad</b>"]:::common
+    Rol["«roll»<br/><b>Processutförare</b>"]:::common
+    Col["«kollaboration»<br/><b>Säljteam</b>"]:::common
+
+    Evt -->|utlöser| Proc
+    Func -->|producerar| Svc
+    Proc -->|producerar| Svc
+    Rol -->|utför| Proc
+    Col -->|utför| Proc
+
+    classDef common fill:#E8E5D3,stroke:#C4BFA6,stroke-width:1px,color:#000;`,
+
+  'am4-business': `%% ArchiMate 4 — Verksamhetsdomän
+flowchart TD
+    Act["«aktör»<br/><b>Säljorganisation</b>"]:::business
+    Ro["«roll»<br/><b>Säljare</b>"]:::business
+    Prod["«produkt»<br/><b>Försäljningspaket</b>"]:::business
+    BO["«affärsobjekt»<br/><b>Kundavtal</b>"]:::business
+    Iface["«gränssnitt»<br/><b>Kundportal</b>"]:::business
+
+    Act -->|tilldelar| Ro
+    Ro -->|säljer| Prod
+    Prod -->|innefattar| BO
+    Iface -->|tillgängliggör| Prod
+
+    classDef business fill:#F4DE7F,stroke:#E8C555,stroke-width:1px,color:#000;`,
+
+  'am4-application': `%% ArchiMate 4 — Applikationsdomän
+flowchart TD
+    Comp1["«applikationskomponent»<br/><b>CRM-system</b>"]:::application
+    Comp2["«applikationskomponent»<br/><b>Ordermodul</b>"]:::application
+    Iface["«gränssnitt»<br/><b>Kunddata API</b>"]:::application
+    DO["«dataobjekt»<br/><b>Kundregister</b>"]:::application
+
+    Comp1 -->|exponerar| Iface
+    Comp2 -->|använder| Iface
+    Iface -->|tillgängliggör| DO
+
+    classDef application fill:#B6D7E1,stroke:#8CC5D4,stroke-width:1px,color:#000;`,
+
+  'am4-technology': `%% ArchiMate 4 — Teknologidomän
+flowchart TD
+    Fac["«anläggning»<br/><b>Datacenter Stockholm</b>"]:::technology
+    Eq["«utrustning»<br/><b>Serverracks</b>"]:::technology
+    Node["«nod»<br/><b>Produktionsserver</b>"]:::technology
+    Sys["«systemprogramvara»<br/><b>Docker/Kubernetes</b>"]:::technology
+    Net["«nätverk»<br/><b>Datacenter LAN</b>"]:::technology
+    Artif["«artefakt»<br/><b>kunddata.db</b>"]:::technology
+
+    Fac -->|innehåller| Eq
+    Eq -->|utför| Node
+    Node -->|kör| Sys
+    Sys -->|kommunicerar via| Net
+    Node -->|lagrar| Artif
+
+    classDef technology fill:#C3E1B4,stroke:#9BD083,stroke-width:1px,color:#000;`,
+
+  'am4-implementation': `%% ArchiMate 4 — Implementering & migration
+flowchart TD
+    Prog["«program»<br/><b>Digitalisering 2025–2027</b>"]:::implementation
+    WP1["«arbetspaket»<br/><b>Infrastrukturuppgradering</b>"]:::implementation
+    WP2["«arbetspaket»<br/><b>Datamigrering</b>"]:::implementation
+    Del1["«leverans»<br/><b>Ny databaskonfiguration</b>"]:::implementation
+    Del2["«leverans»<br/><b>Migrerad kunddata</b>"]:::implementation
+    Plat["«platå»<br/><b>Målarkitektur v1</b>"]:::implementation
+
+    Prog --> WP1
+    Prog --> WP2
+    WP1 --> Del1
+    WP2 --> Del2
+    Del1 & Del2 --> Plat
+
+    classDef implementation fill:#F8C2BE,stroke:#F09B95,stroke-width:1px,color:#000;`
 };
 
 window.loadSample = function(key) {

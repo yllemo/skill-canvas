@@ -75,10 +75,21 @@ const SkillImport = (() => {
     if (skillPath && norm === skillPath) return 'markdown';
     if (ext === 'md') return 'markdown';
     if (ext === 'mmd' || ext === 'mermaid') return 'mermaid';
+    if (ext === 'ac') return 'archicode';
     if (ext === 'drawio' || ext === 'dio') return 'drawio';
     if (ext === 'bpmn') return 'bpmn';
     if (ext === 'html' || ext === 'htm') return 'html';
+    if (ext === 'json' && lower.startsWith('promptbook/')) return 'promptbook';
     if (IMAGE_EXT.has(ext)) return 'image';
+    return null;
+  }
+
+  function findArchicodePreview(path, filesMap) {
+    const base = path.replace(/\.ac$/i, '');
+    for (const ext of ['svg', 'png', 'jpg', 'jpeg']) {
+      const candidate = `${base}.${ext}`;
+      if (filesMap[candidate]) return candidate;
+    }
     return null;
   }
 
@@ -102,7 +113,7 @@ const SkillImport = (() => {
 
   function defaultWidth(type) {
     const nodes = window.SC_DEFAULTS?.nodes || {};
-    return nodes[type]?.width || { markdown: 720, mermaid: 500, image: 400, drawio: 480, bpmn: 480, html: 640 }[type] || 400;
+    return nodes[type]?.width || { markdown: 720, mermaid: 500, image: 400, drawio: 480, bpmn: 480, html: 640, promptbook: 420, archicode: 520 }[type] || 400;
   }
 
   function layoutNodes(list, opts = {}) {
@@ -184,6 +195,19 @@ const SkillImport = (() => {
         continue;
       }
 
+      if (type === 'archicode') {
+        const preview = findArchicodePreview(path, filesMap);
+        if (preview) usedPaths.add(preview);
+        addNode({
+          type: 'archicode',
+          file: path,
+          previewFile: preview || undefined,
+          title: titleFromPath(path),
+          width: defaultWidth('archicode'),
+        });
+        continue;
+      }
+
       if (type === 'image') {
         addNode({
           type: 'image',
@@ -203,6 +227,17 @@ const SkillImport = (() => {
           title: titleFromPath(path),
           width: defaultWidth('html'),
           height: window.SC_DEFAULTS?.nodes?.html?.height || 400,
+        });
+        continue;
+      }
+
+      if (type === 'promptbook') {
+        addNode({
+          type: 'promptbook',
+          file: path,
+          title: titleFromPath(path),
+          width: defaultWidth('promptbook'),
+          height: window.SC_DEFAULTS?.nodes?.promptbook?.height || 360,
         });
         continue;
       }
@@ -234,6 +269,35 @@ const SkillImport = (() => {
     return n.endsWith('.zip') || n.endsWith('.skill');
   }
 
+  function parseRemoteArchiveUrl(raw, baseHref) {
+    const s = String(raw || '').trim();
+    if (!s) return { ok: false, error: 'Ingen URL angiven' };
+    let url;
+    try {
+      url = new URL(s, baseHref || (typeof location !== 'undefined' ? location.href : undefined));
+    } catch {
+      return { ok: false, error: 'Ogiltig URL' };
+    }
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return { ok: false, error: 'Endast http/https-URL:er stöds' };
+    }
+    const path = url.pathname.toLowerCase();
+    if (!isArchiveFileName(path.split('/').pop() || '')) {
+      return { ok: false, error: 'URL måste peka på en .zip- eller .skill-fil' };
+    }
+    return { ok: true, url: url.href };
+  }
+
+  function fileNameFromUrl(urlStr) {
+    try {
+      const u = new URL(urlStr);
+      const base = u.pathname.split('/').pop() || 'remote.skill';
+      return decodeURIComponent(base);
+    } catch {
+      return 'remote.skill';
+    }
+  }
+
   return {
     normalizeZipPath,
     shouldSkipPath,
@@ -242,5 +306,7 @@ const SkillImport = (() => {
     isSkillCanvasFormat,
     buildImportFromArchive,
     isArchiveFileName,
+    parseRemoteArchiveUrl,
+    fileNameFromUrl,
   };
 })();
