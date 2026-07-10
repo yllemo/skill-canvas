@@ -73,6 +73,9 @@ const SkillImport = (() => {
     const lower = norm.toLowerCase();
     const ext = extOf(norm);
     if (skillPath && norm === skillPath) return 'markdown';
+    if (lower.startsWith('taxonomi/') && ext === 'md') return 'taxonomi';
+    if (lower.startsWith('mindmap/') && ext === 'md') return 'mindmap';
+    if (lower.startsWith('svg/') && ext === 'svg') return 'svg';
     if (ext === 'md') return 'markdown';
     if (ext === 'mmd' || ext === 'mermaid') return 'mermaid';
     if (ext === 'ac') return 'archicode';
@@ -111,9 +114,23 @@ const SkillImport = (() => {
     return null;
   }
 
+  function findMdSiblingPreview(path, filesMap) {
+    const base = path.replace(/\.md$/i, '');
+    for (const ext of ['png', 'svg', 'jpg', 'jpeg']) {
+      const candidate = `${base}.${ext}`;
+      if (filesMap[candidate]) return candidate;
+    }
+    return null;
+  }
+
   function defaultWidth(type) {
     const nodes = window.SC_DEFAULTS?.nodes || {};
-    return nodes[type]?.width || { markdown: 720, mermaid: 500, image: 400, drawio: 480, bpmn: 480, html: 640, promptbook: 420, archicode: 520 }[type] || 400;
+    return nodes[type]?.width || { markdown: 720, mermaid: 500, image: 400, drawio: 480, bpmn: 480, html: 640, promptbook: 420, archicode: 520, taxonomi: 520, mindmap: 520, svg: 480 }[type] || 400;
+  }
+
+  function defaultHeight(type) {
+    const nodes = window.SC_DEFAULTS?.nodes || {};
+    return nodes[type]?.height;
   }
 
   function layoutNodes(list, opts = {}) {
@@ -157,6 +174,7 @@ const SkillImport = (() => {
         file: skillPath,
         title,
         width: defaultWidth('markdown'),
+        height: defaultHeight('markdown') || 600,
       });
     }
 
@@ -191,6 +209,29 @@ const SkillImport = (() => {
           previewFile: preview || undefined,
           title: titleFromPath(path),
           width: defaultWidth('bpmn'),
+        });
+        continue;
+      }
+
+      if (type === 'taxonomi' || type === 'mindmap') {
+        const preview = findMdSiblingPreview(path, filesMap);
+        if (preview) usedPaths.add(preview);
+        addNode({
+          type,
+          file: path,
+          previewFile: preview || undefined,
+          title: titleFromPath(path),
+          width: defaultWidth(type),
+        });
+        continue;
+      }
+
+      if (type === 'svg') {
+        addNode({
+          type: 'svg',
+          file: path,
+          title: titleFromPath(path),
+          width: defaultWidth('svg'),
         });
         continue;
       }
@@ -247,6 +288,7 @@ const SkillImport = (() => {
         file: path,
         title: titleFromPath(path),
         width: defaultWidth(type),
+        ...(type === 'markdown' ? { height: defaultHeight('markdown') || 600 } : {}),
       });
     }
 

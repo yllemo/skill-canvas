@@ -16,6 +16,10 @@ const MarkdownModule = (() => {
     return cfg().editorUrl || 'html/markdown.php';
   }
 
+  function defaultMarkdownHeight() {
+    return nodeDefaults().height || 600;
+  }
+
   function closeFullscreenEditor() {
     const overlay = document.getElementById('md-editor-overlay');
     const iframe = document.getElementById('md-editor-frame');
@@ -113,7 +117,7 @@ const MarkdownModule = (() => {
       const fields = Modal.readFields({ title: 'md-title', width: 'md-width', height: 'md-height', content: 'md-content' });
       const defaults = nodeDefaults();
       const width = parseInt(fields.width, 10) || defaults.width || 720;
-      const height = parseMarkdownHeight(fields.height);
+      const height = parseMarkdownHeight(fields.height) ?? defaultMarkdownHeight();
       const id = genId();
       const filename = `${defaults.fileDir || 'nodes'}/${id}.${defaults.fileExt || 'md'}`;
 
@@ -124,11 +128,11 @@ const MarkdownModule = (() => {
         x: pos.x,
         y: pos.y,
         width,
+        height,
         title: fields.title,
         file: filename,
         _ownFile: true,
       };
-      if (height) node.height = height;
       nodes.push(node);
       await buildNodeEl(node);
       markDirty();
@@ -147,16 +151,14 @@ const MarkdownModule = (() => {
     await Modal.openFromType(TYPE, 'edit', {
       title: node.title || '',
       width: node.width || nodeDefaults().width || 720,
-      height: node.height || '',
+      height: node.height || defaultMarkdownHeight(),
       content,
     }, async () => {
       const fields = Modal.readFields({ title: 'md-title', width: 'md-width', height: 'md-height', content: 'md-content' });
       const defaults = nodeDefaults();
       node.title = fields.title;
       node.width = parseInt(fields.width, 10) || defaults.width || 720;
-      const height = parseMarkdownHeight(fields.height);
-      if (height) node.height = height;
-      else delete node.height;
+      node.height = parseMarkdownHeight(fields.height) ?? defaultMarkdownHeight();
       if (node.file) {
         files[node.file] = new TextEncoder().encode(fields.content);
       } else {

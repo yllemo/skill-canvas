@@ -16,6 +16,9 @@ const ModuleRegistry = (() => {
     html: 'HtmlModule',
     promptbook: 'PromptbookModule',
     archicode: 'ArchicodeModule',
+    taxonomi: 'TaxonomiModule',
+    mindmap: 'MindmapModule',
+    svg: 'SvgModule',
   };
 
   function normalizeType(type) {

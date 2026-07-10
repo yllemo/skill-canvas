@@ -1,0 +1,2122 @@
+<?php
+declare(strict_types=1);
+
+$embed = isset($_GET['embed']) && $_GET['embed'] === '1';
+$theme = in_array($_GET['theme'] ?? '', ['light', 'dark'], true) ? $_GET['theme'] : 'light';
+?>
+<!DOCTYPE html>
+<html lang="sv" data-theme="<?= htmlspecialchars($theme, ENT_QUOTES, 'UTF-8') ?>">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mindmap</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<style>
+:root {
+  /* Göteborgsblå — alltid konstant */
+  --gs-blue: #0077bc;
+
+  /* Light mode */
+  --bg-color:        #FFFFFE;
+  --bg-nav:          #F4F9FC;
+  --bg-info:         #F2F9F9;
+  --text-color:      #333333;
+  --text-secondary:  #6E6E6E;
+  --border-color:    #979797;
+
+  --node-surface:    #FFFFFE;
+  --dot-grid:        #dde7ee;
+  --panel:           rgba(244, 249, 252, .88);
+  --panel-border:    rgba(0, 119, 188, .18);
+  --shadow:          0 4px 18px rgba(15, 40, 60, .14);
+  --toolbar-h: 52px;
+}
+
+[data-theme="dark"] {
+  --bg-color:        #1F1F1F;
+  --bg-nav:          #141414;
+  --bg-info:         #282828;
+  --text-color:      #FFFFFF;
+  --text-secondary:  #E3E8E9;
+  --border-color:    #666666;
+
+  --node-surface:    #2b2b2b;
+  --dot-grid:        #353535;
+  --panel:           rgba(30, 30, 30, .88);
+  --panel-border:    rgba(255, 255, 255, .12);
+  --shadow:          0 4px 20px rgba(0, 0, 0, .55);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Goteborg', Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+}
+
+/* ---------- Header ---------- */
+header {
+  height: var(--toolbar-h);
+  background: linear-gradient(180deg, #0080c9, var(--gs-blue));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  position: relative;
+  z-index: 30;
+  box-shadow: 0 1px 8px rgba(0, 60, 100, .25);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+header::-webkit-scrollbar { display: none; }
+header .brand {
+  font-weight: bold;
+  font-size: 17px;
+  white-space: nowrap;
+  letter-spacing: .3px;
+  padding-right: 4px;
+}
+#mapTitle {
+  flex: 1;
+  min-width: 60px;
+  background: rgba(255,255,255,.14);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  padding: 5px 10px;
+  outline: none;
+  transition: background .15s, border-color .15s;
+}
+#mapTitle:hover { background: rgba(255,255,255,.22); }
+#mapTitle:focus { background: rgba(255,255,255,.96); color: #333; border-color: #fff; }
+#mapTitle::placeholder { color: rgba(255,255,255,.7); }
+
+.hbtn {
+  height: 36px;
+  min-width: 36px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255,255,255,.14);
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+  flex-shrink: 0;
+}
+.hbtn:hover { background: rgba(255,255,255,.28); }
+.hbtn:active { transform: scale(.96); }
+.hbtn:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.hbtn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.hbtn .lbl { display: none; }
+@media (min-width: 720px) { .hbtn .lbl { display: inline; } }
+
+/* ---------- Canvas ---------- */
+#stage {
+  position: absolute;
+  inset: var(--toolbar-h) 0 0 0;
+  overflow: hidden;
+  background-color: var(--bg-color);
+  touch-action: none;
+  cursor: grab;
+}
+#stage[data-bg="dots"] {
+  background-image: radial-gradient(var(--dot-grid) 1.1px, transparent 1.1px);
+  background-size: 28px 28px;
+}
+#stage[data-bg="grid"] {
+  background-image:
+    linear-gradient(var(--dot-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--dot-grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+#stage[data-bg="blank"] { background-image: none; }
+#stage.panning { cursor: grabbing; }
+#stage svg { width: 100%; height: 100%; display: block; }
+
+.node { cursor: pointer; }
+.node text {
+  font-family: 'Goteborg', Arial, Helvetica, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+.edge { fill: none; }
+.badge { cursor: pointer; }
+.badge text { font-size: 11px; font-weight: bold; pointer-events: none; user-select: none; }
+/* −-märket (utfälld gren) syns bara vid hover eller markering; ihopfällt märke syns alltid */
+.badge.exp { opacity: 0; pointer-events: none; transition: opacity .13s; }
+.node:hover .badge.exp, .node.sel .badge.exp { opacity: 1; pointer-events: auto; }
+@media (pointer: coarse) { .node.sel .badge.exp { opacity: 1; pointer-events: auto; } }
+
+/* ---------- Infopanel (anteckning + länk) ---------- */
+#infoPanel {
+  position: absolute;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  width: 290px;
+  padding: 12px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  z-index: 18;
+}
+#infoPanel.open { display: flex; }
+#infoPanel .ip-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  font-weight: bold;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+#ipClose {
+  border: none; background: transparent; color: var(--text-secondary);
+  font-size: 18px; cursor: pointer; line-height: 1; padding: 2px 7px; border-radius: 4px;
+}
+#ipClose:hover { background: rgba(0,119,188,.1); color: var(--text-color); }
+#ipLink {
+  display: none; font-size: 13.5px; color: var(--gs-blue);
+  word-break: break-all; text-decoration: none; font-family: Arial, Helvetica, sans-serif;
+}
+[data-theme="dark"] #ipLink { color: #479EF5; }
+#ipLink:hover { text-decoration: underline; }
+#ipNote {
+  resize: vertical; min-height: 66px; max-height: 200px;
+  font: 13.5px/1.45 Arial, Helvetica, sans-serif;
+  padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 4px;
+  background: var(--node-surface); color: var(--text-color); outline: none;
+}
+#ipUrl {
+  font: 13.5px Arial, Helvetica, sans-serif;
+  padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 4px;
+  background: var(--node-surface); color: var(--text-color); outline: none;
+}
+#ipNote:focus, #ipUrl:focus { border-color: var(--gs-blue); }
+@media (max-width: 600px) {
+  #infoPanel.open {
+    position: fixed;
+    left: 10px !important;
+    right: 10px;
+    bottom: 12px;
+    top: auto !important;
+    width: auto;
+  }
+}
+
+/* Plus-knappar: syns vid hover (desktop) och på markerad nod (mobil) */
+.plus { opacity: 0; pointer-events: none; transition: opacity .13s; cursor: pointer; }
+.node:hover .plus, .node.sel .plus { opacity: 1; pointer-events: auto; }
+.plus circle { transition: transform .12s; transform-box: fill-box; transform-origin: center; }
+.plus:hover circle { transform: scale(1.18); }
+.plus text { font-size: 15px; font-weight: bold; pointer-events: none; user-select: none; }
+@media (pointer: coarse) { .node .plus { opacity: 0; } .node.sel .plus { opacity: 1; pointer-events: auto; } }
+
+/* ---------- Flytande nodverktyg ---------- */
+#nodeTools {
+  position: absolute;
+  display: none;
+  gap: 2px;
+  padding: 5px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  z-index: 20;
+}
+#nodeTools.open { display: flex; }
+#nodeTools button {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .12s;
+}
+#nodeTools button:hover { background: rgba(0, 119, 188, .1); }
+[data-theme="dark"] #nodeTools button:hover { background: rgba(255,255,255,.09); }
+#nodeTools button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#nodeTools button.danger { color: #d24723; }
+#nodeTools .sep { width: 1px; background: var(--panel-border); margin: 5px 3px; }
+
+/* ---------- Färgpalett ---------- */
+#palette {
+  position: absolute;
+  display: none;
+  grid-template-columns: repeat(5, 36px);
+  gap: 8px;
+  padding: 12px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  z-index: 25;
+}
+#palette.open { display: grid; }
+#palette .swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.6);
+  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  cursor: pointer;
+  padding: 0;
+  transition: transform .1s;
+}
+#palette .swatch:hover { transform: scale(1.15); }
+#palette .swatch.active { outline: 2px solid var(--text-color); outline-offset: 2px; }
+#palette .custom {
+  position: relative;
+  overflow: hidden;
+  background: conic-gradient(#d24723,#f2a900,#5a8b3b,#008391,#0077bc,#674b99,#d53878,#d24723);
+}
+#palette .custom input { position: absolute; inset: -10px; opacity: 0; cursor: pointer; }
+
+/* ---------- Redigeringsfält ---------- */
+#editBox {
+  position: absolute;
+  display: none;
+  z-index: 22;
+  border: 2px solid var(--gs-blue);
+  border-radius: 6px;
+  background: var(--node-surface);
+  color: var(--text-color);
+  font-family: 'Goteborg', Arial, Helvetica, sans-serif;
+  padding: 5px 12px;
+  outline: none;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+/* ---------- Zoomkontroller ---------- */
+#zoomCtrl {
+  position: absolute;
+  right: 14px;
+  bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  z-index: 15;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+#zoomCtrl button {
+  width: 44px;
+  height: 42px;
+  border: none;
+  background: transparent;
+  color: var(--text-color);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .12s;
+}
+#zoomCtrl button + button { border-top: 1px solid var(--panel-border); }
+#zoomCtrl button:hover { background: rgba(0, 119, 188, .1); }
+[data-theme="dark"] #zoomCtrl button:hover { background: rgba(255,255,255,.09); }
+#zoomCtrl svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- Hjälprad ---------- */
+#hint {
+  position: absolute;
+  left: 14px;
+  bottom: 18px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  z-index: 10;
+  max-width: min(600px, calc(100vw - 100px));
+  pointer-events: none;
+}
+#hint kbd {
+  font-family: inherit;
+  background: var(--bg-info);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 11.5px;
+}
+[data-theme="dark"] #hint kbd { background: #333; }
+@media (max-width: 600px) { #hint .desk { display: none; } }
+@media (min-width: 601px) { #hint .mob { display: none; } }
+
+/* ---------- Exportmeny ---------- */
+#exportMenu {
+  position: absolute;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  min-width: 230px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  z-index: 35;
+}
+#exportMenu.open { display: flex; }
+#exportMenu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-color);
+  font: 14px Arial, Helvetica, sans-serif;
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s;
+}
+#exportMenu button:hover { background: rgba(0,119,188,.1); }
+[data-theme="dark"] #exportMenu button:hover { background: rgba(255,255,255,.09); }
+#exportMenu svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+/* ---------- Sökrad ---------- */
+#searchBar {
+  position: absolute;
+  top: calc(var(--toolbar-h) + 12px);
+  left: 14px;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  z-index: 26;
+}
+#searchBar.open { display: flex; }
+#searchInput {
+  width: min(220px, 48vw);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--node-surface);
+  color: var(--text-color);
+  font: 14px Arial, Helvetica, sans-serif;
+  padding: 6px 10px;
+  outline: none;
+}
+#searchInput:focus { border-color: var(--gs-blue); }
+#searchCount { font-size: 12.5px; color: var(--text-secondary); min-width: 34px; text-align: center; }
+#searchBar button {
+  width: 30px; height: 30px; border: none; border-radius: 4px;
+  background: transparent; color: var(--text-color);
+  font-size: 16px; cursor: pointer; line-height: 1;
+}
+#searchBar button:hover { background: rgba(0,119,188,.1); }
+[data-theme="dark"] #searchBar button:hover { background: rgba(255,255,255,.09); }
+
+/* ---------- Dragspöke ---------- */
+#dragGhost {
+  position: absolute;
+  display: none;
+  padding: 7px 16px;
+  border-radius: 20px;
+  color: #fff;
+  font: bold 14px Arial, Helvetica, sans-serif;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  z-index: 50;
+  opacity: .9;
+  white-space: nowrap;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Toast ---------- */
+#toast {
+  position: absolute;
+  left: 50%;
+  bottom: 74px;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text-color);
+  border: 1px solid var(--panel-border);
+  border-left: 4px solid var(--gs-blue);
+  border-radius: 6px;
+  padding: 10px 18px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 40;
+  font-size: 14px;
+  max-width: 90vw;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.err { border-left-color: #d24723; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+body.embed-mode #btnImport,
+body.embed-mode #btnExport,
+body.embed-mode #btnTheme,
+body.embed-mode #fileInput { display: none !important; }
+body:not(.embed-mode) .hbtn-embed { display: none !important; }
+.hbtn-embed.hbtn-save { background: #27ae60; }
+.hbtn-embed.hbtn-save:hover { background: #2ecc71; }
+</style>
+</head>
+<body<?= $embed ? ' class="embed-mode"' : '' ?>>
+
+<header>
+  <div class="brand">Mindmap</div>
+  <input id="mapTitle" type="text" value="Tankekarta" placeholder="Namn på tankekartan" aria-label="Tankekartans namn">
+  <button class="hbtn" id="btnNew" title="Ny blank tankekarta">
+    <svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg><span class="lbl">Ny</span>
+  </button>
+  <button class="hbtn" id="btnBg" title="Bakgrund: punkter / rutor / blankt">
+    <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.2" fill="currentColor"/><circle cx="12" cy="6" r="1.2" fill="currentColor"/><circle cx="18" cy="6" r="1.2" fill="currentColor"/><circle cx="6" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18" cy="12" r="1.2" fill="currentColor"/><circle cx="6" cy="18" r="1.2" fill="currentColor"/><circle cx="12" cy="18" r="1.2" fill="currentColor"/><circle cx="18" cy="18" r="1.2" fill="currentColor"/></svg>
+  </button>
+  <button class="hbtn" id="btnSearch" title="Sök i kartan (Ctrl+F)">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+  </button>
+  <button class="hbtn" id="btnUndo" title="Ångra (Ctrl+Z)">
+    <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>
+  </button>
+  <button class="hbtn" id="btnRedo" title="Gör om (Ctrl+Y)">
+    <svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg>
+  </button>
+  <button class="hbtn" id="btnImport" title="Importera markdown-fil">
+    <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span class="lbl">Importera</span>
+  </button>
+  <button class="hbtn" id="btnExport" title="Exportera (Markdown, PNG eller Mermaid)">
+    <svg viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/></svg><span class="lbl">Exportera</span>
+  </button>
+  <button class="hbtn hbtn-embed hbtn-save" type="button" id="btnEmbedSave" title="Spara tillbaka till kortet">✓ <span class="lbl">Spara till kort</span></button>
+  <button class="hbtn hbtn-embed" type="button" id="btnEmbedCancel" title="Stäng utan att spara">✕ <span class="lbl">Avbryt</span></button>
+  <button class="hbtn" id="btnTheme" title="Växla ljust/mörkt läge" aria-label="Växla tema">
+    <svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+  </button>
+  <input type="file" id="fileInput" accept=".md,.markdown,.txt" hidden>
+</header>
+
+<div id="stage" data-bg="dots">
+  <svg id="svg" xmlns="http://www.w3.org/2000/svg" aria-label="Mindmap-arbetsyta">
+    <g id="world">
+      <g id="edges"></g>
+      <g id="nodes"></g>
+    </g>
+  </svg>
+</div>
+
+<div id="nodeTools" role="toolbar" aria-label="Nodverktyg">
+  <button id="tAddChild" title="Lägg till gren (Tab)"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 11l6-4M9 13l6 4"/></svg></button>
+  <button id="tAddSibling" title="Lägg till syskon (Enter)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button id="tEdit" title="Redigera text (dubbelklick)"><svg viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+  <button id="tColor" title="Färg på grenen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1.3" fill="currentColor"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="10" r="1.3" fill="currentColor"/><path d="M12 21a2.5 2.5 0 0 0 0-5h-1.5a2 2 0 0 1 0-4"/></svg></button>
+  <button id="tInfo" title="Anteckning och länk"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".5" fill="currentColor"/></svg></button>
+  <button id="tFold" title="Fäll ihop/ut grenen (mellanslag)"><svg viewBox="0 0 24 24"><path d="m7 9 5 5 5-5"/></svg></button>
+  <button id="tDup" title="Duplicera grenen (Ctrl+D)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+  <div class="sep"></div>
+  <button id="tDelete" class="danger" title="Ta bort (Delete)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/></svg></button>
+</div>
+
+<div id="palette" role="menu" aria-label="Välj färg"></div>
+
+<div id="infoPanel" role="dialog" aria-label="Mer information">
+  <div class="ip-head">Mer information <button id="ipClose" title="Stäng" aria-label="Stäng">×</button></div>
+  <a id="ipLink" target="_blank" rel="noopener noreferrer"></a>
+  <textarea id="ipNote" placeholder="Anteckning — syns bara här, inte på canvasen" aria-label="Anteckning"></textarea>
+  <input id="ipUrl" type="url" placeholder="https://…" aria-label="Länk">
+</div>
+
+<input id="editBox" type="text" aria-label="Redigera nodtext">
+
+<div id="zoomCtrl">
+  <button id="zIn" title="Zooma in" aria-label="Zooma in">＋</button>
+  <button id="zOut" title="Zooma ut" aria-label="Zooma ut">−</button>
+  <button id="zFit" title="Anpassa till innehåll" aria-label="Anpassa vy">
+    <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+  </button>
+</div>
+
+<div id="hint">
+  <span class="desk">Hovra en nod och tryck <b>＋</b> · dra en nod till en annan för att flytta grenen · <kbd>Tab</kbd> gren · <kbd>Enter</kbd> syskon · <kbd>Ctrl+F</kbd> sök</span>
+  <span class="mob">Tryck på nod + <b>＋</b> för ny gren · håll och dra nod för att flytta · nyp = zooma</span>
+</div>
+
+<div id="exportMenu" role="menu" aria-label="Exportera">
+  <button id="exMd"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>Markdown-fil (.md)</button>
+  <button id="exPng"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>PNG-bild</button>
+  <button id="exMermaid"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="8.5" y="14" width="7" height="7" rx="1"/><path d="M6.5 10v2h11v-2M12 12v2"/></svg>Mermaid-kod → urklipp</button>
+</div>
+
+<div id="searchBar" role="search">
+  <input id="searchInput" type="text" placeholder="Sök nod, anteckning, länk…" aria-label="Sök">
+  <span id="searchCount"></span>
+  <button id="searchPrev" title="Föregående träff (Shift+Enter)">‹</button>
+  <button id="searchNext" title="Nästa träff (Enter)">›</button>
+  <button id="searchClose" title="Stäng (Esc)">×</button>
+</div>
+<div id="dragGhost"></div>
+
+<div id="toast" role="status"></div>
+
+<script>
+'use strict';
+
+/* =========================================================
+   Mindmap — ett träd per fil
+   Fristående single-page mindmap-verktyg (Göteborgs Stads designprofil).
+   Export/import: Markdown med YAML frontmatter.
+   ========================================================= */
+
+const GS_BLUE = '#0077bc';
+const PALETTE = [
+  GS_BLUE,   // Göteborgsblå
+  '#3f5564', // Mörkblå
+  '#008391', // Turkos
+  '#5a8b3b', // Grön
+  '#f2a900', // Gul
+  '#d24723', // Röd
+  '#d53878', // Rosa
+  '#674b99', // Lila
+  '#6E6E6E'  // Grå
+];
+const BRANCH_CYCLE = ['#008391','#5a8b3b','#d24723','#674b99','#d53878','#f2a900','#3f5564'];
+
+const GAP_X = 76;
+const GAP_Y = 15;
+const NODE_PAD_X = 17;
+const NODE_H = { 0: 50, 1: 40, d: 33 };
+const FONT = { 0: 'bold 17.5px Arial', 1: 'bold 14.5px Arial', d: '14px Arial' };
+const MAX_UNDO = 60;
+const ANIM_MS = 240;
+
+const EMBED_MODE = <?= $embed ? 'true' : 'false' ?>;
+
+/* ---------- Tillstånd ---------- */
+let root = null;               // ett enda träd
+let meta = { title: 'Tankekarta', created: new Date().toISOString() };
+let selectedId = null;
+let branchCounter = 0;
+let undoStack = [];
+let idSeq = 1;
+
+const view = { x: 0, y: 0, k: 1 };
+const posMap = new Map();      // id -> senast visade position (för animation)
+
+let exporting = false;         // ren rendering vid PNG-export
+let searchTerm = '';
+let searchMatches = new Set();
+let searchList = [];
+let searchIdx = -1;
+let dropTargetId = null;       // markerat släppmål vid drag
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const stage = $('stage'), svg = $('svg'), world = $('world'),
+      gEdges = $('edges'), gNodes = $('nodes'),
+      nodeTools = $('nodeTools'), palette = $('palette'),
+      editBox = $('editBox'), toastEl = $('toast'),
+      titleInput = $('mapTitle');
+
+const measureCtx = document.createElement('canvas').getContext('2d');
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Hjälpfunktioner ---------- */
+const uid = () => 'n' + (idSeq++) + '_' + Math.random().toString(36).slice(2, 7);
+const fontFor = d => FONT[d] !== undefined ? FONT[d] : FONT.d;
+const heightFor = d => NODE_H[d] !== undefined ? NODE_H[d] : NODE_H.d;
+
+function textColorOn(hex) {
+  const c = hex.replace('#','');
+  const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
+  return (0.299*r + 0.587*g + 0.114*b) > 165 ? '#1f1f1f' : '#ffffff';
+}
+function shade(hex, f) { // f < 1 mörkare, > 1 ljusare
+  const c = hex.replace('#','');
+  const n = i => Math.min(255, Math.round(parseInt(c.substr(i,2),16) * f));
+  return '#' + [n(0), n(2), n(4)].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+function makeNode(text, color) {
+  return { id: uid(), text, color, note: '', url: '', collapsed: false, children: [] };
+}
+
+function findNode(id, node = root, parent = null, index = 0, depth = 0, siblings = null) {
+  if (!node) return null;
+  if (node.id === id) return { node, parent, index, depth, siblings };
+  for (let i = 0; i < node.children.length; i++) {
+    const hit = findNode(id, node.children[i], node, i, depth + 1, node.children);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+function forEachNode(fn, node = root, depth = 0, parent = null) {
+  if (!node) return;
+  fn(node, depth, parent);
+  for (const c of node.children) forEachNode(fn, c, depth + 1, node);
+}
+function forEachIn(list, fn) { for (const n of list) forEachNode(fn, n, 1, null); }
+
+function countNodes() { let c = 0; forEachNode(() => c++); return c; }
+
+function toast(msg, err = false) {
+  toastEl.textContent = msg;
+  toastEl.className = 'show' + (err ? ' err' : '');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => toastEl.className = '', 2600);
+}
+
+/* ---------- Ångra / gör om & autospar ---------- */
+let redoStack = [];
+function snapshot() {
+  undoStack.push(JSON.stringify({ root, title: titleInput.value }));
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  redoStack.length = 0; // ny handling: framtiden skrivs om
+}
+function undo() {
+  if (!undoStack.length) { toast('Inget att ångra'); return; }
+  redoStack.push(JSON.stringify({ root, title: titleInput.value }));
+  const s = JSON.parse(undoStack.pop());
+  root = s.root;
+  titleInput.value = s.title;
+  selectedId = null;
+  hidePopups();
+  refresh();
+}
+function redo() {
+  if (!redoStack.length) { toast('Inget att göra om'); return; }
+  undoStack.push(JSON.stringify({ root, title: titleInput.value }));
+  const s = JSON.parse(redoStack.pop());
+  root = s.root;
+  titleInput.value = s.title;
+  selectedId = null;
+  hidePopups();
+  refresh();
+}
+function autosave() {
+  if (EMBED_MODE) return;
+  try {
+    localStorage.setItem('gs-mindmap-v2', JSON.stringify({
+      root, title: titleInput.value, created: meta.created,
+      theme: document.documentElement.getAttribute('data-theme'),
+      background: bgStyle
+    }));
+  } catch (e) { /* localStorage saknas — kör vidare utan autospar */ }
+}
+function tryRestore() {
+  try {
+    const raw = localStorage.getItem('gs-mindmap-v2');
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (!s.root || !s.root.text) return false;
+    root = s.root;
+    titleInput.value = s.title || 'Tankekarta';
+    meta.created = s.created || meta.created;
+    if (s.theme) document.documentElement.setAttribute('data-theme', s.theme);
+    if (['dots','grid','blank'].includes(s.background)) {
+      bgRestore = s.background;
+    }
+    forEachNode(n => {
+      n.id = uid();
+      if (typeof n.collapsed !== 'boolean') n.collapsed = false;
+      if (typeof n.note !== 'string') n.note = '';
+      if (typeof n.url !== 'string') n.url = '';
+    });
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ---------- Layout ---------- */
+function measure(node, depth) {
+  measureCtx.font = fontFor(depth);
+  const w = Math.max(measureCtx.measureText(node.text || ' ').width + NODE_PAD_X * 2, depth === 0 ? 120 : 62);
+  node._w = Math.min(w, 340);
+  node._h = heightFor(depth);
+  node._clip = w > 340;
+}
+
+function subtreeH(node, depth) {
+  measure(node, depth);
+  if (node.collapsed || !node.children.length) {
+    node._sh = node._h + GAP_Y;
+    return node._sh;
+  }
+  let sum = 0;
+  for (const c of node.children) sum += subtreeH(c, depth + 1);
+  node._sh = Math.max(sum, node._h + GAP_Y);
+  return node._sh;
+}
+
+function placeChildren(node, depth, side) {
+  if (node.collapsed || !node.children.length) return;
+  let inner = 0;
+  for (const c of node.children) inner += c._sh;
+  let cy = node._ty - inner / 2;
+  for (const c of node.children) {
+    c._ty = cy + c._sh / 2;
+    c._tx = node._tx + side * (node._w / 2 + GAP_X + c._w / 2);
+    c._side = side;
+    cy += c._sh;
+    placeChildren(c, depth + 1, side);
+  }
+}
+
+function layout() {
+  subtreeH(root, 0);
+  const right = [], left = [];
+  root.children.forEach((c, i) => (i % 2 === 0 ? right : left).push(c));
+
+  root._tx = 0;
+  root._ty = 0;
+  root._side = 1;
+
+  const placeSide = (arr, side) => {
+    const total = arr.reduce((s, c) => s + c._sh, 0);
+    let cy = -total / 2;
+    for (const c of arr) {
+      c._ty = cy + c._sh / 2;
+      c._tx = side * (root._w / 2 + GAP_X + c._w / 2);
+      c._side = side;
+      cy += c._sh;
+      placeChildren(c, 2, side);
+    }
+  };
+  placeSide(right, 1);
+  placeSide(left, -1);
+}
+
+/* ---------- Animation: noder glider till nya positioner ---------- */
+let animId = 0;
+function animateToLayout() {
+  const nodes = [];
+  forEachNode((n, d, parent) => {
+    const prev = posMap.get(n.id)
+      || (parent && posMap.get(parent.id))
+      || { x: n._tx, y: n._ty };
+    n._x = prev.x; n._y = prev.y;
+    nodes.push(n);
+  });
+
+  const skip = reducedMotion || nodes.length > 350;
+  if (skip) {
+    for (const n of nodes) { n._x = n._tx; n._y = n._ty; posMap.set(n.id, { x: n._tx, y: n._ty }); }
+    renderFrame();
+    return;
+  }
+
+  const starts = nodes.map(n => ({ x: n._x, y: n._y }));
+  const t0 = performance.now();
+  const myId = ++animId;
+  const ease = t => 1 - Math.pow(1 - t, 3);
+
+  function tick(now) {
+    if (myId !== animId) return;
+    const t = Math.min(1, (now - t0) / ANIM_MS);
+    const e = ease(t);
+    nodes.forEach((n, i) => {
+      n._x = starts[i].x + (n._tx - starts[i].x) * e;
+      n._y = starts[i].y + (n._ty - starts[i].y) * e;
+    });
+    renderFrame();
+    if (t < 1) requestAnimationFrame(tick);
+    else nodes.forEach(n => posMap.set(n.id, { x: n._tx, y: n._ty }));
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ---------- Rendering ---------- */
+const SVGNS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs) {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+function edgePath(p, c) {
+  const side = c._side;
+  const x1 = p._x + side * p._w / 2, y1 = p._y;
+  const x2 = c._x - side * c._w / 2, y2 = c._y;
+  const mx = (x1 + x2) / 2;
+  return `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+}
+
+let newNodeId = null;
+
+function plusBtn(n, side) {
+  const px = n._x + side * (n._w / 2 + (n.children.length ? 42 : 17));
+  const g = el('g', { class: 'plus', 'data-plus': n.id });
+  g.appendChild(el('circle', { cx: px, cy: n._y, r: 11, fill: n.color, stroke: 'rgba(255,255,255,.85)', 'stroke-width': 1.5 }));
+  const t = el('text', { x: px, y: n._y + .5, 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: textColorOn(n.color) });
+  t.textContent = '+';
+  g.appendChild(t);
+  return g;
+}
+
+function renderFrame() {
+  gEdges.innerHTML = '';
+  gNodes.innerHTML = '';
+  if (!root) return;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surface = isDark ? '#2b2b2b' : '#FFFFFE';
+  const textCol = isDark ? '#FFFFFF' : '#333333';
+
+  forEachNode((n, depth, parent) => {
+    if (parent && (parent._hidden || parent.collapsed)) { n._hidden = true; return; }
+    n._hidden = false;
+
+    if (parent) {
+      const sel = n.id === selectedId && !exporting;
+      const dim = searchTerm && !searchMatches.has(n.id);
+      gEdges.appendChild(el('path', {
+        class: 'edge',
+        d: edgePath(parent, n),
+        fill: 'none',
+        stroke: n.color,
+        'stroke-width': (depth === 1 ? 3 : depth === 2 ? 2.2 : 1.6) + (sel ? .8 : 0),
+        'stroke-linecap': 'round',
+        opacity: dim ? .12 : (sel ? 1 : .85)
+      }));
+    }
+
+    const g = el('g', {
+      class: 'node' + (n.id === selectedId && !exporting ? ' sel' : '') + (n.id === newNodeId ? ' new' : ''),
+      'data-id': n.id
+    });
+    if (searchTerm && !searchMatches.has(n.id)) g.setAttribute('opacity', .22);
+    const filled = depth <= 1;
+    const fill = filled ? n.color : surface;
+    const r = depth <= 1 ? n._h / 2 : 9;
+
+    // släppmål vid pågående drag
+    if (n.id === dropTargetId) {
+      g.appendChild(el('rect', {
+        x: n._x - n._w / 2 - 6, y: n._y - n._h / 2 - 6,
+        width: n._w + 12, height: n._h + 12, rx: r + 6,
+        fill: n.color, opacity: .12
+      }));
+      g.appendChild(el('rect', {
+        x: n._x - n._w / 2 - 6, y: n._y - n._h / 2 - 6,
+        width: n._w + 12, height: n._h + 12, rx: r + 6,
+        fill: 'none', stroke: n.color, 'stroke-width': 2, 'stroke-dasharray': '6 4'
+      }));
+    }
+
+    // markering: mjuk glöd + tunn ring
+    if (n.id === selectedId && !exporting) {
+      g.appendChild(el('rect', {
+        x: n._x - n._w / 2 - 5, y: n._y - n._h / 2 - 5,
+        width: n._w + 10, height: n._h + 10, rx: r + 5,
+        fill: 'none', stroke: n.color, 'stroke-width': 7, opacity: .18
+      }));
+      g.appendChild(el('rect', {
+        x: n._x - n._w / 2 - 5, y: n._y - n._h / 2 - 5,
+        width: n._w + 10, height: n._h + 10, rx: r + 5,
+        fill: 'none', stroke: n.color, 'stroke-width': 1.6, opacity: .9
+      }));
+    }
+
+    // mjuk "skugga" under fyllda noder (billigare än SVG-filter)
+    if (filled) {
+      g.appendChild(el('rect', {
+        x: n._x - n._w / 2, y: n._y - n._h / 2 + 2.5,
+        width: n._w, height: n._h, rx: r,
+        fill: shade(n.color, .55), opacity: isDark ? .5 : .3
+      }));
+    }
+
+    g.appendChild(el('rect', {
+      class: 'body',
+      x: n._x - n._w / 2, y: n._y - n._h / 2,
+      width: n._w, height: n._h, rx: r,
+      fill: fill,
+      stroke: filled ? shade(n.color, 1.25) : n.color,
+      'stroke-width': filled ? 1 : 1.8
+    }));
+    // glans-överkant på fyllda noder
+    if (filled) {
+      g.appendChild(el('rect', {
+        x: n._x - n._w / 2 + 3, y: n._y - n._h / 2 + 2.5,
+        width: n._w - 6, height: n._h * .42, rx: r * .8,
+        fill: '#ffffff', opacity: .14, 'pointer-events': 'none'
+      }));
+    }
+
+    const label = el('text', {
+      x: n._x, y: n._y + (depth <= 1 ? 1 : .5),
+      'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+      fill: filled ? textColorOn(n.color) : textCol
+    });
+    label.style.font = fontFor(depth);
+    let t = n.text;
+    if (n._clip) {
+      measureCtx.font = fontFor(depth);
+      while (t.length > 3 && measureCtx.measureText(t + '…').width > 340 - NODE_PAD_X * 2) t = t.slice(0, -1);
+      t += '…';
+    }
+    label.textContent = t;
+    g.appendChild(label);
+
+    // ihopfällnings-märke på länksidan (− syns bara vid hover/markering)
+    if (n.children.length && (!exporting || n.collapsed)) {
+      const bx = n._x + (n._side || 1) * (n._w / 2 + 14);
+      const bg = el('g', { class: 'badge ' + (n.collapsed ? 'col' : 'exp'), 'data-fold': n.id });
+      bg.appendChild(el('circle', {
+        cx: bx, cy: n._y, r: 10,
+        fill: n.collapsed ? n.color : surface,
+        stroke: n.color, 'stroke-width': 1.6
+      }));
+      const bt = el('text', {
+        x: bx, y: n._y + .5, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+        fill: n.collapsed ? textColorOn(n.color) : n.color
+      });
+      bt.style.font = 'bold 11px Arial';
+      bt.textContent = n.collapsed ? countDesc(n) : '−';
+      bg.appendChild(bt);
+      g.appendChild(bg);
+    }
+
+    // (ingen markering på canvasen för anteckning/länk — infopanelen öppnas vid klick)
+
+    // plus-knappar: roten får en på varje sida, övriga på yttersidan
+    if (!exporting) {
+      if (depth === 0) {
+        g.appendChild(plusBtn(n, 1));
+        g.appendChild(plusBtn(n, -1));
+      } else {
+        g.appendChild(plusBtn(n, n._side || 1));
+      }
+    }
+
+    gNodes.appendChild(g);
+  });
+
+  newNodeId = null;
+  applyView();
+  positionNodeTools();
+}
+
+function countDesc(n) { let c = 0; forEachIn(n.children, () => c++); return c; }
+
+function refresh(save = true) {
+  layout();
+  animateToLayout();
+  if (save) autosave();
+}
+
+/* ---------- Vy: panorera & zooma ---------- */
+function applyView() {
+  world.setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`);
+}
+function toScreen(wx, wy) {
+  return { x: wx * view.k + view.x, y: wy * view.k + view.y };
+}
+function zoomAt(sx, sy, factor) {
+  const r = stage.getBoundingClientRect();
+  const px = sx - r.left, py = sy - r.top;
+  const k2 = Math.min(2.5, Math.max(.15, view.k * factor));
+  view.x = px - (px - view.x) * (k2 / view.k);
+  view.y = py - (py - view.y) * (k2 / view.k);
+  view.k = k2;
+  applyView();
+  positionNodeTools();
+}
+function fitView() {
+  let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9, any = false;
+  forEachNode(n => {
+    if (n._hidden) return;
+    any = true;
+    minX = Math.min(minX, (n._tx ?? n._x) - n._w / 2 - 40);
+    maxX = Math.max(maxX, (n._tx ?? n._x) + n._w / 2 + 40);
+    minY = Math.min(minY, (n._ty ?? n._y) - n._h / 2 - 40);
+    maxY = Math.max(maxY, (n._ty ?? n._y) + n._h / 2 + 40);
+  });
+  if (!any) return;
+  const r = stage.getBoundingClientRect();
+  const k = Math.min(1.6, Math.min(r.width / (maxX - minX), (r.height - 30) / (maxY - minY)));
+  view.k = Math.max(.15, k);
+  view.x = (r.width - (maxX + minX) * view.k) / 2;
+  view.y = (r.height - (maxY + minY) * view.k) / 2;
+  applyView();
+  positionNodeTools();
+}
+
+/* Pekare: panorering + nyp-zoom */
+const pointers = new Map();
+let panStart = null, pinchStart = null, movedPx = 0, downTarget = null;
+
+stage.addEventListener('pointerdown', e => {
+  downTarget = e.target; // pointer capture gör att up-target blir stage
+  stage.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  movedPx = 0;
+  if (pointers.size === 1) {
+    panStart = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y };
+    stage.classList.add('panning');
+    // kandidat för grendrag?
+    const nodeEl = e.target.closest ? e.target.closest('.node') : null;
+    const isBtn = e.target.closest && (e.target.closest('[data-plus]') || e.target.closest('[data-fold]'));
+    if (nodeEl && !isBtn) {
+      const id = nodeEl.getAttribute('data-id');
+      const hit = findNode(id);
+      if (hit && hit.parent) {
+        drag = { id, active: false, touch: e.pointerType === 'touch' };
+        if (drag.touch) {
+          drag.holdTimer = setTimeout(() => {
+            if (drag && !drag.active && movedPx < 8 && pointers.size === 1) {
+              const p = [...pointers.values()][0];
+              startDrag(id, p.x, p.y);
+            }
+          }, 350);
+        }
+      }
+    }
+  } else if (pointers.size === 2) {
+    if (drag) { clearTimeout(drag.holdTimer); drag = null; dragGhost.style.display = 'none'; dropTargetId = null; }
+    const [a, b] = [...pointers.values()];
+    pinchStart = { d: Math.hypot(a.x - b.x, a.y - b.y), k: view.k,
+                   cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, vx: view.x, vy: view.y };
+    panStart = null;
+  }
+});
+
+stage.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (drag && drag.active) {
+    moveGhost(e.clientX, e.clientY);
+    return;
+  }
+
+  if (pointers.size === 2 && pinchStart) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    const k2 = Math.min(2.5, Math.max(.15, pinchStart.k * d / pinchStart.d));
+    const r = stage.getBoundingClientRect();
+    const px = pinchStart.cx - r.left, py = pinchStart.cy - r.top;
+    view.x = pinchStart.vx + (cx - pinchStart.cx) + (px - pinchStart.vx) * (1 - k2 / pinchStart.k);
+    view.y = pinchStart.vy + (cy - pinchStart.cy) + (py - pinchStart.vy) * (1 - k2 / pinchStart.k);
+    view.k = k2;
+    applyView();
+    positionNodeTools();
+    movedPx = 99;
+  } else if (panStart) {
+    const dx = e.clientX - panStart.x, dy = e.clientY - panStart.y;
+    movedPx = Math.max(movedPx, Math.abs(dx) + Math.abs(dy));
+
+    if (drag && !drag.active) {
+      if (!drag.touch && movedPx > 8) { startDrag(drag.id, e.clientX, e.clientY); return; }
+      if (drag.touch && movedPx > 8) { clearTimeout(drag.holdTimer); drag = null; } // rörde sig: panorera
+    }
+
+    view.x = panStart.vx + dx;
+    view.y = panStart.vy + dy;
+    applyView();
+    positionNodeTools();
+  }
+});
+
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinchStart = null;
+  if (pointers.size === 0) {
+    stage.classList.remove('panning');
+    if (drag) {
+      clearTimeout(drag.holdTimer);
+      if (drag.active) { endDrag(); panStart = null; return; }
+      drag = null;
+    }
+    if (movedPx < 6) handleTap();
+    panStart = null;
+  } else if (pointers.size === 1) {
+    const [p] = [...pointers.values()];
+    panStart = { x: p.x, y: p.y, vx: view.x, vy: view.y };
+  }
+}
+stage.addEventListener('pointerup', endPointer);
+stage.addEventListener('pointercancel', endPointer);
+
+stage.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+}, { passive: false });
+
+let lastTap = { t: 0, id: null };
+function handleTap() {
+  const t = downTarget || document.body;
+
+  const plusEl = t.closest('[data-plus]');
+  if (plusEl) { addChild(plusEl.getAttribute('data-plus')); return; }
+
+  const foldEl = t.closest('[data-fold]');
+  if (foldEl) {
+    const hit = findNode(foldEl.getAttribute('data-fold'));
+    if (hit) { snapshot(); hit.node.collapsed = !hit.node.collapsed; refresh(); }
+    return;
+  }
+  const nodeEl = t.closest('.node');
+  if (nodeEl) {
+    const id = nodeEl.getAttribute('data-id');
+    const now = Date.now();
+    if (lastTap.id === id && now - lastTap.t < 350) {
+      startEdit(id);
+      lastTap = { t: 0, id: null };
+      return;
+    }
+    lastTap = { t: now, id };
+    selectNode(id);
+  } else {
+    selectNode(null);
+  }
+}
+
+/* ---------- Markering & nodverktyg ---------- */
+function selectNode(id) {
+  selectedId = id;
+  hidePalette();
+  if (!id) {
+    closeInfo();
+  } else {
+    const h = findNode(id);
+    if (h && (h.node.note || h.node.url)) openInfo(id);
+    else closeInfo();
+  }
+  renderFrame();
+}
+
+function positionNodeTools() {
+  if (!selectedId) { nodeTools.classList.remove('open'); closeInfo(); return; }
+  const hit = findNode(selectedId);
+  if (!hit || hit.node._hidden) { nodeTools.classList.remove('open'); closeInfo(); return; }
+  const n = hit.node;
+  nodeTools.classList.add('open');
+  const p = toScreen(n._x, n._y - n._h / 2);
+  const tw = nodeTools.offsetWidth, th = nodeTools.offsetHeight;
+  const r = stage.getBoundingClientRect();
+  let x = p.x - tw / 2, y = p.y - th - 14;
+  if (y < 8) y = toScreen(n._x, n._y + n._h / 2).y + 14;
+  x = Math.max(6, Math.min(x, r.width - tw - 6));
+  y = Math.max(6, Math.min(y, r.height - th - 6));
+  nodeTools.style.left = x + 'px';
+  nodeTools.style.top = (y + r.top) + 'px';
+  $('tFold').style.opacity = n.children.length ? 1 : .35;
+  positionInfoPanel();
+}
+
+function hidePalette() { palette.classList.remove('open'); }
+function hidePopups() { hidePalette(); closeInfo(); nodeTools.classList.remove('open'); commitEdit(false); }
+
+/* ---------- Infopanel: anteckning + länk ---------- */
+const infoPanel = $('infoPanel'), ipNote = $('ipNote'), ipUrl = $('ipUrl'), ipLink = $('ipLink');
+let infoSnapped = false;
+
+function updateIpLink(u) {
+  if (u) {
+    ipLink.href = u;
+    ipLink.textContent = '🔗 ' + u.replace(/^https?:\/\//, '');
+    ipLink.style.display = 'block';
+  } else {
+    ipLink.style.display = 'none';
+  }
+}
+
+function openInfo(id) {
+  const hit = findNode(id);
+  if (!hit) return;
+  infoSnapped = false;
+  ipNote.value = hit.node.note || '';
+  ipUrl.value = hit.node.url || '';
+  updateIpLink(hit.node.url);
+  infoPanel.classList.add('open');
+  positionInfoPanel();
+}
+
+function closeInfo() { infoPanel.classList.remove('open'); }
+
+function positionInfoPanel() {
+  if (!infoPanel.classList.contains('open') || !selectedId) return;
+  if (window.innerWidth <= 600) return; // bottensheet via CSS på mobil
+  const hit = findNode(selectedId);
+  if (!hit) return;
+  const n = hit.node;
+  const p = toScreen(n._x, n._y + n._h / 2);
+  const r = stage.getBoundingClientRect();
+  const w = infoPanel.offsetWidth, h = infoPanel.offsetHeight;
+  let x = p.x - w / 2, y = p.y + 16 + r.top;
+  x = Math.max(6, Math.min(x, r.width - w - 6));
+  y = Math.min(y, r.top + r.height - h - 8);
+  infoPanel.style.left = x + 'px';
+  infoPanel.style.top = y + 'px';
+}
+
+function saveInfo() {
+  const hit = findNode(selectedId);
+  if (!hit) return;
+  if (!infoSnapped) { snapshot(); infoSnapped = true; }
+  hit.node.note = ipNote.value;
+  hit.node.url = ipUrl.value.trim();
+  updateIpLink(hit.node.url);
+  autosave();
+  renderFrame(); // uppdatera infopricken
+}
+
+ipNote.addEventListener('input', saveInfo);
+ipUrl.addEventListener('input', saveInfo);
+ipNote.addEventListener('keydown', e => e.stopPropagation());
+ipUrl.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') ipUrl.blur(); });
+$('ipClose').addEventListener('click', closeInfo);
+$('tInfo').addEventListener('click', () => {
+  if (!selectedId) return;
+  if (infoPanel.classList.contains('open')) closeInfo();
+  else openInfo(selectedId);
+});
+
+/* ---------- Åtgärder ---------- */
+function addChild(id) {
+  const hit = findNode(id);
+  if (!hit) return;
+  snapshot();
+  const parent = hit.node;
+  const color = hit.depth === 0
+    ? BRANCH_CYCLE[branchCounter++ % BRANCH_CYCLE.length]
+    : parent.color;
+  const child = makeNode('Ny gren', color);
+  parent.collapsed = false;
+  parent.children.push(child);
+  selectedId = child.id;
+  newNodeId = child.id;
+  refresh();
+  startEdit(child.id, true);
+}
+
+function addSibling(id) {
+  const hit = findNode(id);
+  if (!hit) return;
+  if (!hit.parent) { addChild(id); return; } // roten: Enter ger ny gren
+  snapshot();
+  const color = hit.depth === 1
+    ? BRANCH_CYCLE[branchCounter++ % BRANCH_CYCLE.length]
+    : hit.node.color;
+  const sib = makeNode('Ny gren', color);
+  hit.siblings.splice(hit.index + 1, 0, sib);
+  selectedId = sib.id;
+  newNodeId = sib.id;
+  refresh();
+  startEdit(sib.id, true);
+}
+
+function deleteNode(id) {
+  const hit = findNode(id);
+  if (!hit) return;
+  if (!hit.parent) {
+    toast('Roten kan inte tas bort — redigera texten i stället');
+    return;
+  }
+  snapshot();
+  hit.siblings.splice(hit.index, 1);
+  selectedId = hit.parent.id;
+  refresh();
+}
+
+function duplicateNode(id) {
+  const hit = findNode(id);
+  if (!hit) return;
+  if (!hit.parent) { toast('Roten kan inte dupliceras'); return; }
+  snapshot();
+  const clone = JSON.parse(JSON.stringify(hit.node));
+  forEachNode(n => { n.id = uid(); }, clone, 0, null);
+  hit.siblings.splice(hit.index + 1, 0, clone);
+  selectedId = clone.id;
+  newNodeId = clone.id;
+  refresh();
+  toast('Duplicerade "' + hit.node.text + '" med hela undergrenen');
+}
+
+/* ---------- Inline-redigering ---------- */
+let editingId = null;
+function startEdit(id, selectAll = false) {
+  const hit = findNode(id);
+  if (!hit || hit.node._hidden) return;
+  const n = hit.node;
+  editingId = id;
+  nodeTools.classList.remove('open');
+  const p = toScreen(n._tx ?? n._x, n._ty ?? n._y);
+  const r = stage.getBoundingClientRect();
+  const w = Math.max(n._w * view.k, 150);
+  editBox.style.display = 'block';
+  editBox.style.left = Math.max(4, Math.min(p.x - w / 2, r.width - w - 4)) + 'px';
+  editBox.style.top = (p.y + r.top - 19) + 'px';
+  editBox.style.width = w + 'px';
+  editBox.style.fontSize = Math.max(14, 15 * Math.min(view.k, 1.4)) + 'px';
+  editBox.style.fontWeight = hit.depth <= 1 ? 'bold' : 'normal';
+  editBox.value = n.text;
+  editBox.focus();
+  if (selectAll) editBox.select();
+}
+
+function commitEdit(apply = true) {
+  if (!editingId) return;
+  const id = editingId;
+  editingId = null;
+  editBox.style.display = 'none';
+  if (apply) {
+    const hit = findNode(id);
+    if (hit) {
+      const v = editBox.value.trim();
+      if (v && v !== hit.node.text) { snapshot(); hit.node.text = v; }
+    }
+  }
+  refresh();
+}
+
+editBox.addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.key === 'Enter') { commitEdit(true); if (selectedId) addSibling(selectedId); }
+  else if (e.key === 'Tab') { e.preventDefault(); commitEdit(true); if (selectedId) addChild(selectedId); }
+  else if (e.key === 'Escape') commitEdit(false);
+});
+editBox.addEventListener('blur', () => commitEdit(true));
+
+/* ---------- Färgpalett ---------- */
+function buildPalette() {
+  palette.innerHTML = '';
+  const hit = selectedId && findNode(selectedId);
+  PALETTE.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'swatch' + (hit && hit.node.color.toLowerCase() === c ? ' active' : '');
+    b.dataset.c = c;
+    b.style.background = c;
+    b.title = c;
+    b.addEventListener('click', () => { applyColor(c); hidePalette(); });
+    palette.appendChild(b);
+  });
+  const custom = document.createElement('div');
+  custom.className = 'swatch custom';
+  custom.title = 'Egen färg';
+  const inp = document.createElement('input');
+  inp.type = 'color';
+  inp.value = hit ? hit.node.color : GS_BLUE;
+  let snapped = false; // en enda ångra-punkt per öppnat färgval
+  inp.addEventListener('input', () => { applyColor(inp.value, snapped); snapped = true; });
+  inp.addEventListener('change', () => { snapped = false; hidePalette(); });
+  custom.appendChild(inp);
+  palette.appendChild(custom);
+}
+
+function applyColor(c, noSnapshot = false) {
+  const hit = findNode(selectedId);
+  if (!hit) return;
+  if (!noSnapshot) snapshot();
+  const old = hit.node.color;
+  hit.node.color = c;
+  forEachIn(hit.node.children, n => { if (n.color === old) n.color = c; });
+  refresh();
+  // uppdatera aktiv-markering utan att bygga om paletten (annars dör "Egen färg"-väljaren)
+  palette.querySelectorAll('.swatch').forEach(b =>
+    b.classList.toggle('active', (b.dataset.c || '') === c.toLowerCase()));
+}
+
+$('tColor').addEventListener('click', () => {
+  if (!selectedId) return;
+  buildPalette();
+  palette.classList.add('open');
+  const tb = nodeTools.getBoundingClientRect();
+  const pw = palette.offsetWidth, r = stage.getBoundingClientRect();
+  palette.style.left = Math.max(6, Math.min(tb.left + tb.width / 2 - pw / 2, r.width - pw - 6)) + 'px';
+  palette.style.top = (tb.bottom + 8) + 'px';
+});
+
+/* ---------- Verktygsknappar ---------- */
+$('tAddChild').addEventListener('click', () => selectedId && addChild(selectedId));
+$('tAddSibling').addEventListener('click', () => selectedId && addSibling(selectedId));
+$('tEdit').addEventListener('click', () => selectedId && startEdit(selectedId, true));
+$('tFold').addEventListener('click', () => {
+  const hit = findNode(selectedId);
+  if (hit && hit.node.children.length) { snapshot(); hit.node.collapsed = !hit.node.collapsed; refresh(); }
+});
+$('tDelete').addEventListener('click', () => selectedId && deleteNode(selectedId));
+
+/* ---------- Tangentbord ---------- */
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); openSearch(); return; }
+  if (e.target === titleInput || e.target === editBox || e.target === ipNote || e.target === ipUrl) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    if (e.shiftKey) redo(); else undo();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && selectedId) { e.preventDefault(); duplicateNode(selectedId); return; }
+  if (e.key === 'Escape' && searchBar.classList.contains('open')) { closeSearch(); return; }
+  if (!selectedId) return;
+  switch (e.key) {
+    case 'Tab': e.preventDefault(); addChild(selectedId); break;
+    case 'Enter': e.preventDefault(); addSibling(selectedId); break;
+    case 'F2': e.preventDefault(); startEdit(selectedId, true); break;
+    case 'Delete':
+    case 'Backspace': e.preventDefault(); deleteNode(selectedId); break;
+    case 'Escape': selectNode(null); break;
+    case ' ': {
+      e.preventDefault();
+      const hit = findNode(selectedId);
+      if (hit && hit.node.children.length) { snapshot(); hit.node.collapsed = !hit.node.collapsed; refresh(); }
+      break;
+    }
+    case 'ArrowUp': case 'ArrowDown': {
+      e.preventDefault();
+      const hit = findNode(selectedId);
+      if (!hit || !hit.siblings) break;
+      const ni = hit.index + (e.key === 'ArrowUp' ? -1 : 1);
+      if (hit.siblings[ni]) selectNode(hit.siblings[ni].id);
+      break;
+    }
+    case 'ArrowLeft': case 'ArrowRight': {
+      e.preventDefault();
+      const hit = findNode(selectedId);
+      if (!hit) break;
+      const n = hit.node;
+      const outward = (n._side || 1) === 1 ? 'ArrowRight' : 'ArrowLeft';
+      if (e.key === outward) {
+        if (n.children.length && !n.collapsed) selectNode(n.children[0].id);
+      } else if (hit.parent) {
+        selectNode(hit.parent.id);
+      }
+      break;
+    }
+  }
+});
+
+/* ---------- Export: Markdown + YAML frontmatter ---------- */
+function nodeComment(n, inheritedColor) {
+  const parts = [];
+  if (n.color.toLowerCase() !== (inheritedColor || '').toLowerCase()) parts.push('c=' + n.color);
+  if (n.collapsed && n.children.length) parts.push('fold');
+  return parts.length ? ' <!-- ' + parts.join(' ') + ' -->' : '';
+}
+
+function buildMarkdownExport() {
+  const now = new Date();
+  const iso = now.toISOString();
+  const dateStr = iso.slice(0, 10);
+  const theme = document.documentElement.getAttribute('data-theme') || 'light';
+  const title = titleInput.value.trim() || 'Tankekarta';
+  const clean = s => s.replace(/<!--|-->/g, '').replace(/\n/g, ' ').trim();
+
+  const noteLines = (n, indent) => {
+    let s = '';
+    if (n.url) s += indent + '> url: ' + n.url.replace(/\s/g, '') + '\n';
+    if (n.note) for (const ln of n.note.split('\n')) s += indent + '> ' + ln.replace(/<!--|-->/g, '') + '\n';
+    return s;
+  };
+
+  let out = '---\n';
+  out += 'title: ' + title.replace(/\n/g, ' ') + '\n';
+  out += 'app: gs-mindmap\n';
+  out += 'version: 2\n';
+  out += 'created: ' + (meta.created || iso) + '\n';
+  out += 'modified: ' + iso + '\n';
+  out += 'theme: ' + theme + '\n';
+  out += 'background: ' + bgStyle + '\n';
+  out += 'nodes: ' + countNodes() + '\n';
+  out += '---\n\n';
+
+  out += '# ' + clean(root.text) + nodeComment(root, GS_BLUE) + '\n';
+  out += noteLines(root, '');
+  out += '\n';
+  const walk = (list, depth, parentColor) => {
+    for (const n of list) {
+      out += '  '.repeat(depth) + '- ' + clean(n.text) + nodeComment(n, parentColor) + '\n';
+      out += noteLines(n, '  '.repeat(depth + 1));
+      walk(n.children, depth + 1, n.color);
+    }
+  };
+  walk(root.children, 0, root.color);
+  return out;
+}
+
+function exportMarkdown() {
+  const out = buildMarkdownExport();
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const title = titleInput.value.trim() || 'Tankekarta';
+  const slug = title.toLowerCase().replace(/[^a-z0-9åäö]+/gi, '-').replace(/^-+|-+$/g, '') || 'tankekarta';
+  const blob = new Blob([out], { type: 'text/markdown;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = slug + '_' + dateStr + '.md';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Exporterade ' + slug + '_' + dateStr + '.md');
+}
+
+/* ---------- Import ---------- */
+function parseComment(str) {
+  const res = { color: null, fold: false };
+  const m = str.match(/<!--([\s\S]*?)-->/);
+  if (!m) return res;
+  for (const tok of m[1].trim().split(/\s+/)) {
+    if (tok.startsWith('c=')) res.color = tok.slice(2);
+    else if (tok === 'fold') res.fold = true;
+  }
+  return res;
+}
+
+function importMarkdown(text) {
+  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  let i = 0;
+  const fm = {};
+
+  if (lines[0] && lines[0].trim() === '---') {
+    i = 1;
+    while (i < lines.length && lines[i].trim() !== '---') {
+      const m = lines[i].match(/^([A-Za-z_][\w-]*)\s*:\s*(.*)$/);
+      if (m) fm[m[1].toLowerCase()] = m[2].trim();
+      i++;
+    }
+    i++;
+  }
+
+  let newRoot = null;
+  let extraTrees = 0;
+  let branchIdx = 0;
+  let stack = [];
+  let lastNode = null;
+
+  for (; i < lines.length; i++) {
+    const raw = lines[i];
+    if (!raw.trim()) continue;
+
+    // blockquote: mer information för senaste noden
+    const bq = raw.match(/^\s*>\s?(.*)$/);
+    if (bq && lastNode) {
+      const v = bq[1];
+      const um = v.match(/^url:\s*(\S+)/i);
+      if (um) lastNode.url = um[1];
+      else lastNode.note = (lastNode.note ? lastNode.note + '\n' : '') + v;
+      continue;
+    }
+
+    const h = raw.match(/^#{1,3}\s+(.*)$/);
+    if (h) {
+      if (newRoot) { extraTrees++; stack = []; lastNode = null; continue; } // ett träd per fil
+      const c = parseComment(h[1]);
+      const txt = h[1].replace(/<!--[\s\S]*?-->/, '').trim();
+      newRoot = makeNode(txt || 'Ämne', c.color || GS_BLUE);
+      newRoot.collapsed = c.fold;
+      stack = [{ node: newRoot, indent: -1 }];
+      lastNode = newRoot;
+      continue;
+    }
+
+    const li = raw.match(/^(\s*)[-*+]\s+(.*)$/);
+    if (li) {
+      if (!newRoot) { // lista utan rubrik: skapa rot av titeln
+        newRoot = makeNode(fm.title || 'Tankekarta', GS_BLUE);
+        stack = [{ node: newRoot, indent: -1 }];
+        lastNode = newRoot;
+      }
+      if (!stack.length) continue; // lista under ignorerat extra träd
+      const indent = li[1].replace(/\t/g, '  ').length;
+      const c = parseComment(li[2]);
+      const txt = li[2].replace(/<!--[\s\S]*?-->/, '').trim();
+      while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
+      const parent = stack[stack.length - 1].node;
+      const color = c.color || (parent === newRoot
+        ? BRANCH_CYCLE[branchIdx++ % BRANCH_CYCLE.length]
+        : parent.color);
+      const node = makeNode(txt || 'Gren', color);
+      node.collapsed = c.fold;
+      parent.children.push(node);
+      stack.push({ node, indent });
+      lastNode = node;
+    }
+  }
+
+  if (!newRoot) throw new Error('Hittade varken rubrik eller lista i filen');
+
+  snapshot();
+  root = newRoot;
+  posMap.clear();
+  if (fm.title) titleInput.value = fm.title;
+  if (fm.created) meta.created = fm.created;
+  if (fm.theme === 'dark' || fm.theme === 'light') {
+    document.documentElement.setAttribute('data-theme', fm.theme);
+  }
+  if (['dots','grid','blank'].includes(fm.background)) setBg(fm.background, false);
+  branchCounter = branchIdx;
+  selectedId = null;
+  refresh();
+  layout();
+  fitView();
+  let msg = 'Importerade "' + root.text + '" — ' + countNodes() + ' noder';
+  if (extraTrees) msg += ' (hoppade över ' + extraTrees + ' extra träd: ett träd per fil)';
+  toast(msg);
+}
+
+$('btnImport').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try { importMarkdown(r.result); }
+    catch (err) { toast('Kunde inte importera: ' + err.message, true); }
+  };
+  r.readAsText(f);
+  e.target.value = '';
+});
+
+/* ---------- Bakgrund: punkter / rutor / blankt ---------- */
+const BG_MODES = ['dots', 'grid', 'blank'];
+const BG_NAMES = { dots: 'Punkter', grid: 'Rutor', blank: 'Blankt' };
+let bgStyle = 'dots';
+
+function setBg(mode, save = true) {
+  bgStyle = mode;
+  stage.setAttribute('data-bg', mode);
+  if (save) autosave();
+}
+
+$('btnBg').addEventListener('click', () => {
+  const next = BG_MODES[(BG_MODES.indexOf(bgStyle) + 1) % BG_MODES.length];
+  setBg(next);
+  toast('Bakgrund: ' + BG_NAMES[next]);
+});
+
+/* ---------- Ny blank tankekarta ---------- */
+$('btnNew').addEventListener('click', () => {
+  snapshot(); // Ctrl+Z tar tillbaka den gamla
+  root = makeNode('Nytt ämne', GS_BLUE);
+  titleInput.value = 'Tankekarta';
+  meta.created = new Date().toISOString();
+  branchCounter = 0;
+  selectedId = root.id;
+  newNodeId = root.id;
+  posMap.clear();
+  hidePopups();
+  layout();
+  forEachNode(n => { n._x = n._tx; n._y = n._ty; posMap.set(n.id, { x: n._tx, y: n._ty }); });
+  const r = stage.getBoundingClientRect();
+  view.k = 1;
+  view.x = r.width / 2;
+  view.y = r.height / 2;
+  renderFrame();
+  autosave();
+  toast('Ny tankekarta — Ctrl+Z ångrar om det var fel');
+  startEdit(root.id, true);
+});
+
+/* ---------- Sök ---------- */
+const searchBar = $('searchBar'), searchInput = $('searchInput'), searchCount = $('searchCount');
+
+function openSearch() {
+  searchBar.classList.add('open');
+  searchInput.focus();
+  searchInput.select();
+}
+function closeSearch() {
+  searchBar.classList.remove('open');
+  searchTerm = '';
+  searchMatches.clear();
+  searchList = [];
+  searchIdx = -1;
+  searchCount.textContent = '';
+  renderFrame();
+}
+function runSearch() {
+  searchTerm = searchInput.value.trim().toLowerCase();
+  searchMatches.clear();
+  searchList = [];
+  if (searchTerm) {
+    forEachNode(n => {
+      const hay = (n.text + '\n' + (n.note || '') + '\n' + (n.url || '')).toLowerCase();
+      if (hay.includes(searchTerm)) { searchMatches.add(n.id); searchList.push(n.id); }
+    });
+  }
+  searchIdx = searchList.length ? 0 : -1;
+  searchCount.textContent = searchTerm ? (searchList.length ? (searchIdx + 1) + '/' + searchList.length : '0') : '';
+  renderFrame();
+}
+function expandAncestors(id) {
+  let hit = findNode(id), changed = false;
+  while (hit && hit.parent) {
+    if (hit.parent.collapsed) { hit.parent.collapsed = false; changed = true; }
+    hit = findNode(hit.parent.id);
+  }
+  return changed;
+}
+function centerOn(id) {
+  const hit = findNode(id);
+  if (!hit) return;
+  const r = stage.getBoundingClientRect();
+  view.x = r.width / 2 - (hit.node._tx ?? hit.node._x) * view.k;
+  view.y = r.height / 2 - (hit.node._ty ?? hit.node._y) * view.k;
+  applyView();
+  positionNodeTools();
+}
+function jumpToMatch(dir) {
+  if (!searchList.length) return;
+  searchIdx = (searchIdx + dir + searchList.length) % searchList.length;
+  searchCount.textContent = (searchIdx + 1) + '/' + searchList.length;
+  const id = searchList[searchIdx];
+  if (expandAncestors(id)) { layout(); }
+  selectedId = id;
+  layout();
+  forEachNode(n => { n._x = n._tx; n._y = n._ty; posMap.set(n.id, { x: n._tx, y: n._ty }); });
+  renderFrame();
+  centerOn(id);
+}
+
+searchInput.addEventListener('input', runSearch);
+searchInput.addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.key === 'Enter') jumpToMatch(e.shiftKey ? -1 : 1);
+  else if (e.key === 'Escape') closeSearch();
+});
+$('btnSearch').addEventListener('click', () => {
+  if (searchBar.classList.contains('open')) closeSearch(); else openSearch();
+});
+$('searchNext').addEventListener('click', () => jumpToMatch(1));
+$('searchPrev').addEventListener('click', () => jumpToMatch(-1));
+$('searchClose').addEventListener('click', closeSearch);
+
+/* ---------- Flytta grenar med dra-och-släpp ---------- */
+const dragGhost = $('dragGhost');
+let drag = null; // { id, active, holdTimer }
+
+function startDrag(id, x, y) {
+  const hit = findNode(id);
+  if (!hit || !hit.parent) return; // roten flyttas inte
+  drag = { id, active: true };
+  panStart = null;
+  stage.classList.remove('panning');
+  dragGhost.textContent = hit.node.text;
+  dragGhost.style.background = hit.node.color;
+  dragGhost.style.color = textColorOn(hit.node.color);
+  dragGhost.style.display = 'block';
+  moveGhost(x, y);
+}
+function moveGhost(x, y) {
+  dragGhost.style.left = (x + 14) + 'px';
+  dragGhost.style.top = (y + 10) + 'px';
+  const under = document.elementFromPoint(x, y);
+  const nodeEl = under && under.closest ? under.closest('.node') : null;
+  let target = nodeEl ? nodeEl.getAttribute('data-id') : null;
+  if (target === drag.id || (target && isDescendantOf(target, drag.id))) target = null;
+  if (target !== dropTargetId) { dropTargetId = target; renderFrame(); }
+}
+function isDescendantOf(id, ancestorId) {
+  const anc = findNode(ancestorId);
+  if (!anc) return false;
+  let found = false;
+  forEachIn(anc.node.children, n => { if (n.id === id) found = true; });
+  return found;
+}
+function endDrag() {
+  const targetId = dropTargetId;
+  const dragId = drag ? drag.id : null;
+  dragGhost.style.display = 'none';
+  dropTargetId = null;
+  drag = null;
+  if (dragId && targetId) moveNode(dragId, targetId);
+  else renderFrame();
+}
+function moveNode(dragId, targetId) {
+  const src = findNode(dragId), dst = findNode(targetId);
+  if (!src || !dst || !src.parent) return;
+  snapshot();
+  const oldParentColor = src.parent.color;
+  src.siblings.splice(src.index, 1);
+  dst.node.collapsed = false;
+  dst.node.children.push(src.node);
+  // ärvd färg följer med till den nya grenen
+  if (src.node.color === oldParentColor) {
+    const old = src.node.color;
+    const nc = dst.parent ? dst.node.color
+      : BRANCH_CYCLE[branchCounter++ % BRANCH_CYCLE.length]; // släppt på roten: egen färg
+    if (nc !== old) {
+      src.node.color = nc;
+      forEachIn(src.node.children, n => { if (n.color === old) n.color = nc; });
+    }
+  }
+  selectedId = dragId;
+  refresh();
+  toast('Flyttade "' + src.node.text + '" till "' + dst.node.text + '"');
+}
+
+/* ---------- PNG-export ---------- */
+function exportPngDataUrl() {
+  layout();
+  exporting = true;
+  const keep = { term: searchTerm };
+  searchTerm = '';
+  forEachNode(n => { n._x = n._tx; n._y = n._ty; });
+  renderFrame();
+
+  let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+  forEachNode(n => {
+    if (n._hidden) return;
+    minX = Math.min(minX, n._tx - n._w / 2); maxX = Math.max(maxX, n._tx + n._w / 2);
+    minY = Math.min(minY, n._ty - n._h / 2); maxY = Math.max(maxY, n._ty + n._h / 2);
+  });
+  const pad = 60;
+  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+  const w = maxX - minX, h = maxY - minY;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const bgc = isDark ? '#1F1F1F' : '#FFFFFE';
+  const inner = gEdges.outerHTML + gNodes.outerHTML;
+
+  exporting = false;
+  searchTerm = keep.term;
+  renderFrame();
+
+  const svgStr = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h +
+    '" viewBox="' + minX + ' ' + minY + ' ' + w + ' ' + h + '">' +
+    '<rect x="' + minX + '" y="' + minY + '" width="' + w + '" height="' + h + '" fill="' + bgc + '"/>' +
+    inner + '</svg>';
+
+  const scale = Math.min(2, 6000 / Math.max(w, h));
+  const img = new Image();
+  const url = URL.createObjectURL(new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' }));
+  return new Promise((resolve) => {
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(''); };
+    img.src = url;
+  });
+}
+
+function exportPng() {
+  exportPngDataUrl().then(dataUrl => {
+    if (!dataUrl) { toast('PNG-exporten misslyckades', true); return; }
+    const title = titleInput.value.trim() || 'Tankekarta';
+    const slug = title.toLowerCase().replace(/[^a-z0-9åäö]+/gi, '-').replace(/^-+|-+$/g, '') || 'tankekarta';
+    const name = slug + '_' + new Date().toISOString().slice(0, 10) + '.png';
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = name;
+    a.click();
+    toast('Sparade ' + name);
+  });
+}
+
+/* ---------- Mermaid-export ---------- */
+function mermaidCode() {
+  const sane = s => s.replace(/[()\[\]{}"`|]/g, '').replace(/\s+/g, ' ').trim() || 'nod';
+  let out = 'mindmap\n  root((' + sane(root.text) + '))\n';
+  const walk = (list, ind) => {
+    for (const n of list) {
+      out += ' '.repeat(ind) + sane(n.text) + '\n';
+      walk(n.children, ind + 2);
+    }
+  };
+  walk(root.children, 4);
+  return out;
+}
+
+function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  }
+  // fallback för file:// och äldre miljöer
+  return new Promise((res, rej) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy') ? res() : rej(new Error('copy misslyckades')); }
+    catch (e) { rej(e); }
+    finally { ta.remove(); }
+  });
+}
+
+/* ---------- Exportmeny ---------- */
+const exportMenu = $('exportMenu');
+function hideExportMenu() { exportMenu.classList.remove('open'); }
+
+$('btnExport').addEventListener('click', e => {
+  e.stopPropagation();
+  if (exportMenu.classList.contains('open')) { hideExportMenu(); return; }
+  exportMenu.classList.add('open');
+  const b = $('btnExport').getBoundingClientRect();
+  const mw = exportMenu.offsetWidth;
+  exportMenu.style.left = Math.max(6, Math.min(b.left + b.width / 2 - mw / 2, window.innerWidth - mw - 6)) + 'px';
+  exportMenu.style.top = (b.bottom + 8) + 'px';
+});
+$('exMd').addEventListener('click', () => { hideExportMenu(); exportMarkdown(); });
+$('exPng').addEventListener('click', () => { hideExportMenu(); exportPng(); });
+$('exMermaid').addEventListener('click', () => {
+  hideExportMenu();
+  copyText(mermaidCode())
+    .then(() => toast('Mermaid-kod kopierad till urklipp'))
+    .catch(() => toast('Kunde inte kopiera till urklipp', true));
+});
+
+/* ---------- Övriga kontroller ---------- */
+$('btnUndo').addEventListener('click', undo);
+$('btnRedo').addEventListener('click', redo);
+$('tDup').addEventListener('click', () => selectedId && duplicateNode(selectedId));
+$('btnTheme').addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  document.documentElement.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  renderFrame();
+  autosave();
+});
+$('zIn').addEventListener('click', () => {
+  const r = stage.getBoundingClientRect();
+  zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1.25);
+});
+$('zOut').addEventListener('click', () => {
+  const r = stage.getBoundingClientRect();
+  zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1 / 1.25);
+});
+$('zFit').addEventListener('click', () => { layout(); fitView(); });
+titleInput.addEventListener('change', autosave);
+titleInput.addEventListener('keydown', e => { if (e.key === 'Enter') titleInput.blur(); });
+window.addEventListener('resize', positionNodeTools);
+
+document.addEventListener('pointerdown', e => {
+  if (!e.target.closest('#palette') && !e.target.closest('#tColor')) hidePalette();
+  if (!e.target.closest('#exportMenu') && !e.target.closest('#btnExport')) hideExportMenu();
+});
+
+/* ---------- Start ---------- */
+function seed() {
+  root = makeNode('Tankekarta', GS_BLUE);
+  const mk = (t, kids = []) => {
+    const n = makeNode(t, BRANCH_CYCLE[branchCounter++ % BRANCH_CYCLE.length]);
+    n.children = kids.map(k => makeNode(k, n.color));
+    return n;
+  };
+  root.children = [
+    mk('Idéer', ['Första tanken', 'Andra tanken']),
+    mk('Att göra', ['Nästa steg']),
+    mk('Frågor', [])
+  ];
+}
+
+let bgRestore = null;
+
+if (!EMBED_MODE) {
+  if (!tryRestore()) seed();
+  if (bgRestore) setBg(bgRestore, false);
+  layout();
+  forEachNode(n => { n._x = n._tx; n._y = n._ty; posMap.set(n.id, { x: n._tx, y: n._ty }); });
+  renderFrame();
+  fitView();
+}
+
+/* ---------- EMBED — Skill Canvas ---------- */
+function embedApplyInit(d) {
+  const content = String(d.content ?? '');
+  if (content.trim()) {
+    importMarkdown(content);
+  } else {
+    seed();
+    if (d.title) titleInput.value = d.title;
+  }
+  if (d.theme) document.documentElement.setAttribute('data-theme', d.theme === 'dark' ? 'dark' : 'light');
+  layout();
+  forEachNode(n => { n._x = n._tx; n._y = n._ty; posMap.set(n.id, { x: n._tx, y: n._ty }); });
+  renderFrame();
+  fitView();
+}
+
+async function embedSave() {
+  const content = buildMarkdownExport();
+  const pngDataUrl = await exportPngDataUrl();
+  window.parent.postMessage({
+    type: 'sc-mindmap-save',
+    content,
+    pngDataUrl,
+    title: titleInput.value.trim() || 'Tankekarta',
+  }, '*');
+}
+
+function embedCancel() {
+  window.parent.postMessage({ type: 'sc-mindmap-cancel' }, '*');
+}
+
+window.embedSave = embedSave;
+window.embedCancel = embedCancel;
+
+window.addEventListener('message', e => {
+  const d = e.data;
+  if (!d || typeof d !== 'object') return;
+  if (d.type === 'sc-mindmap-init') embedApplyInit(d);
+  if (d.type === 'sc-mindmap-set-theme' && d.theme) {
+    document.documentElement.setAttribute('data-theme', d.theme === 'dark' ? 'dark' : 'light');
+    renderFrame();
+  }
+});
+
+if (EMBED_MODE) {
+  document.getElementById('btnEmbedSave')?.addEventListener('click', () => embedSave());
+  document.getElementById('btnEmbedCancel')?.addEventListener('click', () => embedCancel());
+  window.parent.postMessage({ type: 'sc-mindmap-ready' }, '*');
+}
+
+document.addEventListener('keydown', e => {
+  if (!EMBED_MODE) return;
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); embedSave(); }
+  if (e.key === 'Escape') { e.preventDefault(); embedCancel(); }
+});
+</script>
+</body>
+</html>

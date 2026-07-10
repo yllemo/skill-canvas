@@ -242,6 +242,21 @@ require_once __DIR__ . '/includes/bootstrap.php';
   <iframe id="pb-editor-frame" title="PromptBook-editor"></iframe>
 </div>
 
+<!-- TAXONOMI EDITOR -->
+<div id="tx-editor-overlay" aria-hidden="true">
+  <iframe id="tx-editor-frame" title="Taxonomi-editor"></iframe>
+</div>
+
+<!-- MINDMAP EDITOR -->
+<div id="mp-editor-overlay" aria-hidden="true">
+  <iframe id="mp-editor-frame" title="Mindmap-editor"></iframe>
+</div>
+
+<!-- SVG EDITOR -->
+<div id="sv-editor-overlay" aria-hidden="true">
+  <iframe id="sv-editor-frame" title="SVG Studio"></iframe>
+</div>
+
 <script>
 <?php
 $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php'));
@@ -260,6 +275,7 @@ $assetBase = h($app['basePath'] ?? '');
 <script src="<?= $assetBase ?>js/settings.js?v=<?= asset_version('js/settings.js') ?>"></script>
 <script src="<?= $assetBase ?>js/skill-import.js?v=<?= asset_version('js/skill-import.js') ?>"></script>
 <script src="<?= $assetBase ?>js/skill-tree.js?v=<?= asset_version('js/skill-tree.js') ?>"></script>
+<script src="<?= $assetBase ?>js/okf-index.js?v=<?= asset_version('js/okf-index.js') ?>"></script>
 <script src="<?= $assetBase ?>js/modal.js?v=<?= asset_version('js/modal.js') ?>"></script>
 <script src="<?= $assetBase ?>js/connections.js?v=<?= asset_version('js/connections.js') ?>"></script>
 <script src="<?= $assetBase ?>js/docx-import.js?v=<?= asset_version('js/docx-import.js') ?>"></script>

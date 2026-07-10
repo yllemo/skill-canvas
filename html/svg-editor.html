@@ -1,0 +1,2036 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SVG Studio</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%230077bc'/%3E%3Cpath%20d='M24%2020%20L12%2032%20L24%2044'%20stroke='%23ffffff'%20stroke-width='6'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3Cpath%20d='M40%2020%20L52%2032%20L40%2044'%20stroke='%23ffffff'%20stroke-width='6'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3Ccircle%20cx='32'%20cy='32'%20r='5'%20fill='%23ffd300'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --gs-blue: #0077bc;
+    --bg-color:        #FFFFFE;
+    --bg-footer:       #F5F5F5;
+    --bg-nav:          #F4F9FC;
+    --bg-info:         #F2F9F9;
+    --text-color:      #333333;
+    --text-secondary:  #6E6E6E;
+    --link-color:      #005799;
+    --border-color:    #979797;
+    --success: #5a8b3b;
+    --warning: #f2a900;
+    --error:   #d24723;
+    --info:    #008391;
+    --checker-a: #ffffff;
+    --checker-b: #e6e6e6;
+  }
+  [data-theme="dark"] {
+    --bg-color:        #1F1F1F;
+    --bg-footer:       #121212;
+    --bg-nav:          #141414;
+    --bg-info:         #282828;
+    --text-color:      #FFFFFF;
+    --text-secondary:  #E3E8E9;
+    --link-color:      #479EF5;
+    --border-color:    #666666;
+    --checker-a: #2c2c2c;
+    --checker-b: #3a3a3a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    font-family: 'Goteborg', Arial, Helvetica, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text-color);
+    background-color: var(--bg-color);
+    overflow: hidden;
+  }
+
+  body { display: flex; flex-direction: column; }
+
+  /* ---------- Header ---------- */
+  header {
+    background: var(--gs-blue);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 20px;
+    height: 56px;
+    flex-shrink: 0;
+  }
+  header .brand {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+  header .brand .app-name { font-weight: 700; font-size: 1.05rem; }
+  header .brand .org { font-size: 0.72rem; opacity: .85; letter-spacing: .04em; }
+
+  nav.tabs {
+    display: flex;
+    align-items: stretch;
+    height: 100%;
+    margin-left: 24px;
+    gap: 2px;
+  }
+  nav.tabs a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px;
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.88rem;
+    border-bottom: 3px solid transparent;
+    opacity: .9;
+  }
+  nav.tabs a:hover { background: rgba(255,255,255,.12); opacity: 1; }
+  nav.tabs a.active {
+    border-bottom-color: #ffd300;
+    font-weight: 700;
+    opacity: 1;
+  }
+  nav.tabs a .ext { font-size: .75rem; opacity: .8; }
+
+  header .spacer { flex: 1; }
+
+  .icon-btn {
+    background: rgba(255,255,255,.15);
+    border: none;
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,.28); }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar {
+    background: var(--bg-nav);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .btn {
+    border-radius: 4px;
+    padding: 7px 14px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--gs-blue); color: #fff; }
+  .btn-primary:hover { background: #005799; }
+  .btn-secondary {
+    background: var(--bg-color);
+    color: var(--text-color);
+    border-color: var(--border-color);
+  }
+  .btn-secondary:hover { background: var(--bg-info); }
+  .toolbar .sep { width: 1px; height: 24px; background: var(--border-color); margin: 0 4px; }
+
+  /* Dropdown (Städa) */
+  .dropdown { position: relative; }
+  .dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.18);
+    min-width: 280px;
+    z-index: 50;
+    padding: 6px 0;
+  }
+  .dropdown.open .dropdown-menu { display: block; }
+  .dropdown-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--text-color);
+    cursor: pointer;
+  }
+  .dropdown-menu button:hover { background: var(--bg-info); }
+  .dropdown-menu button small { display: block; color: var(--text-secondary); font-size: .72rem; }
+  .dropdown-menu hr { border: none; border-top: 1px solid var(--border-color); margin: 6px 0; }
+
+  /* ---------- Main layout ---------- */
+  main {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+  #editorPane {
+    width: 50%;
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  #monacoContainer { flex: 1; min-height: 0; }
+
+  #splitter {
+    width: 6px;
+    cursor: col-resize;
+    background: var(--bg-nav);
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    flex-shrink: 0;
+  }
+  #splitter:hover { background: var(--gs-blue); }
+
+  #previewPane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 240px;
+    min-height: 0;
+  }
+  .pane-header {
+    background: var(--bg-nav);
+    border-bottom: 1px solid var(--border-color);
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .pane-header .grow { flex: 1; }
+  .mini-btn {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-color);
+    font-size: .75rem;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .mini-btn:hover { background: var(--bg-info); }
+  .mini-btn.active { background: var(--gs-blue); color: #fff; border-color: var(--gs-blue); }
+  #pickedResult .pswatch {
+    display: inline-block;
+    width: 11px; height: 11px;
+    border-radius: 2px;
+    border: 1px solid var(--border-color);
+    margin-right: 5px;
+    vertical-align: -1px;
+  }
+  #previewScroll.picking, #previewScroll.picking * { cursor: crosshair !important; }
+
+  /* Markering av plockad färg i koden */
+  .color-hit {
+    background: rgba(255, 211, 0, .45);
+    border-radius: 2px;
+    outline: 1px solid rgba(242, 169, 0, .9);
+  }
+  [data-theme="dark"] .color-hit {
+    background: rgba(255, 211, 0, .3);
+  }
+
+  /* Färgpalett */
+  #paletteBar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 5px 12px;
+    background: var(--bg-nav);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    min-height: 0;
+  }
+  #paletteBar:empty { display: none; }
+  #paletteBar .plabel { font-size: .7rem; color: var(--text-secondary); margin-right: 4px; }
+  #paletteBar .pchip {
+    width: 20px; height: 20px;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    padding: 0;
+  }
+  #paletteBar .pchip:hover { outline: 2px solid var(--gs-blue); outline-offset: 1px; }
+
+  /* Inspektör */
+  #previewScroll.inspecting, #previewScroll.inspecting * { cursor: pointer !important; }
+  #inspectBadge {
+    position: absolute;
+    background: #1F1F1F;
+    color: #fff;
+    font-size: .72rem;
+    font-family: Consolas, Monaco, monospace;
+    padding: 2px 8px;
+    border-radius: 3px;
+    pointer-events: none;
+    z-index: 30;
+    display: none;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
+
+  #previewScroll {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    background: var(--bg-color);
+  }
+  #previewScroll.checker {
+    background-image:
+      linear-gradient(45deg, var(--checker-b) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--checker-b) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--checker-b) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--checker-b) 75%);
+    background-size: 24px 24px;
+    background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+    background-color: var(--checker-a);
+  }
+  #previewInner {
+    padding: 24px;
+    transform-origin: top left;
+    display: inline-block;
+  }
+  #previewInner svg { display: block; }
+
+  /* ---------- Validation panel ---------- */
+  #validationPanel {
+    max-height: 160px;
+    overflow: auto;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-info);
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+  #validationPanel:empty { display: none; }
+  .vmsg {
+    padding: 6px 14px;
+    border-left: 4px solid var(--border-color);
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .vmsg + .vmsg { border-top: 1px solid rgba(151,151,151,.25); }
+  .vmsg.error   { border-left-color: var(--error); }
+  .vmsg.warning { border-left-color: var(--warning); }
+  .vmsg.info    { border-left-color: var(--info); }
+  .vmsg.success { border-left-color: var(--success); }
+  .vmsg .tag { font-weight: 700; font-size: .72rem; text-transform: uppercase; letter-spacing: .03em; }
+  .vmsg.error .tag { color: var(--error); }
+  .vmsg.warning .tag { color: var(--warning); }
+  .vmsg.info .tag { color: var(--info); }
+  .vmsg.success .tag { color: var(--success); }
+  .vmsg code { font-family: Consolas, Monaco, monospace; font-size: .75rem; }
+
+  /* ---------- Statusbar ---------- */
+  footer {
+    background: var(--bg-footer);
+    border-top: 1px solid var(--border-color);
+    padding: 5px 14px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  footer .grow { flex: 1; }
+  footer .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: baseline; }
+  footer .dot.ok { background: var(--success); }
+  footer .dot.err { background: var(--error); }
+  footer .dot.warn { background: var(--warning); }
+
+  /* ---------- Modal (URL) ---------- */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--bg-color);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    width: min(560px, 92vw);
+    padding: 22px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.3);
+  }
+  .modal h2 { font-size: 1.05rem; margin-bottom: 10px; }
+  .modal p { font-size: .82rem; color: var(--text-secondary); margin-bottom: 12px; }
+  .modal input[type="url"] {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: .9rem;
+    font-family: inherit;
+    background: var(--bg-color);
+    color: var(--text-color);
+    margin-bottom: 14px;
+  }
+  .modal .row { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal .err { color: var(--error); font-size: .8rem; margin-bottom: 10px; display: none; }
+
+  /* Justera-modaler */
+  .option-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  .option-row:hover { background: var(--bg-info); }
+  .option-row.selected { border-color: var(--gs-blue); background: var(--bg-nav); }
+  .option-row input[type="radio"] { margin-top: 4px; accent-color: var(--gs-blue); }
+  .option-row .opt-body { flex: 1; }
+  .option-row .opt-title { font-size: .9rem; font-weight: 700; }
+  .option-row .opt-desc { font-size: .76rem; color: var(--text-secondary); }
+
+  .size-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    color: var(--text-color);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: .78rem;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .chip:hover { background: var(--bg-info); }
+  .chip.active { background: var(--gs-blue); color: #fff; border-color: var(--gs-blue); }
+
+  .inline-field { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: .8rem; }
+  .inline-field input[type="number"], .inline-field input[type="text"] {
+    width: 90px;
+    padding: 5px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: .82rem;
+    background: var(--bg-color);
+    color: var(--text-color);
+  }
+  .inline-field input[type="color"] {
+    width: 42px; height: 30px; padding: 2px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    cursor: pointer;
+  }
+
+  .current-info {
+    background: var(--bg-info);
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: .76rem;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+    font-family: Consolas, Monaco, monospace;
+  }
+
+  .swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .swatch {
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    padding: 0;
+  }
+  .swatch.active { outline: 2px solid var(--gs-blue); outline-offset: 1px; }
+
+  /* Drag & drop overlay */
+  #dropOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,119,188,.85);
+    color: #fff;
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    pointer-events: none;
+  }
+  #dropOverlay.show { display: flex; }
+
+  input[type="file"] { display: none; }
+
+  @media (max-width: 780px) {
+    main { flex-direction: column; }
+    #editorPane { width: 100% !important; height: 45%; }
+    #splitter { display: none; }
+    nav.tabs { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="app-name">SVG Studio</span>
+  </div>
+  <nav class="tabs">
+    <a href="#" class="active" title="Inbyggd editor">Editor</a>
+    <a href="https://svgedit.netlify.app/" target="_blank" rel="noopener" title="SVG-Edit – open source vektoreditor (MIT)">SVG-Edit <span class="ext">↗</span></a>
+    <a href="https://editor.method.ac/" target="_blank" rel="noopener" title="Method Draw – enkel open source SVG-editor (MIT)">Method Draw <span class="ext">↗</span></a>
+    <a href="https://jakearchibald.github.io/svgomg/" target="_blank" rel="noopener" title="SVGOMG – webbgränssnitt för SVGO-optimering (MIT)">SVGOMG <span class="ext">↗</span></a>
+  </nav>
+  <div class="spacer"></div>
+  <button class="icon-btn" id="themeToggle" title="Växla ljust/mörkt läge">◐</button>
+</header>
+
+<div class="toolbar">
+  <button class="btn btn-primary" id="btnOpen">📂 Öppna fil</button>
+  <button class="btn btn-secondary" id="btnUrl">🔗 Hämta från URL</button>
+  <button class="btn btn-secondary" id="btnNew">✨ Exempel</button>
+  <span class="sep"></span>
+  <div class="dropdown" id="cleanDropdown">
+    <button class="btn btn-secondary" id="btnClean">🧹 Städa ▾</button>
+    <div class="dropdown-menu">
+      <button data-clean="all"><strong>Städa allt</strong><small>Kör samtliga städfunktioner i rätt ordning</small></button>
+      <hr>
+      <button data-clean="comments">Ta bort kommentarer<small>&lt;!-- ... --&gt; och XML-prolog-skräp</small></button>
+      <button data-clean="editorcruft">Ta bort editor-metadata<small>Inkscape, Sodipodi, Adobe, Sketch, Figma-attribut &amp; &lt;metadata&gt;</small></button>
+      <button data-clean="emptygroups">Ta bort tomma grupper<small>&lt;g&gt; utan innehåll (id-lösa)</small></button>
+      <button data-clean="defaults">Ta bort standardattribut<small>t.ex. fill-opacity="1", stroke="none" på fill-element</small></button>
+      <button data-clean="round">Avrunda decimaler<small>Max 3 decimaler i koordinater och mått</small></button>
+      <button data-clean="viewbox">Lägg till viewBox<small>Skapas från width/height om den saknas</small></button>
+      <hr>
+      <button data-clean="pretty">Formatera (pretty print)<small>Indenterad, läsbar kod</small></button>
+      <button data-clean="minify">Minifiera<small>Ta bort onödiga radbrytningar och whitespace</small></button>
+    </div>
+  </div>
+  <span class="sep"></span>
+  <button class="btn btn-secondary" id="btnSize">⤢ Storlek</button>
+  <button class="btn btn-secondary" id="btnBg">🎨 Bakgrund</button>
+  <span class="sep"></span>
+  <button class="btn btn-primary" id="btnDownload" title="Laddar ner med datumsuffix _ÅÅÅÅ-MM-DD.svg">⬇ Ladda ner</button>
+  <div class="dropdown" id="pngDropdown">
+    <button class="btn btn-secondary" id="btnPng">🖼 PNG ▾</button>
+    <div class="dropdown-menu">
+      <button data-png="1">Naturlig storlek (1×)</button>
+      <button data-png="2">2× upplösning</button>
+      <button data-png="4">4× upplösning</button>
+      <hr>
+      <button data-png="w512">512 px bred</button>
+      <button data-png="w1024">1024 px bred</button>
+      <button data-png="w2048">2048 px bred</button>
+    </div>
+  </div>
+  <input type="file" id="fileInput" accept=".svg,image/svg+xml">
+</div>
+
+<main>
+  <div id="editorPane">
+    <div class="pane-header">
+      <span>SVG-kod</span>
+      <button class="mini-btn active" id="followToggle" title="Följ markör — elementet vid markören markeras i förhandsvisningen">🔗 Följ</button>
+      <span class="grow"></span>
+      <span id="cursorPos"></span>
+    </div>
+    <div id="monacoContainer"></div>
+  </div>
+
+  <div id="splitter"></div>
+
+  <div id="previewPane">
+    <div class="pane-header">
+      <span>Förhandsvisning</span>
+      <button class="mini-btn" id="pickColor" title="Färgdroppare — hämta #hex från skärmen">💧</button>
+      <button class="mini-btn" id="inspectToggle" title="Inspektör — klicka på ett element för att hitta det i koden">⌖</button>
+      <button class="mini-btn" id="pickedResult" style="display:none;font-family:Consolas,Monaco,monospace;" title="Klicka för att kopiera"></button>
+      <span class="grow"></span>
+      <button class="mini-btn" id="zoomOut" title="Zooma ut">−</button>
+      <span id="zoomLabel" style="min-width:44px;text-align:center;">100%</span>
+      <button class="mini-btn" id="zoomIn" title="Zooma in">+</button>
+      <button class="mini-btn" id="zoomFit" title="Anpassa till fönster">Anpassa</button>
+      <button class="mini-btn" id="zoomReset" title="100 %">1:1</button>
+      <button class="mini-btn active" id="checkerToggle" title="Rutmönster-bakgrund">▦</button>
+    </div>
+    <div id="paletteBar" title="Färger som används i SVG:n — klick markerar i koden, dubbelklick byter färg överallt"></div>
+    <div id="previewScroll" class="checker">
+      <div id="inspectBadge"></div>
+      <div id="previewInner"></div>
+    </div>
+    <div id="validationPanel"></div>
+  </div>
+</main>
+
+<footer>
+  <span id="statusRender"><span class="dot ok"></span>Redo</span>
+  <span id="statusFile">Ingen fil</span>
+  <span id="statusSize"></span>
+  <span id="statusElements"></span>
+  <span class="grow"></span>
+  <span>SVG Studio</span>
+</footer>
+
+<!-- URL-modal -->
+<div class="modal-backdrop" id="urlModal">
+  <div class="modal">
+    <h2>Hämta SVG från URL</h2>
+    <p>Ange en direktlänk till en .svg-fil. Observera att vissa servrar blockerar hämtning från webbläsare (CORS) — ladda i så fall ner filen och öppna den lokalt.</p>
+    <input type="url" id="urlInput" placeholder="https://exempel.se/bild.svg">
+    <div class="err" id="urlError"></div>
+    <div class="row">
+      <button class="btn btn-secondary" id="urlCancel">Avbryt</button>
+      <button class="btn btn-primary" id="urlFetch">Hämta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Storleks-modal -->
+<div class="modal-backdrop" id="sizeModal">
+  <div class="modal">
+    <h2>Ändra storlek</h2>
+    <div class="current-info" id="sizeInfo"></div>
+    <label class="option-row selected" id="optResponsive">
+      <input type="radio" name="sizeMode" value="responsive" checked>
+      <span class="opt-body">
+        <span class="opt-title">Dynamiskt skalbar</span>
+        <span class="opt-desc">Tar bort fasta width/height och säkerställer viewBox — SVG:n anpassar sig till sitt omgivande element.</span>
+      </span>
+    </label>
+    <label class="option-row" id="optFixed">
+      <input type="radio" name="sizeMode" value="fixed">
+      <span class="opt-body">
+        <span class="opt-title">Fast storlek</span>
+        <span class="opt-desc">Sätter width/height i pixlar. Höjden beräknas automatiskt från proportionerna.</span>
+        <span class="size-chips" id="sizeChips">
+          <button type="button" class="chip" data-size="16">16</button>
+          <button type="button" class="chip" data-size="24">24</button>
+          <button type="button" class="chip" data-size="32">32</button>
+          <button type="button" class="chip" data-size="48">48</button>
+          <button type="button" class="chip" data-size="64">64</button>
+          <button type="button" class="chip" data-size="128">128</button>
+          <button type="button" class="chip" data-size="256">256</button>
+          <button type="button" class="chip" data-size="512">512</button>
+          <button type="button" class="chip" data-size="1024">1024</button>
+        </span>
+        <span class="inline-field">
+          Egen bredd: <input type="number" id="customWidth" min="1" max="20000" placeholder="t.ex. 800"> px
+          <span id="sizePreviewCalc" style="color:var(--text-secondary);"></span>
+        </span>
+      </span>
+    </label>
+    <div class="err" id="sizeError"></div>
+    <div class="row">
+      <button class="btn btn-secondary" id="sizeCancel">Avbryt</button>
+      <button class="btn btn-primary" id="sizeApply">Justera</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bakgrunds-modal -->
+<div class="modal-backdrop" id="bgModal">
+  <div class="modal">
+    <h2>Bakgrundsfärg</h2>
+    <div class="current-info" id="bgInfo"></div>
+    <label class="option-row selected" id="optTransparent">
+      <input type="radio" name="bgMode" value="transparent" checked>
+      <span class="opt-body">
+        <span class="opt-title">Transparent</span>
+        <span class="opt-desc">Tar bort bakgrundsrektangel (tillagd av verktyget) och eventuell bakgrundsfärg på &lt;svg&gt;-elementet.</span>
+      </span>
+    </label>
+    <label class="option-row" id="optColor">
+      <input type="radio" name="bgMode" value="color">
+      <span class="opt-body">
+        <span class="opt-title">Fast färg</span>
+        <span class="opt-desc">Lägger in en bakgrundsrektangel först i SVG:n som täcker hela ytan (id="svgstudio-bg" — byts ut vid nästa ändring).</span>
+        <span class="swatches" id="bgSwatches">
+          <button type="button" class="swatch" data-color="#ffffff" style="background:#ffffff" title="Vit"></button>
+          <button type="button" class="swatch" data-color="#000000" style="background:#000000" title="Svart"></button>
+          <button type="button" class="swatch" data-color="#0077bc" style="background:#0077bc" title="Blå"></button>
+          <button type="button" class="swatch" data-color="#F4F9FC" style="background:#F4F9FC" title="Ljusblå"></button>
+          <button type="button" class="swatch" data-color="#008391" style="background:#008391" title="Turkos"></button>
+          <button type="button" class="swatch" data-color="#5a8b3b" style="background:#5a8b3b" title="Grön"></button>
+          <button type="button" class="swatch" data-color="#ffd666" style="background:#ffd666" title="Gul"></button>
+          <button type="button" class="swatch" data-color="#d24723" style="background:#d24723" title="Röd"></button>
+          <button type="button" class="swatch" data-color="#d1d9dc" style="background:#d1d9dc" title="Ljusgrå"></button>
+        </span>
+        <span class="inline-field">
+          Färg: <input type="color" id="bgColorPicker" value="#ffffff">
+          <input type="text" id="bgColorHex" value="#ffffff" maxlength="7" spellcheck="false">
+        </span>
+      </span>
+    </label>
+    <div class="err" id="bgError"></div>
+    <div class="row">
+      <button class="btn btn-secondary" id="bgCancel">Avbryt</button>
+      <button class="btn btn-primary" id="bgApply">Justera</button>
+    </div>
+  </div>
+</div>
+
+<div id="dropOverlay">Släpp SVG-filen här</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs/loader.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------- State ---------------- */
+  let editor = null;
+  let currentFileName = 'bild.svg';
+  let zoom = 1;
+  let debounceTimer = null;
+
+  const EXAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" width="400" height="260">
+  <!-- Exempel: Göteborgs Stad-färger -->
+  <rect x="0" y="0" width="400" height="260" rx="8" fill="#F4F9FC"/>
+  <rect x="24" y="24" width="352" height="56" rx="4" fill="#0077bc"/>
+  <text x="40" y="60" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">SVG Studio</text>
+  <circle cx="80" cy="160" r="40" fill="#008391"/>
+  <rect x="150" y="120" width="80" height="80" rx="4" fill="#5a8b3b"/>
+  <polygon points="300,120 340,200 260,200" fill="#ffd666" stroke="#d24723" stroke-width="3"/>
+  <text x="24" y="240" font-family="Arial, sans-serif" font-size="13" fill="#6E6E6E">Redigera koden till vänster — förhandsvisningen uppdateras direkt.</text>
+</svg>
+`;
+
+  /* ---------------- Theme ---------------- */
+  const themeToggle = document.getElementById('themeToggle');
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('svgstudio-theme', t); } catch (e) {}
+    if (editor && window.monaco) monaco.editor.setTheme(t === 'dark' ? 'vs-dark' : 'vs');
+  }
+  themeToggle.addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme') || 'light';
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
+  });
+  let savedTheme = 'light';
+  try { savedTheme = localStorage.getItem('svgstudio-theme') || 'light'; } catch (e) {}
+  applyTheme(savedTheme);
+
+  /* ---------------- Monaco ---------------- */
+  require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs' } });
+  require(['vs/editor/editor.main'], function () {
+    // Autospar: återställ senaste session om den finns
+    let startCode = EXAMPLE_SVG;
+    let restored = false;
+    try {
+      const saved = localStorage.getItem('svgstudio-code');
+      if (saved && saved.trim()) {
+        startCode = saved;
+        restored = true;
+        const savedName = localStorage.getItem('svgstudio-name');
+        if (savedName) {
+          currentFileName = savedName;
+          document.getElementById('statusFile').textContent = savedName;
+        }
+      }
+    } catch (e) {}
+    editor = monaco.editor.create(document.getElementById('monacoContainer'), {
+      value: startCode,
+      language: 'xml',
+      theme: savedTheme === 'dark' ? 'vs-dark' : 'vs',
+      automaticLayout: true,
+      minimap: { enabled: false },
+      wordWrap: 'on',
+      fontSize: 13,
+      tabSize: 2,
+      scrollBeyondLastLine: false,
+      renderWhitespace: 'none',
+      folding: true
+    });
+    editor.onDidChangeModelContent(() => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(update, 350);
+    });
+    editor.onDidChangeCursorPosition(e => {
+      document.getElementById('cursorPos').textContent = 'Rad ' + e.position.lineNumber + ', kol ' + e.position.column;
+      clearTimeout(followTimer);
+      followTimer = setTimeout(() => followCursor(e.position), 150);
+    });
+    update();
+    if (restored) {
+      setTimeout(() => {
+        statusRender.innerHTML = '<span class="dot ok"></span>Återställd från autospar (' + escapeHtml(currentFileName) + ')';
+      }, 100);
+    }
+  });
+
+  function getCode() { return editor ? editor.getValue() : ''; }
+  function setCode(code, fileName) {
+    if (fileName) {
+      currentFileName = fileName;
+      document.getElementById('statusFile').textContent = fileName;
+    }
+    if (editor) editor.setValue(code);
+  }
+
+  /* ---------------- Preview + validering ---------------- */
+  const previewInner = document.getElementById('previewInner');
+  const validationPanel = document.getElementById('validationPanel');
+  const statusRender = document.getElementById('statusRender');
+
+  function parseSvg(code) {
+    const doc = new DOMParser().parseFromString(code, 'image/svg+xml');
+    const errNode = doc.querySelector('parsererror');
+    if (errNode) {
+      let msg = errNode.textContent.replace(/\s+/g, ' ').trim();
+      // Försök plocka ut rad/kolumn ur webbläsarens felmeddelande
+      const m = msg.match(/line[:\s]+(\d+)[^0-9]*(?:column|at column)[:\s]+(\d+)/i) ||
+                msg.match(/error on line (\d+) at column (\d+)/i);
+      return { doc: null, error: { message: msg, line: m ? +m[1] : null, col: m ? +m[2] : null } };
+    }
+    return { doc, error: null };
+  }
+
+  function addMsg(list, type, tag, text) {
+    list.push({ type, tag, text });
+  }
+
+  function update() {
+    clearColorHighlight();
+    const code = getCode();
+    const msgs = [];
+    const { doc, error } = parseSvg(code);
+
+    // Statusbar: storlek
+    const bytes = new Blob([code]).size;
+    document.getElementById('statusSize').textContent =
+      bytes >= 1024 ? (bytes / 1024).toFixed(1) + ' kB' : bytes + ' B';
+
+    if (error) {
+      previewInner.innerHTML = '';
+      statusRender.innerHTML = '<span class="dot err"></span>Renderingsfel';
+      addMsg(msgs, 'error', 'Fel', error.message);
+      if (error.line && editor && window.monaco) {
+        monaco.editor.setModelMarkers(editor.getModel(), 'svg', [{
+          startLineNumber: error.line, startColumn: error.col || 1,
+          endLineNumber: error.line, endColumn: (error.col || 1) + 1,
+          message: error.message, severity: monaco.MarkerSeverity.Error
+        }]);
+      }
+      document.getElementById('statusElements').textContent = '';
+      renderMsgs(msgs);
+      try { localStorage.setItem('svgstudio-code', code); } catch (e) {}
+      return;
+    }
+
+    if (editor && window.monaco) monaco.editor.setModelMarkers(editor.getModel(), 'svg', []);
+
+    const root = doc.documentElement;
+
+    // Varningar
+    if (root.tagName.toLowerCase() !== 'svg') {
+      addMsg(msgs, 'error', 'Fel', 'Rotelementet är <' + root.tagName + '>, inte <svg>.');
+    }
+    if (!root.getAttribute('xmlns')) {
+      addMsg(msgs, 'warning', 'Varning', 'xmlns="http://www.w3.org/2000/svg" saknas — filen renderas inte som fristående fil.');
+    }
+    if (!root.getAttribute('viewBox')) {
+      addMsg(msgs, 'warning', 'Varning', 'viewBox saknas — bilden skalar inte responsivt. Använd Städa → "Lägg till viewBox".');
+    }
+    if (/inkscape:|sodipodi:|xmlns:i="|adobe|sketch:type|figma/i.test(code)) {
+      addMsg(msgs, 'info', 'Info', 'Editor-metadata hittad (Inkscape/Adobe/Sketch m.fl.). Kan tas bort med Städa → "Ta bort editor-metadata".');
+    }
+    if (/<!--/.test(code)) {
+      addMsg(msgs, 'info', 'Info', 'Koden innehåller kommentarer.');
+    }
+    if (/\d+\.\d{4,}/.test(code)) {
+      addMsg(msgs, 'info', 'Info', 'Långa decimaltal hittade — "Avrunda decimaler" kan minska filstorleken.');
+    }
+    if (/<script[\s>]/i.test(code)) {
+      addMsg(msgs, 'warning', 'Varning', 'SVG:n innehåller <script> — tänk på säkerheten vid publicering.');
+    }
+    // Trasiga referenser: url(#id) / href="#id" som inte finns
+    const ids = new Set([...doc.querySelectorAll('[id]')].map(el => el.id));
+    const refRe = /url\(["']?#([^"')]+)["']?\)|(?:xlink:href|href)=["']#([^"']+)["']/g;
+    const missing = new Set();
+    let rm;
+    while ((rm = refRe.exec(code)) !== null) {
+      const id = rm[1] || rm[2];
+      if (id && !ids.has(id)) missing.add(id);
+    }
+    if (missing.size) {
+      addMsg(msgs, 'warning', 'Varning', 'Referens till id som saknas: ' + [...missing].map(i => '#' + i).join(', '));
+    }
+
+    // Rendera
+    previewInner.innerHTML = code;
+    const svgEl = previewInner.querySelector('svg');
+    if (svgEl) {
+      // Kontrollera att något faktiskt syns
+      try {
+        const bb = svgEl.getBBox();
+        if (bb.width === 0 && bb.height === 0 && svgEl.children.length > 0) {
+          addMsg(msgs, 'warning', 'Varning', 'SVG:n parsas korrekt men verkar rendera tomt (bounding box = 0×0).');
+        }
+      } catch (e) { /* getBBox kan kasta i vissa lägen */ }
+      statusRender.innerHTML = msgs.some(m => m.type === 'warning')
+        ? '<span class="dot warn"></span>Renderad med varningar'
+        : '<span class="dot ok"></span>Renderad OK';
+      if (!msgs.length) addMsg(msgs, 'success', 'OK', 'Ingen felaktig SVG-syntax hittad.');
+    } else {
+      statusRender.innerHTML = '<span class="dot err"></span>Ingen &lt;svg&gt; hittad';
+      addMsg(msgs, 'error', 'Fel', 'Inget <svg>-element kunde renderas.');
+    }
+
+    // Elementstatistik
+    const total = doc.querySelectorAll('*').length;
+    const paths = doc.querySelectorAll('path').length;
+    document.getElementById('statusElements').textContent =
+      total + ' element' + (paths ? ' (' + paths + ' path)' : '');
+
+    renderMsgs(msgs);
+    updatePalette(code);
+
+    // Autospar
+    try {
+      localStorage.setItem('svgstudio-code', code);
+      localStorage.setItem('svgstudio-name', currentFileName);
+    } catch (e) {}
+  }
+
+  function renderMsgs(msgs) {
+    validationPanel.innerHTML = msgs.map(m =>
+      '<div class="vmsg ' + m.type + '"><span class="tag">' + m.tag + '</span><span>' + escapeHtml(m.text) + '</span></div>'
+    ).join('');
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /* ---------------- Zoom ---------------- */
+  function setZoom(z) {
+    zoom = Math.min(16, Math.max(0.1, z));
+    previewInner.style.transform = 'scale(' + zoom + ')';
+    document.getElementById('zoomLabel').textContent = Math.round(zoom * 100) + '%';
+  }
+  document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoom * 1.25));
+  document.getElementById('zoomOut').addEventListener('click', () => setZoom(zoom / 1.25));
+  document.getElementById('zoomReset').addEventListener('click', () => setZoom(1));
+  document.getElementById('zoomFit').addEventListener('click', () => {
+    const svgEl = previewInner.querySelector('svg');
+    if (!svgEl) return;
+    const scroll = document.getElementById('previewScroll');
+    const r = svgEl.getBoundingClientRect();
+    const w = r.width / zoom, h = r.height / zoom;
+    if (!w || !h) return;
+    setZoom(Math.min((scroll.clientWidth - 48) / w, (scroll.clientHeight - 48) / h));
+  });
+  document.getElementById('checkerToggle').addEventListener('click', function () {
+    document.getElementById('previewScroll').classList.toggle('checker');
+    this.classList.toggle('active');
+  });
+
+  /* ---------------- Splitter ---------------- */
+  (function () {
+    const splitter = document.getElementById('splitter');
+    const pane = document.getElementById('editorPane');
+    let dragging = false;
+    splitter.addEventListener('mousedown', e => { dragging = true; e.preventDefault(); });
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const rect = document.querySelector('main').getBoundingClientRect();
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      pane.style.width = Math.min(80, Math.max(20, pct)) + '%';
+    });
+    document.addEventListener('mouseup', () => { dragging = false; });
+  })();
+
+  /* ---------------- Fil: öppna / drag&drop ---------------- */
+  const fileInput = document.getElementById('fileInput');
+  document.getElementById('btnOpen').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) loadFile(fileInput.files[0]);
+    fileInput.value = '';
+  });
+
+  function loadFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => setCode(String(reader.result), file.name);
+    reader.readAsText(file);
+  }
+
+  const dropOverlay = document.getElementById('dropOverlay');
+  let dragCounter = 0;
+  window.addEventListener('dragenter', e => { e.preventDefault(); dragCounter++; dropOverlay.classList.add('show'); });
+  window.addEventListener('dragleave', e => { e.preventDefault(); if (--dragCounter <= 0) { dragCounter = 0; dropOverlay.classList.remove('show'); } });
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop', e => {
+    e.preventDefault();
+    dragCounter = 0;
+    dropOverlay.classList.remove('show');
+    const f = [...e.dataTransfer.files].find(f => /\.svg$/i.test(f.name) || f.type === 'image/svg+xml');
+    if (f) loadFile(f);
+  });
+
+  /* ---------------- URL-hämtning ---------------- */
+  const urlModal = document.getElementById('urlModal');
+  const urlInput = document.getElementById('urlInput');
+  const urlError = document.getElementById('urlError');
+  document.getElementById('btnUrl').addEventListener('click', () => {
+    urlError.style.display = 'none';
+    urlModal.classList.add('open');
+    setTimeout(() => urlInput.focus(), 50);
+  });
+  document.getElementById('urlCancel').addEventListener('click', () => urlModal.classList.remove('open'));
+  urlModal.addEventListener('click', e => { if (e.target === urlModal) urlModal.classList.remove('open'); });
+  urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') fetchUrl(); });
+  document.getElementById('urlFetch').addEventListener('click', fetchUrl);
+
+  async function fetchUrl() {
+    const url = urlInput.value.trim();
+    if (!url) return;
+    urlError.style.display = 'none';
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + res.statusText);
+      const text = await res.text();
+      if (!/<svg[\s>]/i.test(text)) throw new Error('Svaret verkar inte innehålla någon SVG.');
+      let name = 'bild.svg';
+      try {
+        const p = new URL(url).pathname.split('/').pop();
+        if (p && /\.svg$/i.test(p)) name = p;
+      } catch (e) {}
+      setCode(text, name);
+      urlModal.classList.remove('open');
+    } catch (err) {
+      urlError.textContent = 'Kunde inte hämta: ' + err.message +
+        (String(err.message).match(/failed|fetch/i) ? ' (troligen CORS-blockering — ladda ner filen och öppna den lokalt i stället)' : '');
+      urlError.style.display = 'block';
+    }
+  }
+
+  /* ---------------- Exempel ---------------- */
+  document.getElementById('btnNew').addEventListener('click', () => setCode(EXAMPLE_SVG, 'exempel.svg'));
+
+  /* ---------------- Nedladdning ---------------- */
+  document.getElementById('btnDownload').addEventListener('click', () => {
+    const code = getCode();
+    const d = new Date();
+    const stamp = d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+    const base = currentFileName.replace(/\.svg$/i, '').replace(/_\d{4}-\d{2}-\d{2}$/, '');
+    const blob = new Blob([code], { type: 'image/svg+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = base + '_' + stamp + '.svg';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  });
+
+  /* ---------------- Städfunktioner ---------------- */
+  const dropdown = document.getElementById('cleanDropdown');
+  document.getElementById('btnClean').addEventListener('click', e => {
+    e.stopPropagation();
+    dropdown.classList.toggle('open');
+  });
+  document.addEventListener('click', () => dropdown.classList.remove('open'));
+  dropdown.querySelectorAll('[data-clean]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      dropdown.classList.remove('open');
+      runClean(btn.getAttribute('data-clean'));
+    });
+  });
+
+  function runClean(action) {
+    let code = getCode();
+    const before = code.length;
+    switch (action) {
+      case 'comments':    code = cleanComments(code); break;
+      case 'editorcruft': code = cleanEditorCruft(code); break;
+      case 'emptygroups': code = cleanEmptyGroups(code); break;
+      case 'defaults':    code = cleanDefaults(code); break;
+      case 'round':       code = roundDecimals(code); break;
+      case 'viewbox':     code = addViewBox(code); break;
+      case 'pretty':      code = prettyPrint(code); break;
+      case 'minify':      code = minify(code); break;
+      case 'all':
+        code = cleanComments(code);
+        code = cleanEditorCruft(code);
+        code = cleanEmptyGroups(code);
+        code = cleanDefaults(code);
+        code = roundDecimals(code);
+        code = addViewBox(code);
+        code = prettyPrint(code);
+        break;
+    }
+    if (editor) {
+      editor.executeEdits('clean', [{ range: editor.getModel().getFullModelRange(), text: code }]);
+      editor.pushUndoStop();
+    }
+    const saved = before - code.length;
+    if (saved > 0) {
+      statusRender.innerHTML = '<span class="dot ok"></span>Städat — ' + saved + ' tecken mindre';
+    }
+  }
+
+  function cleanComments(code) {
+    return code.replace(/<!--[\s\S]*?-->/g, '').replace(/^\s*[\r\n]/gm, '');
+  }
+
+  function withDom(code, fn) {
+    const { doc, error } = parseSvg(code);
+    if (error || !doc) return code; // rör inte trasig kod
+    fn(doc);
+    return new XMLSerializer().serializeToString(doc);
+  }
+
+  function cleanEditorCruft(code) {
+    // Regex-städ av kända editor-attribut/namespaces innan DOM-pass
+    code = code
+      .replace(/\s+(?:inkscape|sodipodi|sketch|figma|serif|krita|xmlns:inkscape|xmlns:sodipodi|xmlns:sketch|xmlns:serif|xmlns:dc|xmlns:cc|xmlns:rdf|xmlns:svg):[a-zA-Z-]*="[^"]*"/g, '')
+      .replace(/\s+xmlns:(?:inkscape|sodipodi|sketch|serif|dc|cc|rdf)="[^"]*"/g, '')
+      .replace(/\s+data-name="[^"]*"/g, '')
+      .replace(/\s+enable-background="[^"]*"/g, '');
+    return withDom(code, doc => {
+      // Ta bort metadata, editor-element och kända namnrymdselement
+      doc.querySelectorAll('metadata').forEach(el => el.remove());
+      [...doc.getElementsByTagName('*')].forEach(el => {
+        const tag = el.tagName.toLowerCase();
+        if (tag.startsWith('sodipodi:') || tag.startsWith('inkscape:') ||
+            tag === 'sodipodi:namedview' || tag.startsWith('rdf:') || tag.startsWith('cc:') || tag.startsWith('dc:')) {
+          el.remove();
+        }
+      });
+    });
+  }
+
+  function cleanEmptyGroups(code) {
+    return withDom(code, doc => {
+      let removed = true;
+      while (removed) {
+        removed = false;
+        doc.querySelectorAll('g').forEach(g => {
+          const noKids = g.children.length === 0 && !g.textContent.trim();
+          const noId = !g.id;
+          if (noKids && noId) { g.remove(); removed = true; }
+        });
+      }
+    });
+  }
+
+  function cleanDefaults(code) {
+    return code
+      .replace(/\s+fill-opacity="1"/g, '')
+      .replace(/\s+stroke-opacity="1"/g, '')
+      .replace(/\s+opacity="1"/g, '')
+      .replace(/\s+stroke-width="1"(?=[\s/>])/g, '')
+      .replace(/\s+stroke="none"/g, '')
+      .replace(/\s+fill-rule="nonzero"/g, '')
+      .replace(/\s+clip-rule="nonzero"/g, '')
+      .replace(/\s+stroke-linecap="butt"/g, '')
+      .replace(/\s+stroke-linejoin="miter"/g, '')
+      .replace(/\s+font-style="normal"/g, '')
+      .replace(/\s+xml:space="preserve"/g, '');
+  }
+
+  function roundDecimals(code) {
+    return code.replace(/-?\d+\.\d{4,}(?:e-?\d+)?/gi, m => {
+      const n = parseFloat(m);
+      if (!isFinite(n)) return m;
+      return String(parseFloat(n.toFixed(3)));
+    });
+  }
+
+  function addViewBox(code) {
+    return withDom(code, doc => {
+      const svg = doc.documentElement;
+      if (svg.tagName.toLowerCase() !== 'svg' || svg.getAttribute('viewBox')) return;
+      const w = parseFloat(svg.getAttribute('width'));
+      const h = parseFloat(svg.getAttribute('height'));
+      if (isFinite(w) && isFinite(h) && w > 0 && h > 0) {
+        svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+      }
+    });
+  }
+
+  function minify(code) {
+    return code
+      .replace(/>\s+</g, '><')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+\/>/g, '/>')
+      .replace(/\s+>/g, '>')
+      .trim();
+  }
+
+  function prettyPrint(code) {
+    // Minifiera först för ett stabilt utgångsläge
+    let xml = code.replace(/>\s+</g, '><').trim();
+    const tokens = xml.split(/(?=<)/g).filter(Boolean);
+    let indent = 0;
+    const pad = n => '  '.repeat(Math.max(0, n));
+    const out = [];
+    tokens.forEach(tok => {
+      const t = tok.trim();
+      if (!t) return;
+      if (/^<\/[^>]+>/.test(t)) {
+        // stängande tagg
+        indent--;
+        // Om föregående rad är innehåll (text), slå ihop
+        if (out.length && !out[out.length - 1].trim().endsWith('>')) {
+          out[out.length - 1] += t.match(/^<\/[^>]+>/)[0];
+          const rest = t.replace(/^<\/[^>]+>/, '').trim();
+          if (rest) out.push(pad(indent) + rest);
+          return;
+        }
+        out.push(pad(indent) + t);
+      } else if (/^<[^>]*\/>/.test(t) || /^<\?/.test(t) || /^<!--/.test(t) || /^<!/.test(t)) {
+        // självstängande / prolog / kommentar / doctype
+        out.push(pad(indent) + t);
+      } else if (/^<[^>]+>/.test(t)) {
+        // öppnande tagg (ev. med textinnehåll direkt efter)
+        const m = t.match(/^(<[^>]+>)(.*)$/s);
+        const tag = m[1], rest = (m[2] || '').trim();
+        if (rest.startsWith('</') === false && rest && !rest.startsWith('<')) {
+          out.push(pad(indent) + tag + rest);
+          indent++;
+        } else {
+          out.push(pad(indent) + tag);
+          indent++;
+          if (rest) out.push(pad(indent) + rest);
+        }
+      } else {
+        out.push(pad(indent) + t);
+      }
+    });
+    return out.join('\n') + '\n';
+  }
+
+  /* ---------------- Justera: gemensamma hjälpfunktioner ---------------- */
+
+  // Mät bounding box genom att rendera off-screen (för SVG utan width/height/viewBox)
+  function measureBBox(code) {
+    const holder = document.createElement('div');
+    holder.style.cssText = 'position:absolute;left:-99999px;top:-99999px;visibility:hidden;';
+    holder.innerHTML = code;
+    document.body.appendChild(holder);
+    let bb = null;
+    const svg = holder.querySelector('svg');
+    if (svg) { try { bb = svg.getBBox(); } catch (e) {} }
+    holder.remove();
+    return (bb && (bb.width > 0 || bb.height > 0)) ? bb : null;
+  }
+
+  // Hämta dimensioner: [vbX, vbY, vbW, vbH] — skapar underlag från viewBox, width/height eller bbox
+  function getDimensions(code) {
+    const { doc, error } = parseSvg(code);
+    if (error || !doc) return null;
+    const svg = doc.documentElement;
+    if (svg.tagName.toLowerCase() !== 'svg') return null;
+    const vb = svg.getAttribute('viewBox');
+    if (vb) {
+      const p = vb.trim().split(/[\s,]+/).map(Number);
+      if (p.length === 4 && p.every(isFinite) && p[2] > 0 && p[3] > 0) {
+        return { x: p[0], y: p[1], w: p[2], h: p[3], source: 'viewBox' };
+      }
+    }
+    const w = parseFloat(svg.getAttribute('width'));
+    const h = parseFloat(svg.getAttribute('height'));
+    if (isFinite(w) && isFinite(h) && w > 0 && h > 0) {
+      return { x: 0, y: 0, w, h, source: 'width/height' };
+    }
+    const bb = measureBBox(code);
+    if (bb) return { x: bb.x, y: bb.y, w: bb.width, h: bb.height, source: 'uppmätt innehåll' };
+    return null;
+  }
+
+  function fmtNum(n) { return String(parseFloat(n.toFixed(2))); }
+
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  // Radio-rader: markera vald
+  function wireOptionRows(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.querySelectorAll('.option-row input[type="radio"]').forEach(r => {
+      r.addEventListener('change', () => {
+        modal.querySelectorAll('.option-row').forEach(row => row.classList.remove('selected'));
+        r.closest('.option-row').classList.add('selected');
+      });
+    });
+  }
+  wireOptionRows('sizeModal');
+  wireOptionRows('bgModal');
+
+  /* ---------------- Storleks-modal ---------------- */
+  let chipSize = null;
+
+  document.getElementById('btnSize').addEventListener('click', () => {
+    const code = getCode();
+    const dims = getDimensions(code);
+    const { doc } = parseSvg(code);
+    const svg = doc ? doc.documentElement : null;
+    const info = document.getElementById('sizeInfo');
+    if (dims && svg) {
+      const wAttr = svg.getAttribute('width') || '—';
+      const hAttr = svg.getAttribute('height') || '—';
+      const vb = svg.getAttribute('viewBox') || '—';
+      info.textContent = 'Nu: width=' + wAttr + '  height=' + hAttr + '  viewBox=' + vb +
+        '  (proportion ' + fmtNum(dims.w) + '×' + fmtNum(dims.h) + ' från ' + dims.source + ')';
+    } else {
+      info.textContent = 'Kunde inte tolka nuvarande storlek — åtgärda ev. syntaxfel först.';
+    }
+    document.getElementById('sizeError').style.display = 'none';
+    updateSizeCalc();
+    openModal('sizeModal');
+  });
+
+  document.getElementById('sizeCancel').addEventListener('click', () => closeModal('sizeModal'));
+  document.getElementById('sizeModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('sizeModal')) closeModal('sizeModal');
+  });
+
+  document.querySelectorAll('#sizeChips .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#sizeChips .chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      chipSize = parseInt(chip.getAttribute('data-size'), 10);
+      document.getElementById('customWidth').value = '';
+      document.querySelector('input[name="sizeMode"][value="fixed"]').click();
+      updateSizeCalc();
+    });
+  });
+  document.getElementById('customWidth').addEventListener('input', () => {
+    document.querySelectorAll('#sizeChips .chip').forEach(c => c.classList.remove('active'));
+    chipSize = null;
+    document.querySelector('input[name="sizeMode"][value="fixed"]').click();
+    updateSizeCalc();
+  });
+
+  function chosenWidth() {
+    const custom = parseFloat(document.getElementById('customWidth').value);
+    if (isFinite(custom) && custom > 0) return custom;
+    return chipSize;
+  }
+
+  function updateSizeCalc() {
+    const el = document.getElementById('sizePreviewCalc');
+    const w = chosenWidth();
+    const dims = getDimensions(getCode());
+    if (w && dims) {
+      el.textContent = '→ ' + fmtNum(w) + ' × ' + fmtNum(w * (dims.h / dims.w)) + ' px';
+    } else {
+      el.textContent = '';
+    }
+  }
+
+  document.getElementById('sizeApply').addEventListener('click', () => {
+    const mode = document.querySelector('input[name="sizeMode"]:checked').value;
+    const code = getCode();
+    const dims = getDimensions(code);
+    const errEl = document.getElementById('sizeError');
+    if (!dims) {
+      errEl.textContent = 'Kunde inte fastställa SVG:ns proportioner (varken viewBox, width/height eller mätbart innehåll). Åtgärda ev. fel i koden först.';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (mode === 'fixed' && !chosenWidth()) {
+      errEl.textContent = 'Välj en fördefinierad storlek eller ange en egen bredd.';
+      errEl.style.display = 'block';
+      return;
+    }
+    const newCode = withDom(code, doc => {
+      const svg = doc.documentElement;
+      // Säkerställ alltid viewBox så proportionerna bevaras
+      if (!svg.getAttribute('viewBox')) {
+        svg.setAttribute('viewBox', fmtNum(dims.x) + ' ' + fmtNum(dims.y) + ' ' + fmtNum(dims.w) + ' ' + fmtNum(dims.h));
+      }
+      if (mode === 'responsive') {
+        svg.removeAttribute('width');
+        svg.removeAttribute('height');
+        if (!svg.getAttribute('preserveAspectRatio')) {
+          svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        }
+      } else {
+        const w = chosenWidth();
+        const h = w * (dims.h / dims.w);
+        svg.setAttribute('width', fmtNum(w));
+        svg.setAttribute('height', fmtNum(h));
+      }
+    });
+    applyEdit(newCode, mode === 'responsive' ? 'Storlek: dynamiskt skalbar' : 'Storlek: ' + fmtNum(chosenWidth()) + ' px bred');
+    closeModal('sizeModal');
+  });
+
+  /* ---------------- Bakgrunds-modal ---------------- */
+  const BG_ID = 'svgstudio-bg';
+
+  function currentBackground(code) {
+    const { doc } = parseSvg(code);
+    if (!doc) return null;
+    const rect = doc.getElementById(BG_ID);
+    if (rect) return rect.getAttribute('fill') || 'okänd';
+    const svg = doc.documentElement;
+    const style = svg.getAttribute('style') || '';
+    const m = style.match(/background(?:-color)?\s*:\s*([^;]+)/i);
+    if (m) return m[1].trim() + ' (via style)';
+    return null;
+  }
+
+  document.getElementById('btnBg').addEventListener('click', () => {
+    const bg = currentBackground(getCode());
+    document.getElementById('bgInfo').textContent = bg
+      ? 'Nuvarande bakgrund: ' + bg
+      : 'Nuvarande bakgrund: transparent (ingen bakgrund hittad)';
+    document.getElementById('bgError').style.display = 'none';
+    openModal('bgModal');
+  });
+
+  document.getElementById('bgCancel').addEventListener('click', () => closeModal('bgModal'));
+  document.getElementById('bgModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('bgModal')) closeModal('bgModal');
+  });
+
+  const bgPicker = document.getElementById('bgColorPicker');
+  const bgHex = document.getElementById('bgColorHex');
+  bgPicker.addEventListener('input', () => {
+    bgHex.value = bgPicker.value;
+    document.querySelector('input[name="bgMode"][value="color"]').click();
+    document.querySelectorAll('#bgSwatches .swatch').forEach(s => s.classList.remove('active'));
+  });
+  bgHex.addEventListener('input', () => {
+    if (/^#[0-9a-fA-F]{6}$/.test(bgHex.value)) bgPicker.value = bgHex.value;
+    document.querySelector('input[name="bgMode"][value="color"]').click();
+  });
+  document.querySelectorAll('#bgSwatches .swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      document.querySelectorAll('#bgSwatches .swatch').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+      bgPicker.value = sw.getAttribute('data-color');
+      bgHex.value = sw.getAttribute('data-color');
+      document.querySelector('input[name="bgMode"][value="color"]').click();
+    });
+  });
+
+  document.getElementById('bgApply').addEventListener('click', () => {
+    const mode = document.querySelector('input[name="bgMode"]:checked').value;
+    const code = getCode();
+    const errEl = document.getElementById('bgError');
+    const color = bgHex.value.trim();
+    if (mode === 'color' && !/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(color)) {
+      errEl.textContent = 'Ogiltig färgkod — använd hex-format, t.ex. #0077bc.';
+      errEl.style.display = 'block';
+      return;
+    }
+    const dims = getDimensions(code);
+    const newCode = withDom(code, doc => {
+      const svg = doc.documentElement;
+      // Ta alltid bort tidigare hanterad bakgrund + style-bakgrund
+      const old = doc.getElementById(BG_ID);
+      if (old) old.remove();
+      const style = svg.getAttribute('style');
+      if (style) {
+        const cleaned = style.replace(/background(?:-color)?\s*:\s*[^;]+;?/gi, '').trim();
+        if (cleaned) svg.setAttribute('style', cleaned); else svg.removeAttribute('style');
+      }
+      if (mode === 'color') {
+        const rect = doc.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('id', BG_ID);
+        if (dims) {
+          rect.setAttribute('x', fmtNum(dims.x));
+          rect.setAttribute('y', fmtNum(dims.y));
+          rect.setAttribute('width', fmtNum(dims.w));
+          rect.setAttribute('height', fmtNum(dims.h));
+        } else {
+          rect.setAttribute('x', '0'); rect.setAttribute('y', '0');
+          rect.setAttribute('width', '100%'); rect.setAttribute('height', '100%');
+        }
+        rect.setAttribute('fill', color);
+        svg.insertBefore(rect, svg.firstChild);
+      }
+    });
+    applyEdit(newCode, mode === 'color' ? 'Bakgrund: ' + color : 'Bakgrund: transparent');
+    closeModal('bgModal');
+  });
+
+  /* Gemensam applicering med ångra-stöd */
+  function applyEdit(newCode, label) {
+    if (!editor) return;
+    editor.pushUndoStop();
+    editor.executeEdits('adjust', [{ range: editor.getModel().getFullModelRange(), text: newCode }]);
+    editor.pushUndoStop();
+    statusRender.innerHTML = '<span class="dot ok"></span>' + escapeHtml(label) + ' — Ctrl+Z för att ångra';
+  }
+
+  /* ---------------- Färgdroppare ---------------- */
+  const pickBtn = document.getElementById('pickColor');
+  const pickedResult = document.getElementById('pickedResult');
+  let lastPicked = null;
+
+  function showPicked(hex) {
+    lastPicked = hex;
+    pickedResult.style.display = '';
+    pickedResult.innerHTML = '<span class="pswatch" style="background:' + hex + '"></span>' + hex;
+    copyHex(hex);
+    highlightHexInCode(hex);
+  }
+
+  /* Markera den plockade färgen i SVG-koden */
+  let colorDecorations = null;
+
+  function hexVariants(hex) {
+    // #rrggbb → även #rgb om den går att förkorta, plus rgb(r,g,b)
+    const h = hex.replace('#', '').toLowerCase();
+    const variants = ['#' + h];
+    if (h.length === 6 && h[0] === h[1] && h[2] === h[3] && h[4] === h[5]) {
+      variants.push('#' + h[0] + h[2] + h[4]);
+    }
+    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    variants.push('rgb(' + r + ',' + g + ',' + b + ')');
+    variants.push('rgb(' + r + ', ' + g + ', ' + b + ')');
+    return variants;
+  }
+
+  function clearColorHighlight() {
+    if (colorDecorations) { colorDecorations.clear(); colorDecorations = null; }
+  }
+
+  function highlightHexInCode(hex) {
+    if (!editor || !window.monaco) return;
+    clearColorHighlight();
+    const model = editor.getModel();
+    let matches = [];
+    hexVariants(hex).forEach(v => {
+      const isHex = v.startsWith('#');
+      // För hex: kräver att inget hex-tecken följer direkt efter (så #fff inte träffar inuti #ffffff)
+      const found = isHex
+        ? model.findMatches(v.replace('#', '#') + '(?![0-9a-fA-F])', false, true, false, null, true)
+        : model.findMatches(v, false, false, false, null, true);
+      matches = matches.concat(found);
+    });
+    if (!matches.length) {
+      statusRender.innerHTML = '<span class="dot warn"></span>Färg ' + hex + ' kopierad — hittades inte i koden (kan komma från opacity, gradient eller överlappande element)';
+      return;
+    }
+    colorDecorations = editor.createDecorationsCollection(matches.map(m => ({
+      range: m.range,
+      options: {
+        inlineClassName: 'color-hit',
+        overviewRuler: { color: '#f2a900', position: monaco.editor.OverviewRulerLane.Right }
+      }
+    })));
+    // Hoppa till första träffen och markera den
+    editor.revealRangeInCenter(matches[0].range);
+    editor.setSelection(matches[0].range);
+    statusRender.innerHTML = '<span class="dot ok"></span>Färg ' + hex + ' kopierad — ' +
+      matches.length + (matches.length === 1 ? ' träff' : ' träffar') + ' markerad' + (matches.length === 1 ? '' : 'e') + ' i koden';
+  }
+
+  function copyHex(hex) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(hex).then(() => {
+        statusRender.innerHTML = '<span class="dot ok"></span>Färg ' + hex + ' kopierad till urklipp';
+      }).catch(() => {
+        statusRender.innerHTML = '<span class="dot ok"></span>Färg: ' + hex;
+      });
+    } else {
+      statusRender.innerHTML = '<span class="dot ok"></span>Färg: ' + hex;
+    }
+  }
+
+  pickedResult.addEventListener('click', () => { if (lastPicked) copyHex(lastPicked); });
+
+  pickBtn.addEventListener('click', async () => {
+    // Modern väg: EyeDropper API (Chrome/Edge) — kan plocka färg var som helst på skärmen
+    if (window.EyeDropper) {
+      try {
+        const result = await new EyeDropper().open();
+        showPicked(result.sRGBHex.toLowerCase());
+      } catch (e) { /* användaren avbröt (Esc) */ }
+      return;
+    }
+    // Fallback: klicka i förhandsvisningen — SVG:n ritas till canvas och pixeln läses av
+    startCanvasPick();
+  });
+
+  function startCanvasPick() {
+    const scroll = document.getElementById('previewScroll');
+    const svgEl = previewInner.querySelector('svg');
+    if (!svgEl) {
+      statusRender.innerHTML = '<span class="dot warn"></span>Ingen SVG att plocka färg från';
+      return;
+    }
+    scroll.classList.add('picking');
+    pickBtn.classList.add('active');
+    statusRender.innerHTML = '<span class="dot ok"></span>Klicka i förhandsvisningen för att hämta en färg (Esc avbryter)';
+
+    const cleanup = () => {
+      scroll.classList.remove('picking');
+      pickBtn.classList.remove('active');
+      scroll.removeEventListener('click', onClick, true);
+      document.removeEventListener('keydown', onKey, true);
+    };
+    const onKey = e => { if (e.key === 'Escape') { cleanup(); statusRender.innerHTML = '<span class="dot ok"></span>Redo'; } };
+    const onClick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      cleanup();
+      sampleAt(svgEl, e);
+    };
+    scroll.addEventListener('click', onClick, true);
+    document.addEventListener('keydown', onKey, true);
+  }
+
+  function sampleAt(svgEl, evt) {
+    const rect = svgEl.getBoundingClientRect();
+    const relX = (evt.clientX - rect.left) / rect.width;
+    const relY = (evt.clientY - rect.top) / rect.height;
+    if (relX < 0 || relX > 1 || relY < 0 || relY > 1) {
+      statusRender.innerHTML = '<span class="dot warn"></span>Klicka innanför SVG-bilden';
+      return;
+    }
+    // Rendera SVG:n till canvas i tillräcklig upplösning
+    const W = 1200;
+    const H = Math.max(1, Math.round(W * (rect.height / rect.width)));
+    const clone = svgEl.cloneNode(true);
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, W, H);
+        const p = ctx.getImageData(Math.min(W - 1, Math.round(relX * W)), Math.min(H - 1, Math.round(relY * H)), 1, 1).data;
+        if (p[3] === 0) {
+          statusRender.innerHTML = '<span class="dot ok"></span>Transparent pixel (ingen färg)';
+        } else {
+          const hex = '#' + [p[0], p[1], p[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+          showPicked(hex);
+        }
+      } catch (err) {
+        statusRender.innerHTML = '<span class="dot warn"></span>Kunde inte läsa pixeln (externa bildreferenser i SVG:n blockerar avläsning)';
+      }
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      statusRender.innerHTML = '<span class="dot warn"></span>Kunde inte rendera SVG:n för färgavläsning';
+    };
+    img.src = url;
+  }
+
+  /* ---------------- Färgpalett ---------------- */
+  const paletteBar = document.getElementById('paletteBar');
+
+  function normalizeHex(c) {
+    c = c.toLowerCase();
+    if (/^#[0-9a-f]{3}$/.test(c)) return '#' + c[1] + c[1] + c[2] + c[2] + c[3] + c[3];
+    if (/^#[0-9a-f]{6}$/.test(c)) return c;
+    const m = c.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/);
+    if (m) return '#' + [m[1], m[2], m[3]].map(v => (+v).toString(16).padStart(2, '0')).join('');
+    return null;
+  }
+
+  function updatePalette(code) {
+    const found = code.match(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)/g) || [];
+    const unique = [];
+    const seen = new Set();
+    for (const raw of found) {
+      const hex = normalizeHex(raw);
+      if (hex && !seen.has(hex)) { seen.add(hex); unique.push(hex); }
+      if (unique.length >= 24) break;
+    }
+    if (!unique.length) { paletteBar.innerHTML = ''; return; }
+    paletteBar.innerHTML = '<span class="plabel">Palett (' + unique.length + '):</span>' +
+      unique.map(hex =>
+        '<button class="pchip" data-hex="' + hex + '" style="background:' + hex + '" title="' + hex + ' — klick: markera i koden · dubbelklick: byt färg"></button>'
+      ).join('');
+  }
+
+  // Klick = markera i koden, dubbelklick = byt färg överallt
+  let paletteClickTimer = null;
+  paletteBar.addEventListener('click', e => {
+    const chip = e.target.closest('.pchip');
+    if (!chip) return;
+    clearTimeout(paletteClickTimer);
+    paletteClickTimer = setTimeout(() => highlightHexInCode(chip.getAttribute('data-hex')), 220);
+  });
+  paletteBar.addEventListener('dblclick', e => {
+    const chip = e.target.closest('.pchip');
+    if (!chip) return;
+    clearTimeout(paletteClickTimer);
+    openColorReplace(chip.getAttribute('data-hex'));
+  });
+
+  const hiddenColorInput = document.createElement('input');
+  hiddenColorInput.type = 'color';
+  hiddenColorInput.style.cssText = 'position:fixed;left:-9999px;top:0;';
+  document.body.appendChild(hiddenColorInput);
+  let replaceFromHex = null;
+
+  function openColorReplace(fromHex) {
+    replaceFromHex = fromHex;
+    hiddenColorInput.value = fromHex;
+    hiddenColorInput.click();
+  }
+  hiddenColorInput.addEventListener('change', () => {
+    const toHex = hiddenColorInput.value.toLowerCase();
+    if (!replaceFromHex || toHex === replaceFromHex) { replaceFromHex = null; return; }
+    replaceColorEverywhere(replaceFromHex, toHex);
+    replaceFromHex = null;
+  });
+
+  function replaceColorEverywhere(fromHex, toHex) {
+    if (!editor || !window.monaco) return;
+    const model = editor.getModel();
+    let matches = [];
+    hexVariants(fromHex).forEach(v => {
+      const isHex = v.startsWith('#');
+      const found = isHex
+        ? model.findMatches(v + '(?![0-9a-fA-F])', false, true, false, null, true)
+        : model.findMatches(v, false, false, false, null, true);
+      matches = matches.concat(found);
+    });
+    if (!matches.length) {
+      statusRender.innerHTML = '<span class="dot warn"></span>Hittade inga förekomster av ' + fromHex;
+      return;
+    }
+    editor.pushUndoStop();
+    editor.executeEdits('color-replace', matches.map(m => ({ range: m.range, text: toHex })));
+    editor.pushUndoStop();
+    statusRender.innerHTML = '<span class="dot ok"></span>Bytte ' + fromHex + ' → ' + toHex + ' (' +
+      matches.length + (matches.length === 1 ? ' ställe' : ' ställen') + ') — Ctrl+Z för att ångra';
+  }
+
+  /* ---------------- PNG-export ---------------- */
+  const pngDropdown = document.getElementById('pngDropdown');
+  document.getElementById('btnPng').addEventListener('click', e => {
+    e.stopPropagation();
+    dropdown.classList.remove('open');
+    pngDropdown.classList.toggle('open');
+  });
+  document.addEventListener('click', () => pngDropdown.classList.remove('open'));
+  pngDropdown.querySelectorAll('[data-png]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pngDropdown.classList.remove('open');
+      exportPng(btn.getAttribute('data-png'));
+    });
+  });
+
+  function exportPng(option) {
+    const code = getCode();
+    const { error } = parseSvg(code);
+    if (error) {
+      statusRender.innerHTML = '<span class="dot err"></span>Åtgärda renderingsfelet innan PNG-export';
+      return;
+    }
+    const dims = getDimensions(code);
+    if (!dims) {
+      statusRender.innerHTML = '<span class="dot err"></span>Kunde inte fastställa SVG:ns storlek för PNG-export';
+      return;
+    }
+    let W;
+    if (option.startsWith('w')) W = parseInt(option.slice(1), 10);
+    else W = Math.round(dims.w * parseFloat(option));
+    W = Math.min(W, 8192);
+    const H = Math.max(1, Math.round(W * (dims.h / dims.w)));
+
+    // Klona och sätt explicita mått + viewBox så rasteriseringen blir korrekt
+    const { doc } = parseSvg(code);
+    const svg = doc.documentElement;
+    if (!svg.getAttribute('viewBox')) {
+      svg.setAttribute('viewBox', fmtNum(dims.x) + ' ' + fmtNum(dims.y) + ' ' + fmtNum(dims.w) + ' ' + fmtNum(dims.h));
+    }
+    svg.setAttribute('width', W);
+    svg.setAttribute('height', H);
+    if (!svg.getAttribute('xmlns')) svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+    const blob = new Blob([new XMLSerializer().serializeToString(doc)], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = W;
+        canvas.height = H;
+        canvas.getContext('2d').drawImage(img, 0, 0, W, H);
+        canvas.toBlob(pngBlob => {
+          if (!pngBlob) {
+            statusRender.innerHTML = '<span class="dot err"></span>PNG-exporten misslyckades';
+            return;
+          }
+          const d = new Date();
+          const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+          const base = currentFileName.replace(/\.svg$/i, '').replace(/_\d{4}-\d{2}-\d{2}$/, '');
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(pngBlob);
+          a.download = base + '_' + stamp + '.png';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(a.href);
+          statusRender.innerHTML = '<span class="dot ok"></span>PNG exporterad: ' + W + ' × ' + H + ' px';
+        }, 'image/png');
+      } catch (err) {
+        statusRender.innerHTML = '<span class="dot err"></span>PNG-export blockerad (externa bildreferenser i SVG:n)';
+      }
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      statusRender.innerHTML = '<span class="dot err"></span>Kunde inte rendera SVG:n för PNG-export';
+    };
+    img.src = url;
+  }
+
+  /* ---------------- Inspektör: klicka i förhandsvisningen → hitta i koden ---------------- */
+  const inspectToggle = document.getElementById('inspectToggle');
+  const inspectBadge = document.getElementById('inspectBadge');
+  let inspecting = false;
+  let hoverEl = null;
+  let hoverPrevOutline = '';
+
+  function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  function setInspecting(on) {
+    inspecting = on;
+    const scroll = document.getElementById('previewScroll');
+    scroll.classList.toggle('inspecting', on);
+    inspectToggle.classList.toggle('active', on);
+    if (!on) {
+      clearHover();
+      inspectBadge.style.display = 'none';
+      statusRender.innerHTML = '<span class="dot ok"></span>Redo';
+    } else {
+      statusRender.innerHTML = '<span class="dot ok"></span>Inspektör: peka och klicka på ett element (Esc avslutar)';
+    }
+  }
+
+  function clearHover() {
+    if (hoverEl) { hoverEl.style.outline = hoverPrevOutline; hoverEl = null; }
+  }
+
+  inspectToggle.addEventListener('click', () => setInspecting(!inspecting));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && inspecting) setInspecting(false); });
+
+  const previewScrollEl = document.getElementById('previewScroll');
+
+  previewScrollEl.addEventListener('mousemove', e => {
+    if (!inspecting) return;
+    const t = e.target;
+    const isSvgEl = t instanceof SVGElement && previewInner.contains(t);
+    if (t === hoverEl) { moveBadge(e); return; }
+    clearHover();
+    if (isSvgEl) {
+      hoverEl = t;
+      hoverPrevOutline = t.style.outline;
+      t.style.outline = '2px solid #f2a900';
+      inspectBadge.textContent = describeEl(t);
+      inspectBadge.style.display = 'block';
+      moveBadge(e);
+    } else {
+      inspectBadge.style.display = 'none';
+    }
+  });
+  previewScrollEl.addEventListener('mouseleave', () => {
+    if (!inspecting) return;
+    clearHover();
+    inspectBadge.style.display = 'none';
+  });
+
+  function moveBadge(e) {
+    const r = previewScrollEl.getBoundingClientRect();
+    inspectBadge.style.left = (e.clientX - r.left + previewScrollEl.scrollLeft + 14) + 'px';
+    inspectBadge.style.top = (e.clientY - r.top + previewScrollEl.scrollTop + 14) + 'px';
+  }
+
+  function describeEl(el) {
+    let s = '<' + el.tagName + '>';
+    if (el.id) s += ' #' + el.id;
+    else if (el.getAttribute && el.getAttribute('class')) s += ' .' + String(el.getAttribute('class')).split(/\s+/)[0];
+    return s;
+  }
+
+  previewScrollEl.addEventListener('click', e => {
+    if (!inspecting) return;
+    const t = e.target;
+    if (!(t instanceof SVGElement) || !previewInner.contains(t)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    jumpToElement(t);
+  }, true);
+
+  function jumpToElement(el) {
+    if (!editor || !window.monaco) return;
+    const code = getCode();
+    const svgRoot = previewInner.querySelector('svg');
+    if (!svgRoot) return;
+
+    // Elementets index bland alla element med samma taggnamn, i dokumentordning
+    const all = [svgRoot, ...svgRoot.querySelectorAll('*')];
+    let nth = 0;
+    let found = false;
+    for (const node of all) {
+      if (node === el) { found = true; break; }
+      if (node.tagName === el.tagName) nth++;
+    }
+    if (!found) return;
+
+    // Kommentarsintervall att hoppa över vid skanning
+    const commentRanges = [];
+    const cRe = /<!--[\s\S]*?-->/g;
+    let cm;
+    while ((cm = cRe.exec(code)) !== null) commentRanges.push([cm.index, cm.index + cm[0].length]);
+    const inComment = i => commentRanges.some(r => i >= r[0] && i < r[1]);
+
+    // Hitta n:te förekomsten av <taggnamn i källkoden
+    const tagRe = new RegExp('<' + escapeRegex(el.tagName) + '(?=[\\s/>])', 'g');
+    let m, count = 0, startOffset = -1;
+    while ((m = tagRe.exec(code)) !== null) {
+      if (inComment(m.index)) continue;
+      if (count === nth) { startOffset = m.index; break; }
+      count++;
+    }
+    if (startOffset < 0) {
+      statusRender.innerHTML = '<span class="dot warn"></span>Kunde inte hitta elementet i koden';
+      return;
+    }
+    // Slut på öppningstaggen
+    let endOffset = code.indexOf('>', startOffset);
+    if (endOffset < 0) endOffset = startOffset + el.tagName.length + 1;
+    else endOffset++;
+
+    const model = editor.getModel();
+    const start = model.getPositionAt(startOffset);
+    const end = model.getPositionAt(endOffset);
+    const range = new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column);
+    editor.setSelection(range);
+    editor.revealRangeInCenter(range);
+    editor.focus();
+
+    // Sökväg-brödsmula: svg > g#lager1 > path
+    const crumbs = [];
+    let node = el;
+    while (node && node !== previewInner) {
+      crumbs.unshift(node.tagName + (node.id ? '#' + node.id : ''));
+      node = node.parentElement;
+    }
+    statusRender.innerHTML = '<span class="dot ok"></span>Rad ' + start.lineNumber + ': ' + escapeHtml(crumbs.join(' › '));
+  }
+
+  /* ---------------- Följ markör: kodposition → element i förhandsvisningen ---------------- */
+  let followEnabled = true;
+  let followTimer = null;
+  let followEl = null;
+  let followPrevOutline = '';
+
+  const followToggle = document.getElementById('followToggle');
+  followToggle.addEventListener('click', () => {
+    followEnabled = !followEnabled;
+    followToggle.classList.toggle('active', followEnabled);
+    if (!followEnabled) clearFollow();
+  });
+
+  function clearFollow() {
+    if (followEl) {
+      try { followEl.style.outline = followPrevOutline; } catch (e) {}
+      followEl = null;
+    }
+  }
+
+  function followCursor(position) {
+    if (!followEnabled || !editor) return;
+    clearFollow();
+    const code = getCode();
+    const model = editor.getModel();
+    const offset = model.getOffsetAt(position);
+
+    // Kommentarsintervall att hoppa över
+    const commentRanges = [];
+    const cRe = /<!--[\s\S]*?-->/g;
+    let cm;
+    while ((cm = cRe.exec(code)) !== null) commentRanges.push([cm.index, cm.index + cm[0].length]);
+    const inComment = i => commentRanges.some(r => i >= r[0] && i < r[1]);
+
+    // Hitta närmaste öppningstagg vid eller före markören
+    const tagRe = /<([a-zA-Z][\w:.-]*)/g;
+    let m, best = null;
+    const counts = {};
+    while ((m = tagRe.exec(code)) !== null) {
+      if (m.index > offset) break;
+      if (inComment(m.index)) continue;
+      const tag = m[1];
+      counts[tag] = (counts[tag] || 0);
+      best = { tag, nth: counts[tag], index: m.index };
+      counts[tag]++;
+    }
+    if (!best) return;
+
+    // Hitta motsvarande element i den renderade förhandsvisningen
+    const svgRoot = previewInner.querySelector('svg');
+    if (!svgRoot) return;
+    const all = [svgRoot, ...svgRoot.querySelectorAll('*')];
+    let n = 0, target = null;
+    for (const node of all) {
+      if (node.tagName === best.tag) {
+        if (n === best.nth) { target = node; break; }
+        n++;
+      }
+    }
+    if (!target || target === svgRoot) return;
+
+    followEl = target;
+    followPrevOutline = target.style.outline;
+    target.style.outline = '2px dashed #0077bc';
+    // Scrolla in i vyn om elementet ligger utanför
+    try {
+      const scroll = document.getElementById('previewScroll');
+      const tr = target.getBoundingClientRect();
+      const sr = scroll.getBoundingClientRect();
+      if (tr.bottom < sr.top || tr.top > sr.bottom || tr.right < sr.left || tr.left > sr.right) {
+        target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+    } catch (e) {}
+  }
+
+  /* ---------------- Kortkommandon ---------------- */
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      document.getElementById('btnDownload').click();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+
+  /* Statusfil-init */
+  document.getElementById('statusFile').textContent = currentFileName;
+})();
+</script>
+</body>
+</html>

@@ -17,6 +17,9 @@
   --node-bar-bpmn:#008391;
   --node-bar-html:#6c5ce7;
   --node-bar-promptbook:#8e44ad;
+  --node-bar-taxonomi:#0077bc;
+  --node-bar-mindmap:#3f5564;
+  --node-bar-svg:#674b99;
   --drag-ring:rgba(0,119,188,0.5);
 }
 [data-theme="dark"]{
@@ -276,6 +279,9 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .node.bpmn .node-bar{background:var(--node-bar-bpmn)}
 .node.html .node-bar{background:var(--node-bar-html)}
 .node.promptbook .node-bar{background:var(--node-bar-promptbook)}
+.node.taxonomi .node-bar{background:var(--node-bar-taxonomi)}
+.node.mindmap .node-bar{background:var(--node-bar-mindmap)}
+.node.svg .node-bar{background:var(--node-bar-svg)}
 
 /* Drag handle — absolut, ovanför noden på utvalda typer; annars overlay i kortet */
 .node-handle{
@@ -303,20 +309,20 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .node-handle-actions button svg{width:13px;height:13px}
 
 /* Handle offset ovanför — syns utan att flytta nodens position på canvas */
-.node.mermaid,.node.image,.node.markdown,.node.drawio,.node.bpmn,.node.html,.node.promptbook,.node.archicode,.node.label,.node.annotation{
+.node.mermaid,.node.image,.node.markdown,.node.drawio,.node.bpmn,.node.html,.node.promptbook,.node.archicode,.node.taxonomi,.node.mindmap,.node.svg,.node.label,.node.annotation{
   overflow:visible;
   --node-handle-h:26px;
   --node-handle-gap:0px;
   --node-handle-offset:calc(-1 * (var(--node-handle-h) + var(--node-handle-gap)));
 }
-.node.mermaid .node-handle,.node.image .node-handle,.node.markdown .node-handle,.node.drawio .node-handle,.node.bpmn .node-handle,.node.html .node-handle,.node.promptbook .node-handle,.node.archicode .node-handle,.node.label .node-handle,.node.annotation .node-handle{
+.node.mermaid .node-handle,.node.image .node-handle,.node.markdown .node-handle,.node.drawio .node-handle,.node.bpmn .node-handle,.node.html .node-handle,.node.promptbook .node-handle,.node.archicode .node-handle,.node.taxonomi .node-handle,.node.mindmap .node-handle,.node.svg .node-handle,.node.label .node-handle,.node.annotation .node-handle{
   top:var(--node-handle-offset);
   border-radius:6px 6px 0 0;
   box-shadow:0 -1px 6px rgba(0,0,0,.06);
 }
 .node.label .node-handle,.node.annotation .node-handle{border-radius:6px}
 /* Osynlig brygga handtag ↔ nod så hover inte tappas i mellanrummet */
-.node.mermaid::before,.node.image::before,.node.markdown::before,.node.drawio::before,.node.bpmn::before,.node.html::before,.node.promptbook::before,.node.archicode::before,.node.label::before,.node.annotation::before{
+.node.mermaid::before,.node.image::before,.node.markdown::before,.node.drawio::before,.node.bpmn::before,.node.html::before,.node.promptbook::before,.node.archicode::before,.node.taxonomi::before,.node.mindmap::before,.node.svg::before,.node.label::before,.node.annotation::before{
   content:'';
   position:absolute;
   top:calc(var(--node-handle-offset) - 2px);
@@ -334,6 +340,9 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .node.archicode .node-body,
 .node.drawio .node-body,
 .node.bpmn .node-body,
+.node.taxonomi .node-body,
+.node.mindmap .node-body,
+.node.svg .node-body,
 .node.image .node-body,
 .node.html .node-body,
 .node.annotation .node-body{
@@ -425,11 +434,37 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 
 /* Mermaid node */
 .node.mermaid .node-body{padding:0}
+.node.mermaid .node-body.mm-body-fixed{
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  pointer-events:auto;
+}
+.node.mermaid .node-body.mm-body-fixed .mermaid-wrap{
+  flex:1;
+  min-height:0;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
 .mermaid-wrap{overflow:auto;padding:14px 16px}
 .mermaid-wrap svg{max-width:100%;display:block}
 .mermaid-wrap pre{margin:0}
+.svg-wrap{overflow:auto;padding:14px 16px}
+.svg-wrap svg{max-width:100%;height:auto;display:block}
+.svg-placeholder{color:var(--text-sec);padding:14px 16px;font-size:13px;line-height:1.45}
+.node.svg .node-body .svg-wrap,
+.node.svg .node-body .svg-wrap *{user-select:text;-webkit-user-select:text}
 
 .node.archicode .node-body{padding:0}
+.node.archicode .node-body.ac-body-fixed{
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.node.archicode .node-body.ac-body-fixed .archicode-viewport{
+  flex:1;
+  min-height:0;
+}
 .archicode-viewport{
   position:relative;
   overflow:hidden;
@@ -466,8 +501,12 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .node.image .node-body{padding:0}
 .node.drawio .node-body{padding:0}
 .node.bpmn .node-body{padding:0}
+.node.taxonomi .node-body{padding:0}
+.node.mindmap .node-body{padding:0}
+.node.svg .node-body{padding:0}
 .drawio-preview{min-height:80px;display:flex;align-items:center;justify-content:center;background:var(--bg-nav)}
 .drawio-preview img{display:block;width:100%;height:auto;max-height:480px;object-fit:contain}
+.node.taxonomi .node-body.tax-body-fixed .drawio-preview img{max-height:100%}
 .drawio-placeholder{padding:24px 16px;font-size:12px;color:var(--text-sec);text-align:center}
 .node.html .node-body{padding:0;overflow:hidden}
 .node.promptbook .node-body{padding:0;overflow:hidden;display:flex;flex-direction:column}
@@ -786,6 +825,9 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .add-btn.add-md:hover{background:#0077bc}
 .add-btn.add-img:hover{background:#5a8b3b}
 .add-btn.add-mm:hover{background:#008391}
+.add-btn.add-tax:hover{background:#0077bc}
+.add-btn.add-map:hover{background:#3f5564}
+.add-btn.add-svg:hover{background:#674b99}
 .add-btn.add-lbl:hover{background:#8a6a00;color:#fff;border-color:#8a6a00}
 .add-btn.add-note:hover{background:#c9a800;color:#fff;border-color:#c9a800}
 .add-btn.add-ann:hover{background:#e09010;color:#fff;border-color:#e09010}
@@ -851,17 +893,23 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 [data-theme="dark"] .ctx-item.danger:hover{background:#3d1a14}
 
 /* ── Markdown fullskärmseditor ── */
-#md-editor-overlay,#docx-import-overlay,#drawio-editor-overlay,#bpmn-editor-overlay,#paint-editor-overlay,#mm-editor-overlay,#ac-editor-overlay,#pb-editor-overlay{position:fixed;inset:0;z-index:700;display:none;background:var(--bg)}
-#md-editor-overlay.open,#docx-import-overlay.open,#drawio-editor-overlay.open,#bpmn-editor-overlay.open,#paint-editor-overlay.open,#mm-editor-overlay.open,#ac-editor-overlay.open,#pb-editor-overlay.open{display:block}
+#md-editor-overlay,#docx-import-overlay,#drawio-editor-overlay,#bpmn-editor-overlay,#paint-editor-overlay,#mm-editor-overlay,#ac-editor-overlay,#pb-editor-overlay,#tx-editor-overlay,#mp-editor-overlay,#sv-editor-overlay{position:fixed;inset:0;z-index:700;display:none;background:var(--bg)}
+#md-editor-overlay.open,#docx-import-overlay.open,#drawio-editor-overlay.open,#bpmn-editor-overlay.open,#paint-editor-overlay.open,#mm-editor-overlay.open,#ac-editor-overlay.open,#pb-editor-overlay.open,#tx-editor-overlay.open,#mp-editor-overlay.open,#sv-editor-overlay.open{display:block}
 #pb-editor-overlay{z-index:710}
-#md-editor-overlay iframe,#docx-import-overlay iframe,#drawio-editor-overlay iframe,#bpmn-editor-overlay iframe,#paint-editor-overlay iframe,#mm-editor-overlay iframe,#ac-editor-overlay iframe,#pb-editor-overlay iframe{width:100%;height:100%;border:none;display:block}
+#md-editor-overlay iframe,#docx-import-overlay iframe,#drawio-editor-overlay iframe,#bpmn-editor-overlay iframe,#paint-editor-overlay iframe,#mm-editor-overlay iframe,#ac-editor-overlay iframe,#pb-editor-overlay iframe,#tx-editor-overlay iframe,#mp-editor-overlay iframe,#sv-editor-overlay iframe{width:100%;height:100%;border:none;display:block}
 #docx-import-overlay{z-index:750}
-.md-fullscreen-btn,.mm-fullscreen-btn,.ac-fullscreen-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:4px;border:1px solid #1e8449;background:#27ae60;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .12s,border-color .12s;white-space:nowrap;text-decoration:none}
+.md-fullscreen-btn,.mm-fullscreen-btn,.ac-fullscreen-btn,.tx-fullscreen-btn,.mp-fullscreen-btn,.sv-fullscreen-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:4px;border:1px solid #1e8449;background:#27ae60;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .12s,border-color .12s;white-space:nowrap;text-decoration:none}
 .md-fullscreen-btn:hover{background:#2ecc71;border-color:#27ae60;color:#fff}
 .mm-fullscreen-btn{background:#008391!important;border-color:#006870!important}
 .mm-fullscreen-btn:hover{background:#009fab!important;border-color:#008391!important;color:#fff}
 .ac-fullscreen-btn{background:#c9920a!important;border-color:#a67c00!important}
 .ac-fullscreen-btn:hover{background:#EFBD5D!important;border-color:#c9920a!important;color:#1a1200!important}
+.tx-fullscreen-btn{background:#0077bc!important;border-color:#005799!important}
+.tx-fullscreen-btn:hover{background:#0080c9!important;border-color:#0077bc!important;color:#fff}
+.mp-fullscreen-btn{background:#3f5564!important;border-color:#2f3f4a!important}
+.mp-fullscreen-btn:hover{background:#4d6678!important;border-color:#3f5564!important;color:#fff}
+.sv-fullscreen-btn{background:#674b99!important;border-color:#523a7a!important}
+.sv-fullscreen-btn:hover{background:#7a5bb0!important;border-color:#674b99!important;color:#fff}
 
 /* ════════════════════════════════════════════════════════════
    MOBILE & TOUCH — responsiv layout utan strukturella ändringar

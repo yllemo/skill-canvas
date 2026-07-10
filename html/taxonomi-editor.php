@@ -1,0 +1,2082 @@
+<?php
+declare(strict_types=1);
+
+$embed = isset($_GET['embed']) && $_GET['embed'] === '1';
+$theme = in_array($_GET['theme'] ?? '', ['light', 'dark'], true) ? $_GET['theme'] : 'light';
+?>
+<!DOCTYPE html>
+<html lang="sv" data-theme="<?= htmlspecialchars($theme, ENT_QUOTES, 'UTF-8') ?>">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taxonomi</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+<style>
+:root {
+  --gs-blue: #0077bc;
+  --bg-color: #FFFFFE;
+  --bg-footer: #F5F5F5;
+  --bg-nav: #F4F9FC;
+  --bg-info: #F2F9F9;
+  --text-color: #333333;
+  --text-secondary: #6E6E6E;
+  --link-color: #005799;
+  --border-color: #979797;
+  --border-soft: #d1d9dc;
+  --node-fill: #ffffff;
+  --viz-bg: #FFFFFE;
+}
+[data-theme="dark"] {
+  --bg-color: #1F1F1F;
+  --bg-footer: #121212;
+  --bg-nav: #141414;
+  --bg-info: #282828;
+  --text-color: #FFFFFF;
+  --text-secondary: #E3E8E9;
+  --link-color: #479EF5;
+  --border-color: #666666;
+  --border-soft: #3a3a3a;
+  --node-fill: #282828;
+  --viz-bg: #1F1F1F;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: 'Goteborg', Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---------- Header ---------- */
+header {
+  background: var(--gs-blue);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 20px;
+  flex: 0 0 auto;
+}
+header .brand {
+  font-weight: bold;
+  font-size: 14px;
+  letter-spacing: .5px;
+  opacity: .9;
+  border-right: 1px solid rgba(255,255,255,.4);
+  padding-right: 16px;
+}
+header h1 {
+  font-size: 20px;
+  margin: 0;
+  font-weight: 600;
+  flex: 1;
+}
+header .header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ---------- Knappar ---------- */
+.btn {
+  border-radius: 4px;
+  border: none;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: filter .15s;
+}
+.btn:hover { filter: brightness(1.1); }
+.btn-primary { background: var(--gs-blue); color: #fff; }
+.btn-secondary {
+  background: var(--bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+}
+.btn-ghost {
+  background: rgba(255,255,255,.15);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.4);
+}
+
+/* ---------- Verktygsrad ---------- */
+.toolbar {
+  background: var(--bg-nav);
+  border-bottom: 1px solid var(--border-soft);
+  padding: 10px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.toolbar label { font-size: 13px; color: var(--text-secondary); }
+.toolbar input[type="text"], .toolbar select {
+  background: var(--bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 7px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.toolbar input[type="text"] { width: 220px; }
+.toolbar .spacer { flex: 1; }
+.toolbar .group { display: flex; gap: 6px; align-items: center; }
+
+/* ---------- Vy-flikar ---------- */
+.viewtabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 20px 0 20px;
+  background: var(--bg-nav);
+  flex: 0 0 auto;
+}
+.viewtab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 4px 4px 0 0;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.viewtab.active {
+  background: var(--bg-color);
+  color: var(--gs-blue);
+  border-color: var(--border-soft);
+  font-weight: 600;
+}
+
+/* ---------- Huvudlayout ---------- */
+main {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+#editorPane {
+  width: 42%;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-soft);
+}
+#editorPane .pane-title, #vizPane .pane-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  background: var(--bg-info);
+  border-bottom: 1px solid var(--border-soft);
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#monacoHost { flex: 1 1 auto; min-height: 0; }
+#dragbar {
+  width: 6px;
+  cursor: col-resize;
+  background: var(--bg-nav);
+  flex: 0 0 auto;
+}
+#dragbar:hover { background: var(--gs-blue); }
+#vizPane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+#vizScroll {
+  flex: 1 1 auto;
+  overflow: auto;
+  background: var(--viz-bg);
+}
+#vizContainer { padding: 20px; min-height: 100%; }
+
+/* ---------- Trädvy (explorer-stil: linjer under ikonen) ---------- */
+.gs-tree { display: inline-block; padding: 10px 24px 20px 10px; background: var(--viz-bg); color: var(--text-color); font-size: 15px; }
+.gs-tree ul { list-style: none; margin: 0; padding: 0; }
+
+/* Toppnod med ikon längst till vänster */
+.gs-tree .topnode { position: relative; padding-left: 24px; font-weight: 600; margin: 4px 0 2px 0; line-height: 1.7; }
+.gs-tree .topnode > i { position: absolute; left: 0; top: .32em; width: 18px; text-align: center; color: var(--gs-blue); }
+.gs-tree .topnode.no-icon { padding-left: 0; }
+
+/* Barnlistan förskjuts så att dess räls hamnar under förälderns ikoncentrum.
+   OBS: nästlad ul ligger inuti li:ets padding-box (42px), därav negativ margin:
+   rälsens x = 42 + margin = 25 = ikonens mittpunkt (left 16 + bredd 18 / 2). */
+.gs-tree .topnode + ul { margin-left: 9px; }
+.gs-tree .topnode.no-icon + ul { margin-left: 6px; }
+.gs-tree li ul { margin-left: -17px; }
+.gs-tree li.no-icon ul { margin-left: -16px; }
+
+/* Nod: räls (::before) + armbåge (::after) + ikon på armbågens slut */
+.gs-tree li { position: relative; padding-left: 42px; margin: 0; line-height: 1.8; }
+.gs-tree li::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+  border-left: 2px dashed var(--border-color);
+}
+.gs-tree li:last-child::before { bottom: auto; height: .95em; }
+.gs-tree li::after {
+  content: ""; position: absolute; left: 2px; top: .95em; width: 12px;
+  border-top: 2px dashed var(--border-color);
+}
+.gs-tree li > i { position: absolute; left: 16px; top: .38em; width: 18px; text-align: center; color: var(--gs-blue); }
+.gs-tree li.no-icon { padding-left: 24px; }
+.gs-tree li.no-icon::after { width: 16px; }
+
+/* ---------- Mermaid-vy ---------- */
+#mermaidWrap { background: var(--bg-info); border: 1px solid var(--border-soft); border-radius: 4px; padding: 16px; }
+#mermaidWrap svg { max-width: 100%; height: auto; }
+.mermaid-actions { margin-top: 12px; display: flex; gap: 8px; }
+
+/* ---------- Färgpalett-popover ---------- */
+#palettePopWrap { position: relative; }
+#palettePop {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
+  background: var(--bg-color); border: 1px solid var(--border-soft); border-radius: 4px;
+  padding: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.28); min-width: 430px;
+}
+#palettePop h3 { margin: 0 0 8px 0; font-size: 14px; }
+.palette-row { display: flex; align-items: center; gap: 5px; margin: 7px 0; }
+.palette-row .lvl { width: 52px; font-size: 13px; color: var(--text-secondary); flex: 0 0 auto; }
+.swatch {
+  width: 18px; height: 18px; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--border-color); padding: 0; flex: 0 0 auto;
+}
+.swatch:hover { outline: 2px solid var(--gs-blue); }
+.palette-mini {
+  font-size: 11px; padding: 3px 8px; flex: 0 0 auto;
+}
+.palette-hint { font-size: 12px; color: var(--text-secondary); margin: 8px 0 0 0; }
+
+/* ---------- Modal (hjälp & statistik) ---------- */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal {
+  background: var(--bg-color); color: var(--text-color);
+  border-radius: 6px; max-width: 680px; width: 92%; max-height: 82vh;
+  overflow: auto; padding: 26px 28px; box-shadow: 0 12px 34px rgba(0,0,0,.4);
+}
+.modal h2 { color: var(--gs-blue); margin: 0 0 12px 0; font-size: 20px; }
+.modal h3 { font-size: 15px; margin: 18px 0 6px 0; }
+.modal p, .modal li { font-size: 14px; line-height: 1.55; }
+.modal code { background: var(--bg-nav); padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+.modal table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 6px 0; }
+.modal th, .modal td { border: 1px solid var(--border-soft); padding: 5px 8px; text-align: left; }
+.modal th { background: var(--bg-nav); }
+.modal .modal-close { float: right; }
+.dup-path { color: var(--text-secondary); font-size: 12px; }
+
+/* ---------- Status / fel ---------- */
+#statusBar {
+  flex: 0 0 auto;
+  background: var(--bg-footer);
+  border-top: 1px solid var(--border-soft);
+  padding: 5px 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 20px;
+}
+#statusBar .err { color: #d24723; }
+
+svg text { font-family: 'Goteborg', Arial, Helvetica, sans-serif; }
+.hidden { display: none !important; }
+
+@media (max-width: 800px) {
+  main { flex-direction: column; }
+  #editorPane { width: 100% !important; height: 40%; border-right: none; border-bottom: 1px solid var(--border-soft); }
+  #dragbar { display: none; }
+}
+
+body.embed-mode #themeBtn,
+body.embed-mode #exportMdBtn,
+body.embed-mode #exportPngBtn { display: none !important; }
+body:not(.embed-mode) .btn-embed { display: none !important; }
+.btn-embed.btn-save { background: #27ae60; color: #fff; }
+.btn-embed.btn-save:hover { filter: brightness(1.08); }
+</style>
+</head>
+<body<?= $embed ? ' class="embed-mode"' : '' ?>>
+
+<header>
+  <h1><i class="fa-solid fa-sitemap"></i> Taxonomi</h1>
+  <div class="header-actions">
+    <button class="btn btn-embed btn-save" type="button" id="btnEmbedSave" title="Spara tillbaka till kortet">✓ Spara till kort</button>
+    <button class="btn btn-embed btn-ghost" type="button" id="btnEmbedCancel" title="Stäng utan att spara">✕ Avbryt</button>
+    <button class="btn btn-ghost" id="helpBtn" title="Hjälp: vad är Taxonomi?"><i class="fa-solid fa-circle-question"></i></button>
+    <button class="btn btn-ghost" id="themeBtn" title="Växla ljust/mörkt läge"><i class="fa-solid fa-circle-half-stroke"></i></button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <input type="text" id="taxTitle" placeholder="Taxonomins titel..." value="Min taxonomi">
+  <div class="group">
+    <label for="rootMode">Root:</label>
+    <select id="rootMode" title="Styr om taxonomins rot är första raden i texten eller hämtas från titelfältet">
+      <option value="text" selected>Första raden i texten</option>
+      <option value="title">Från titelfältet</option>
+    </select>
+  </div>
+  <div class="group">
+    <label for="importFormat">Import:</label>
+    <select id="importFormat">
+      <option value="auto">Auto</option>
+      <option value="markdown">Markdown (punktlista)</option>
+      <option value="indent">Text (indrag)</option>
+      <option value="csv">CSV</option>
+      <option value="json">JSON</option>
+    </select>
+    <button class="btn btn-secondary" id="importBtn"><i class="fa-solid fa-file-import"></i> Importera fil</button>
+    <input type="file" id="fileInput" accept=".md,.txt,.json,.csv" class="hidden">
+  </div>
+  <div class="spacer"></div>
+  <div class="group" id="palettePopWrap">
+    <button class="btn btn-secondary" id="statsBtn"><i class="fa-solid fa-chart-simple"></i> Statistik</button>
+    <button class="btn btn-secondary" id="paletteBtn"><i class="fa-solid fa-palette"></i> Färger</button>
+    <div id="palettePop" class="hidden"></div>
+  </div>
+  <div class="group">
+    <button class="btn btn-primary" id="exportMdBtn"><i class="fa-solid fa-file-arrow-down"></i> Exportera Markdown</button>
+    <button class="btn btn-secondary" id="exportPngBtn"><i class="fa-solid fa-image"></i> Exportera PNG</button>
+  </div>
+</div>
+
+<div class="viewtabs" id="viewTabs">
+  <button class="viewtab active" data-view="tree"><i class="fa-solid fa-list-ul"></i> Träd</button>
+  <button class="viewtab" data-view="collapsible"><i class="fa-solid fa-diagram-project"></i> Kollapsbart</button>
+  <button class="viewtab" data-view="graph"><i class="fa-solid fa-circle-nodes"></i> Graf</button>
+  <button class="viewtab" data-view="radial"><i class="fa-solid fa-asterisk"></i> Radiell</button>
+  <button class="viewtab" data-view="sunburst"><i class="fa-solid fa-sun"></i> Sunburst</button>
+  <button class="viewtab" data-view="icicle"><i class="fa-solid fa-table-cells-large"></i> Icicle</button>
+  <button class="viewtab" data-view="treemap"><i class="fa-solid fa-border-all"></i> Treemap</button>
+  <button class="viewtab" data-view="pack"><i class="fa-solid fa-circle-dot"></i> Cirklar</button>
+  <button class="viewtab" data-view="mermaid"><i class="fa-solid fa-water"></i> Mermaid</button>
+</div>
+
+<main>
+  <section id="editorPane">
+    <div class="pane-title">
+      <span class="group">
+        <label for="editorFormat">Format:</label>
+        <select id="editorFormat" style="background:var(--bg-color);color:var(--text-color);border:1px solid var(--border-color);border-radius:4px;padding:3px 6px;font-size:12px;">
+          <option value="markdown" selected>Markdown</option>
+          <option value="dokuwiki">DokuWiki</option>
+          <option value="indent">Indrag (mellanslag)</option>
+        </select>
+        <button class="btn btn-secondary" id="cleanBtn" title="Normalisera indrag, punkter och tomrader" style="padding:3px 10px;font-size:12px;"><i class="fa-solid fa-broom"></i> Städa</button>
+        <button class="btn btn-secondary" id="sortBtn" title="Sortera syskon A–Ö på alla nivåer" style="padding:3px 10px;font-size:12px;"><i class="fa-solid fa-arrow-down-a-z"></i> Sortera</button>
+      </span>
+      <span id="nodeCount"></span>
+    </div>
+    <div id="monacoHost"></div>
+  </section>
+  <div id="dragbar"></div>
+  <section id="vizPane">
+    <div class="pane-title">
+      <span>Visualisering</span>
+      <span class="group" id="iconPickerWrap">
+        <label for="iconSelect">Ikon:</label>
+        <select id="iconSelect" style="background:var(--bg-color);color:var(--text-color);border:1px solid var(--border-color);border-radius:4px;padding:3px 6px;font-size:12px;">
+          <option value="fa-folder" selected>📁 Mapp</option>
+          <option value="none">🚫 Ingen ikon</option>
+          <option value="fa-book">📘 Bok</option>
+          <option value="fa-folder-open">📂 Öppen mapp</option>
+          <option value="fa-user">👤 Person</option>
+          <option value="fa-id-badge">🪪 Konto</option>
+          <option value="fa-user-shield">👑 Admin</option>
+          <option value="fa-shield-halved">🛡️ Säkerhet</option>
+          <option value="fa-desktop">🖥️ Dator</option>
+          <option value="fa-code">💻 Mjukvara</option>
+          <option value="fa-money-bill">💰 Pengar</option>
+          <option value="fa-file-contract">📄 Licens</option>
+          <option value="fa-lightbulb">💡 Idé</option>
+          <option value="fa-file-zipper">🗂️ Filer</option>
+          <option value="fa-tag">🏷️ Tagg</option>
+        </select>
+      </span>
+    </div>
+    <div id="vizScroll"><div id="vizContainer"></div></div>
+  </section>
+</main>
+
+<div id="statusBar">
+  <span id="statusMsg">Klar.</span>
+</div>
+
+<script>
+/* =========================================================
+   Taxonomi — SPA för Göteborgs Stad
+   Markdown (punktlista) som internt format.
+   ========================================================= */
+
+const EMBED_MODE = <?= $embed ? 'true' : 'false' ?>;
+
+const GS = {
+  blue: '#0077bc',
+  complementary: ['#0077bc', '#008391', '#5a8b3b', '#674b99', '#d53878', '#f2a900', '#d24723', '#3f5564']
+};
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+/* ---------------- Tema ---------------- */
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  if (!EMBED_MODE) {
+    try { localStorage.setItem('tax-theme', t); } catch (e) {}
+  }
+  if (window.monaco) monaco.editor.setTheme(t === 'dark' ? 'gs-dark' : 'gs-light');
+  render();
+}
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  applyTheme(cur === 'dark' ? 'light' : 'dark');
+});
+if (!EMBED_MODE) {
+  (function initTheme() {
+    let saved = 'light';
+    try { saved = localStorage.getItem('tax-theme') || document.documentElement.getAttribute('data-theme') || 'light'; } catch (e) {}
+    document.documentElement.setAttribute('data-theme', saved);
+  })();
+}
+
+/* ---------------- Statusrad ---------------- */
+function setStatus(msg, isError) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = isError ? 'err' : '';
+}
+
+/* =========================================================
+   PARSERS  →  träd { name, children: [] }
+   ========================================================= */
+
+function newNode(name) { return { name, children: [] }; }
+
+/* Extraherar attributkommentarer: "Namn <!-- c=#3f5564 b s=18 -->"
+   Stödjer även flera kommentarer på samma rad. Nycklar: c=färg, b/b=1=fetstil, s=px */
+const ATTR_COMMENT_RE = /<!--([^>]*?)-->/g;
+function extractAttrs(content) {
+  const attrs = { color: null, bold: false, size: null };
+  let found = false;
+  const name = content.replace(ATTR_COMMENT_RE, (full, inner) => {
+    let matched = false;
+    const c = inner.match(/(?:^|\s)c\s*=\s*(#[0-9a-fA-F]{3,8}|[a-zA-Z][a-zA-Z0-9]*)(?=\s|$)/);
+    if (c) { attrs.color = c[1]; matched = true; }
+    if (/(?:^|\s)b(?:\s*=\s*(?:1|true))?(?=\s|$)/.test(inner)) { attrs.bold = true; matched = true; }
+    const s = inner.match(/(?:^|\s)s\s*=\s*(\d{1,3})(?=\s|$)/);
+    if (s) { attrs.size = parseInt(s[1], 10); matched = true; }
+    if (matched) { found = true; return ' '; }
+    return full; // okänd kommentar lämnas orörd i namnet
+  }).replace(/\s{2,}/g, ' ').trim();
+  return { name: found ? name : content.trim(), attrs };
+}
+
+/* Generisk indenterad text → träd (klarar 1 mellanslag/nivå, 2, 4, tab, blandat) */
+function parseIndented(text, bulletRegex) {
+  const rawLines = text.replace(/\r/g, '').split('\n');
+  const items = [];
+  for (const line of rawLines) {
+    if (!line.trim()) continue;
+    let indent = line.match(/^[\t ]*/)[0].replace(/\t/g, '  ').length;
+    let content = line.trim();
+    if (bulletRegex) {
+      const m = content.match(bulletRegex);
+      if (m) content = m[1].trim();
+      else if (bulletRegex.strict) continue;
+    }
+    if (!content) continue;
+    const { name, attrs } = extractAttrs(content);
+    if (!name) continue;
+    items.push({ indent, name, attrs });
+  }
+  if (!items.length) return [];
+
+  // Normalisera indrag till nivåer: hitta minsta positiva indragssteg
+  const steps = [...new Set(items.map(i => i.indent))].sort((a, b) => a - b);
+  let unit = Infinity;
+  for (let i = 1; i < steps.length; i++) unit = Math.min(unit, steps[i] - steps[i - 1]);
+  if (!isFinite(unit) || unit <= 0) unit = 1;
+  items.forEach(i => i.level = Math.round((i.indent - steps[0]) / unit));
+
+  const roots = [];
+  const stack = []; // { level, node }
+  for (const it of items) {
+    const node = newNode(it.name);
+    if (it.attrs.color) node.color = it.attrs.color;
+    if (it.attrs.bold) node.bold = true;
+    if (it.attrs.size) node.size = it.attrs.size;
+    while (stack.length && it.level <= stack[stack.length - 1].level) stack.pop();
+    if (!stack.length) roots.push(node);
+    else stack[stack.length - 1].node.children.push(node);
+    stack.push({ level: it.level, node });
+  }
+  return roots;
+}
+
+function parseMarkdown(text) {
+  // Rader som börjar med -, * eller + (efter indrag). Rubriker (#) ignoreras.
+  const cleaned = text.replace(/\r/g, '').split('\n')
+    .filter(l => !/^\s*#/.test(l)).join('\n');
+  return parseIndented(cleaned, /^[-*+]\s+(.*)$/);
+}
+
+function parseIndentText(text) {
+  return parseIndented(text, null);
+}
+
+function parseCSV(text) {
+  const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim());
+  if (!lines.length) return [];
+  const delim = (lines[0].split(';').length > lines[0].split(',').length) ? ';' : ',';
+  const roots = [];
+  const findOrCreate = (list, name) => {
+    let n = list.find(c => c.name === name);
+    if (!n) { n = newNode(name); list.push(n); }
+    return n;
+  };
+  for (const line of lines) {
+    const parts = line.split(delim).map(p => p.trim().replace(/^"(.*)"$/, '$1')).filter(Boolean);
+    if (!parts.length) continue;
+    let list = roots;
+    for (const part of parts) {
+      const n = findOrCreate(list, part);
+      list = n.children;
+    }
+  }
+  return roots;
+}
+
+function normalizeJson(value, fallbackName) {
+  // Klarar: {name, children}, {label|title|namn}, ren sträng, array, objekt-som-map
+  if (typeof value === 'string') return [newNode(value)];
+  if (Array.isArray(value)) return value.flatMap(v => normalizeJson(v));
+  if (value && typeof value === 'object') {
+    const name = value.name || value.label || value.title || value.namn;
+    if (name !== undefined) {
+      const node = newNode(String(name));
+      const kids = value.children || value.items || value.barn;
+      if (kids) node.children = normalizeJson(kids);
+      return [node];
+    }
+    // Objekt som map: nyckel = nod, värde = barn
+    return Object.entries(value).map(([k, v]) => {
+      const node = newNode(k);
+      if (v !== null && v !== undefined && v !== '' && (typeof v !== 'object' || Object.keys(v).length || (Array.isArray(v) && v.length))) {
+        node.children = normalizeJson(v);
+      }
+      return node;
+    });
+  }
+  return [];
+}
+
+function parseJSON(text) {
+  return normalizeJson(JSON.parse(text));
+}
+
+function detectFormat(text, filename) {
+  const ext = (filename || '').split('.').pop().toLowerCase();
+  if (ext === 'json') return 'json';
+  if (ext === 'csv') return 'csv';
+  if (ext === 'md') return 'markdown';
+  const t = text.trim();
+  if (t.startsWith('{') || t.startsWith('[')) return 'json';
+  if (/^\s*[-*+]\s+/m.test(t)) return 'markdown';
+  const firstLine = t.split('\n')[0];
+  if (firstLine.includes(',') || firstLine.includes(';')) return 'csv';
+  return 'indent';
+}
+
+function parseAny(text, format, filename) {
+  const f = (format === 'auto') ? detectFormat(text, filename) : format;
+  switch (f) {
+    case 'json': return { roots: parseJSON(text), format: f };
+    case 'csv': return { roots: parseCSV(text), format: f };
+    case 'markdown': return { roots: parseMarkdown(text), format: f };
+    default: return { roots: parseIndentText(text), format: 'indent' };
+  }
+}
+
+/* =========================================================
+   SERIALISERING  träd → markdown
+   ========================================================= */
+function nodeLineText(n) {
+  const parts = [];
+  if (n.color) parts.push('c=' + n.color);
+  if (n.bold) parts.push('b');
+  if (n.size) parts.push('s=' + n.size);
+  return n.name + (parts.length ? ' <!-- ' + parts.join(' ') + ' -->' : '');
+}
+
+function toMarkdown(roots, level = 0) {
+  let out = '';
+  for (const n of roots) {
+    out += '  '.repeat(level) + '- ' + nodeLineText(n) + '\n';
+    if (n.children.length) out += toMarkdown(n.children, level + 1);
+  }
+  return out;
+}
+
+function toDokuWiki(roots, level = 0) {
+  // DokuWiki: två mellanslag per nivå med basindrag, punkter med *
+  let out = '';
+  for (const n of roots) {
+    out += '  '.repeat(level + 1) + '* ' + nodeLineText(n) + '\n';
+    if (n.children.length) out += toDokuWiki(n.children, level + 1);
+  }
+  return out;
+}
+
+function toIndentText(roots, level = 0) {
+  // Ett mellanslag per nivå
+  let out = '';
+  for (const n of roots) {
+    out += ' '.repeat(level) + nodeLineText(n) + '\n';
+    if (n.children.length) out += toIndentText(n.children, level + 1);
+  }
+  return out;
+}
+
+/* Färgupplösning: egen färg gäller, annars ärvs närmaste förälders */
+function resolveColors(node, inherited) {
+  node._c = node.color || inherited || null;
+  node.children.forEach(c => resolveColors(c, node._c));
+}
+function contrastText(hex) {
+  const h = hex.replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(h) && !/^[0-9a-fA-F]{3}$/.test(h)) return '#FFFFFF';
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const r = parseInt(full.slice(0, 2), 16), g = parseInt(full.slice(2, 4), 16), b = parseInt(full.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.58 ? '#1F1F1F' : '#FFFFFF';
+}
+
+function serializeAs(roots, format) {
+  switch (format) {
+    case 'dokuwiki': return toDokuWiki(roots);
+    case 'indent': return toIndentText(roots);
+    default: return toMarkdown(roots);
+  }
+}
+
+function parseDokuWiki(text) {
+  return parseIndented(text, /^[*-]\s+(.*)$/);
+}
+
+function parseEditor(text, format) {
+  let roots;
+  switch (format) {
+    case 'dokuwiki': roots = parseDokuWiki(text); break;
+    case 'indent': roots = parseIndentText(text); break;
+    default: roots = parseMarkdown(text);
+  }
+  // Tolerant fallback om innehållet inte matchar valt format
+  if (!roots.length) roots = parseMarkdown(text);
+  if (!roots.length) roots = parseIndentText(text);
+  return roots;
+}
+
+function countNodes(roots) {
+  let c = 0;
+  const walk = ns => ns.forEach(n => { c++; walk(n.children); });
+  walk(roots);
+  return c;
+}
+
+/* =========================================================
+   MONACO
+   ========================================================= */
+let editor = null;
+const DEFAULT_MD =
+`- Verksamhet
+  - HR
+    - Rekrytering
+    - Lön
+  - Ekonomi
+    - Redovisning
+    - Fakturering
+  - IT
+    - Applikationer
+      - Förvaltning
+      - Utveckling
+    - Infrastruktur`;
+
+require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+require(['vs/editor/editor.main'], function () {
+
+  monaco.editor.defineTheme('gs-light', {
+    base: 'vs', inherit: true,
+    rules: [{ token: 'keyword.md', foreground: '0077bc' }],
+    colors: {
+      'editor.background': '#FFFFFE',
+      'editorLineNumber.foreground': '#979797',
+      'editorCursor.foreground': '#0077bc',
+      'editor.lineHighlightBackground': '#F4F9FC'
+    }
+  });
+  monaco.editor.defineTheme('gs-dark', {
+    base: 'vs-dark', inherit: true,
+    rules: [{ token: 'keyword.md', foreground: '479EF5' }],
+    colors: {
+      'editor.background': '#1F1F1F',
+      'editorLineNumber.foreground': '#666666',
+      'editorCursor.foreground': '#479EF5',
+      'editor.lineHighlightBackground': '#282828'
+    }
+  });
+
+  // Taxonomi-anpassad markdown: Enter fortsätter punktlistan på rätt nivå
+  monaco.languages.setLanguageConfiguration('markdown', {
+    onEnterRules: [
+      {
+        // Tom punkt + Enter → avsluta listan (ta bort punkten genom outdent)
+        beforeText: /^\s*[-*+]\s*$/,
+        action: { indentAction: monaco.languages.IndentAction.Outdent }
+      },
+      {
+        // Rad med innehåll → ny punkt på samma nivå
+        beforeText: /^\s*([-*+])\s+.*$/,
+        action: { indentAction: monaco.languages.IndentAction.None, appendText: '- ' }
+      }
+    ]
+  });
+
+  // DokuWiki-språk: Enter fortsätter med * på samma nivå
+  monaco.languages.register({ id: 'dokuwiki' });
+  monaco.languages.setLanguageConfiguration('dokuwiki', {
+    onEnterRules: [
+      {
+        beforeText: /^\s*[*-]\s*$/,
+        action: { indentAction: monaco.languages.IndentAction.Outdent }
+      },
+      {
+        beforeText: /^\s*([*-])\s+.*$/,
+        action: { indentAction: monaco.languages.IndentAction.None, appendText: '* ' }
+      }
+    ]
+  });
+  monaco.languages.setMonarchTokensProvider('dokuwiki', {
+    tokenizer: { root: [[/^\s*[*-]/, 'keyword']] }
+  });
+
+  // Återställ autosparat läge innan editorn skapas (ej i embed)
+  const saved = EMBED_MODE ? null : loadState();
+  if (saved) {
+    if (saved.title) document.getElementById('taxTitle').value = saved.title;
+    if (saved.rootMode) document.getElementById('rootMode').value = saved.rootMode;
+    if (saved.icon) document.getElementById('iconSelect').value = saved.icon;
+    if (saved.format) {
+      currentEditorFormat = saved.format;
+      document.getElementById('editorFormat').value = saved.format;
+    }
+  }
+
+  const savedTheme = document.documentElement.getAttribute('data-theme');
+  editor = monaco.editor.create(document.getElementById('monacoHost'), {
+    value: (saved && saved.content) ? saved.content : DEFAULT_MD,
+    language: monacoLangFor(currentEditorFormat),
+    theme: savedTheme === 'dark' ? 'gs-dark' : 'gs-light',
+    fontSize: 14,
+    tabSize: currentEditorFormat === 'indent' ? 1 : 2,
+    insertSpaces: true,
+    detectIndentation: false,
+    wordWrap: 'on',
+    minimap: { enabled: false },
+    lineNumbers: 'on',
+    renderWhitespace: 'boundary',
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+    quickSuggestions: false,
+    unicodeHighlight: { ambiguousCharacters: false }
+  });
+
+  // Tab / Shift+Tab indenterar punktraden även mitt i raden
+  editor.addCommand(monaco.KeyCode.Tab, () => {
+    editor.trigger('kb', 'editor.action.indentLines', null);
+  }, '!suggestWidgetVisible && !inSnippetMode');
+  editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Tab, () => {
+    editor.trigger('kb', 'editor.action.outdentLines', null);
+  }, '!suggestWidgetVisible && !inSnippetMode');
+
+  let debounce = null;
+  editor.onDidChangeModelContent(() => {
+    clearTimeout(debounce);
+    debounce = setTimeout(render, 250);
+  });
+
+  if (window._pendingInit) {
+    embedApplyContent(window._pendingInit.content, window._pendingInit.title, window._pendingInit.theme);
+    window._pendingInit = null;
+  }
+
+  render();
+});
+
+/* ---------- Editorformat: Markdown / DokuWiki / Indrag ---------- */
+let currentEditorFormat = 'markdown';
+const monacoLangFor = f => f === 'dokuwiki' ? 'dokuwiki' : (f === 'indent' ? 'plaintext' : 'markdown');
+const formatLabel = f => f === 'dokuwiki' ? 'DokuWiki' : (f === 'indent' ? 'indrag' : 'Markdown');
+
+document.getElementById('editorFormat').addEventListener('change', e => {
+  const newFmt = e.target.value;
+  if (!editor) { currentEditorFormat = newFmt; return; }
+  try {
+    const roots = parseEditor(editor.getValue(), currentEditorFormat);
+    currentEditorFormat = newFmt;
+    monaco.editor.setModelLanguage(editor.getModel(), monacoLangFor(newFmt));
+    editor.getModel().updateOptions({ tabSize: newFmt === 'indent' ? 1 : 2 });
+    editor.setValue(serializeAs(roots, newFmt).trimEnd());
+    setStatus('Konverterade editorn till ' + formatLabel(newFmt) + '.');
+  } catch (err) {
+    currentEditorFormat = newFmt;
+    setStatus('Formatbyte: kunde inte konvertera innehållet (' + err.message + ').', true);
+  }
+});
+
+/* ---------- Städa: normalisera indrag, punkter och tomrader ---------- */
+document.getElementById('cleanBtn').addEventListener('click', () => {
+  if (!editor) return;
+  try {
+    // Autodetektera — städar även inklistrad JSON/CSV till aktuellt format
+    const { roots } = parseAny(editor.getValue(), 'auto', '');
+    if (!roots.length) { setStatus('Inget att städa.', true); return; }
+    editor.setValue(serializeAs(roots, currentEditorFormat).trimEnd());
+    setStatus('Städat: ' + countNodes(roots) + ' noder normaliserade till ' + formatLabel(currentEditorFormat) + '.');
+  } catch (e) {
+    setStatus('Städning misslyckades: ' + e.message, true);
+  }
+});
+
+document.getElementById('rootMode').addEventListener('change', render);
+
+/* =========================================================
+   FÄRGPALETT — sätter/tar bort färgkommentarer per nivå
+   ========================================================= */
+function maxDepth(roots, d = 0) {
+  let max = roots.length ? d : d - 1;
+  for (const n of roots) if (n.children.length) max = Math.max(max, maxDepth(n.children, d + 1));
+  return max;
+}
+function nodesAtDepth(roots, target, d = 0, acc = []) {
+  for (const n of roots) {
+    if (d === target) acc.push(n);
+    else nodesAtDepth(n.children, target, d + 1, acc);
+  }
+  return acc;
+}
+
+/* Modifiera trädet i editorn och skriv tillbaka i aktuellt format */
+function mutateEditorTree(fn) {
+  if (!editor) return;
+  const roots = parseEditor(editor.getValue(), currentEditorFormat);
+  if (!roots.length) { setStatus('Inget innehåll att färgsätta.', true); return; }
+  fn(roots);
+  editor.setValue(serializeAs(roots, currentEditorFormat).trimEnd());
+}
+
+/* Sätt/ta bort valfritt attribut (color/bold/size) på alla noder i en nivå */
+function setLevelAttr(depth, key, value) {
+  mutateEditorTree(roots => {
+    nodesAtDepth(roots, depth).forEach(n => {
+      if (value === null || value === undefined || value === false || value === '') delete n[key];
+      else n[key] = value;
+    });
+  });
+}
+
+function setLevelColor(depth, color) {
+  setLevelAttr(depth, 'color', color);
+  setStatus(color
+    ? `Nivå ${depth + 1}: färg ${color} satt på alla noder.`
+    : `Nivå ${depth + 1}: färger borttagna.`);
+}
+
+function cycleLevelColors(depth) {
+  mutateEditorTree(roots => {
+    nodesAtDepth(roots, depth).forEach((n, i) => {
+      n.color = GS.complementary[(i + 1) % GS.complementary.length];
+    });
+  });
+  setStatus(`Nivå ${depth + 1}: varje gren fick en egen färg ur GS-paletten.`);
+}
+
+function toggleLevelBold(depth) {
+  const roots = parseEditor(editor.getValue(), currentEditorFormat);
+  const nodes = nodesAtDepth(roots, depth);
+  const allBold = nodes.length && nodes.every(n => n.bold);
+  setLevelAttr(depth, 'bold', allBold ? null : true);
+  setStatus(`Nivå ${depth + 1}: fetstil ${allBold ? 'borttagen' : 'satt'}.`);
+}
+
+function buildPalettePop() {
+  const pop = document.getElementById('palettePop');
+  pop.innerHTML = '';
+  const roots = editor ? parseEditor(editor.getValue(), currentEditorFormat) : [];
+  const levels = Math.min(maxDepth(roots) + 1, 6);
+
+  const h = document.createElement('h3');
+  h.textContent = 'Utseende per nivå';
+  pop.appendChild(h);
+
+  if (!roots.length) {
+    const p = document.createElement('p');
+    p.className = 'palette-hint';
+    p.textContent = 'Skriv en taxonomi i editorn först.';
+    pop.appendChild(p);
+    return;
+  }
+
+  const hasEyeDropper = 'EyeDropper' in window;
+
+  for (let d = 0; d < levels; d++) {
+    const row = document.createElement('div');
+    row.className = 'palette-row';
+
+    const lbl = document.createElement('span');
+    lbl.className = 'lvl';
+    lbl.textContent = 'Nivå ' + (d + 1);
+    row.appendChild(lbl);
+
+    for (const c of GS.complementary) {
+      const sw = document.createElement('button');
+      sw.className = 'swatch';
+      sw.style.background = c;
+      sw.title = c + ' på hela nivå ' + (d + 1);
+      sw.addEventListener('click', () => setLevelColor(d, c));
+      row.appendChild(sw);
+    }
+
+    // Fri färg via picker
+    const picker = document.createElement('input');
+    picker.type = 'color';
+    picker.className = 'swatch';
+    picker.title = 'Valfri färg på nivå ' + (d + 1);
+    picker.value = GS.blue;
+    picker.addEventListener('change', () => setLevelColor(d, picker.value));
+    row.appendChild(picker);
+
+    // Pipett — plocka färg från skärmen (Chrome/Edge)
+    if (hasEyeDropper) {
+      const drop = document.createElement('button');
+      drop.className = 'btn btn-secondary palette-mini';
+      drop.innerHTML = '<i class="fa-solid fa-eye-dropper"></i>';
+      drop.title = 'Pipett: plocka färg från skärmen';
+      drop.addEventListener('click', async () => {
+        try {
+          const res = await new EyeDropper().open();
+          setLevelColor(d, res.sRGBHex);
+        } catch (e) { /* avbruten pipett — inget att göra */ }
+      });
+      row.appendChild(drop);
+    }
+
+    const mix = document.createElement('button');
+    mix.className = 'btn btn-secondary palette-mini';
+    mix.innerHTML = '<i class="fa-solid fa-shuffle"></i>';
+    mix.title = 'Egen färg per gren (roterande GS-palett)';
+    mix.addEventListener('click', () => cycleLevelColors(d));
+    row.appendChild(mix);
+
+    // Fetstil
+    const bold = document.createElement('button');
+    bold.className = 'btn btn-secondary palette-mini';
+    bold.innerHTML = '<b>B</b>';
+    bold.title = 'Fetstil av/på för nivå ' + (d + 1);
+    bold.addEventListener('click', () => toggleLevelBold(d));
+    row.appendChild(bold);
+
+    // Textstorlek (px)
+    const size = document.createElement('input');
+    size.type = 'number';
+    size.min = 8; size.max = 96;
+    size.placeholder = 'px';
+    size.title = 'Textstorlek i px för nivå ' + (d + 1) + ' (töm för standard)';
+    size.style.cssText = 'width:52px;background:var(--bg-color);color:var(--text-color);border:1px solid var(--border-color);border-radius:4px;padding:2px 4px;font-size:12px;';
+    const lvlNodes = nodesAtDepth(roots, d);
+    const commonSize = lvlNodes.length && lvlNodes.every(n => n.size === lvlNodes[0].size) ? lvlNodes[0].size : null;
+    if (commonSize) size.value = commonSize;
+    size.addEventListener('change', () => {
+      const v = parseInt(size.value, 10);
+      setLevelAttr(d, 'size', (v && v >= 8) ? v : null);
+      setStatus(`Nivå ${d + 1}: textstorlek ${v && v >= 8 ? v + ' px' : 'återställd'}.`);
+    });
+    row.appendChild(size);
+
+    const clear = document.createElement('button');
+    clear.className = 'btn btn-secondary palette-mini';
+    clear.innerHTML = '<i class="fa-solid fa-eraser"></i>';
+    clear.title = 'Rensa färg, fetstil och storlek på nivå ' + (d + 1);
+    clear.addEventListener('click', () => {
+      mutateEditorTree(roots2 => {
+        nodesAtDepth(roots2, d).forEach(n => { delete n.color; delete n.bold; delete n.size; });
+      });
+      setStatus(`Nivå ${d + 1}: allt utseende rensat.`);
+    });
+    row.appendChild(clear);
+
+    pop.appendChild(row);
+  }
+
+  const hint = document.createElement('p');
+  hint.className = 'palette-hint';
+  hint.innerHTML = 'Sparas i texten som <code>&lt;!-- c=#hex b s=18 --&gt;</code>. Färg ärvs nedåt; fetstil och storlek gäller bara den egna nivån.';
+  pop.appendChild(hint);
+}
+
+document.getElementById('paletteBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  const pop = document.getElementById('palettePop');
+  if (pop.classList.contains('hidden')) {
+    buildPalettePop();
+    pop.classList.remove('hidden');
+  } else {
+    pop.classList.add('hidden');
+  }
+});
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('palettePopWrap');
+  if (!wrap.contains(e.target)) document.getElementById('palettePop').classList.add('hidden');
+});
+
+/* =========================================================
+   MODALER — hjälp & statistik
+   ========================================================= */
+function openModal(buildContent) {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  const close = document.createElement('button');
+  close.className = 'btn btn-secondary modal-close';
+  close.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+  modal.appendChild(close);
+  buildContent(modal);
+  backdrop.appendChild(modal);
+  document.body.appendChild(backdrop);
+  const dismiss = () => { backdrop.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = ev => { if (ev.key === 'Escape') dismiss(); };
+  close.addEventListener('click', dismiss);
+  backdrop.addEventListener('click', ev => { if (ev.target === backdrop) dismiss(); });
+  document.addEventListener('keydown', onKey);
+}
+
+document.getElementById('helpBtn').addEventListener('click', () => {
+  openModal(modal => {
+    modal.insertAdjacentHTML('beforeend', `
+      <h2><i class="fa-solid fa-sitemap"></i> Om Taxonomi</h2>
+      <p>Taxonomi är ett verktyg för att skapa, konvertera och visualisera hierarkiska
+      strukturer — ämnesträd, förmågekartor, navigationsstrukturer, begreppsmodeller.
+      Editorn till vänster är alltid sanningskällan; allt du gör med knappar skrivs
+      tillbaka som text och kan ångras med Ctrl+Z.</p>
+
+      <h3>Format</h3>
+      <p>Editorn kan arbeta i tre format som konverteras utan förlust när du byter:
+      <strong>Markdown</strong> (punktlista med två mellanslags indrag),
+      <strong>DokuWiki</strong> (<code>* punkt</code> med basindrag) och
+      <strong>Indrag</strong> (ett mellanslag per nivå). Import klarar dessutom
+      <strong>CSV</strong> (varje rad är en sökväg: <code>Rot,Gren,Löv</code>) och
+      <strong>JSON</strong> (<code>{name, children}</code> eller nycklade objekt).
+      Autodetektering väljer rätt tolk, och Städa-knappen normaliserar även inklistrat innehåll.</p>
+
+      <h3>Utseende per nod</h3>
+      <p>HTML-kommentarer efter nodnamnet styr utseendet utan att synas i visualiseringen:</p>
+      <table>
+        <tr><th>Syntax</th><th>Betydelse</th></tr>
+        <tr><td><code>&lt;!-- c=#008391 --&gt;</code></td><td>Färg — ärvs nedåt i grenen tills ett barn har egen färg</td></tr>
+        <tr><td><code>&lt;!-- b --&gt;</code></td><td>Fetstil (endast den egna noden)</td></tr>
+        <tr><td><code>&lt;!-- s=18 --&gt;</code></td><td>Textstorlek i px (endast den egna noden)</td></tr>
+        <tr><td><code>&lt;!-- c=#008391 b s=18 --&gt;</code></td><td>Kombinerat i valfri ordning</td></tr>
+      </table>
+      <p>Färger-knappen sätter och rensar dessa per nivå, med GS-palett, fri färgväljare och pipett.</p>
+
+      <h3>Root-läge</h3>
+      <p><strong>Första raden i texten</strong>: taxonomins rot är den översta noden i editorn.
+      <strong>Från titelfältet</strong>: titeln blir rot och texten innehåller barnen —
+      vid import lyfts en ensam rot automatiskt ut till titeln.</p>
+
+      <h3>Vyer och export</h3>
+      <p>Nio vyer: explorerträd med ikoner, kollapsbart träd (klicka på noder), kraftgraf,
+      radiell dendrogram, sunburst, icicle, treemap, cirkelpackning och Mermaid
+      (flowchart enligt Göteborgs Stads profil, med kopierbar kod).
+      Export: Markdown med datumsuffix (<code>titel_ÅÅÅÅ-MM-DD.md</code>), PNG av aktuell vy,
+      samt <code>.mmd</code> från Mermaid-vyn. Allt autosparas lokalt i webbläsaren.</p>
+
+      <h3>Kortkommandon i editorn</h3>
+      <p>Enter fortsätter listan på samma nivå · Enter på tom punkt avslutar listan ·
+      Tab/Shift+Tab flyttar raden en nivå · Ctrl+Z ångrar allt, även knapptryck.</p>
+    `);
+  });
+});
+
+/* =========================================================
+   SORTERA A–Ö (rekursivt, svensk sortering)
+   ========================================================= */
+function sortTree(nodes) {
+  nodes.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+  nodes.forEach(n => sortTree(n.children));
+}
+document.getElementById('sortBtn').addEventListener('click', () => {
+  mutateEditorTree(roots => sortTree(roots));
+  setStatus('Sorterade alla syskon A–Ö (svensk teckenordning). Ångra med Ctrl+Z.');
+});
+
+/* =========================================================
+   STATISTIK & KVALITETSKONTROLL
+   ========================================================= */
+function computeStats(roots) {
+  const perLevel = [];
+  let total = 0, leaves = 0, deepest = 0;
+  const nameMap = new Map(); // normaliserat namn → [sökvägar]
+  (function walk(nodes, depth, path) {
+    for (const n of nodes) {
+      total++;
+      perLevel[depth] = (perLevel[depth] || 0) + 1;
+      deepest = Math.max(deepest, depth);
+      if (!n.children.length) leaves++;
+      const key = n.name.toLowerCase();
+      if (!nameMap.has(key)) nameMap.set(key, []);
+      nameMap.get(key).push([...path, n.name].join(' › '));
+      walk(n.children, depth + 1, [...path, n.name]);
+    }
+  })(roots, 0, []);
+  const duplicates = [...nameMap.entries()].filter(([, paths]) => paths.length > 1);
+  return { total, leaves, branches: total - leaves, depth: deepest + 1, perLevel, duplicates };
+}
+
+document.getElementById('statsBtn').addEventListener('click', () => {
+  const roots = editor ? parseEditor(editor.getValue(), currentEditorFormat) : [];
+  if (!roots.length) { setStatus('Inget innehåll att analysera.', true); return; }
+  const s = computeStats(roots);
+  openModal(modal => {
+    let html = `
+      <h2><i class="fa-solid fa-chart-simple"></i> Statistik</h2>
+      <table>
+        <tr><th>Noder totalt</th><td>${s.total}</td></tr>
+        <tr><th>Grenar</th><td>${s.branches}</td></tr>
+        <tr><th>Löv</th><td>${s.leaves}</td></tr>
+        <tr><th>Djup</th><td>${s.depth} nivåer</td></tr>
+      </table>
+      <h3>Noder per nivå</h3>
+      <table><tr><th>Nivå</th><th>Antal</th></tr>
+      ${s.perLevel.map((c, i) => `<tr><td>Nivå ${i + 1}</td><td>${c}</td></tr>`).join('')}
+      </table>
+      <h3>Kvalitetskontroll: dubbletter</h3>`;
+    if (!s.duplicates.length) {
+      html += '<p>Inga dubblerade nodnamn hittades — bra tecken på en MECE-struktur.</p>';
+    } else {
+      html += `<p>${s.duplicates.length} namn förekommer på flera ställen.
+        Kontrollera om de avser samma begrepp (slå ihop) eller olika (byt namn):</p>`;
+      for (const [name, paths] of s.duplicates.slice(0, 20)) {
+        html += `<p><strong>${name}</strong> (${paths.length} st)<br>
+          <span class="dup-path">${paths.join('<br>')}</span></p>`;
+      }
+      if (s.duplicates.length > 20) html += `<p class="dup-path">…och ${s.duplicates.length - 20} till.</p>`;
+    }
+    modal.insertAdjacentHTML('beforeend', html);
+  });
+});
+
+/* =========================================================
+   AUTOSPAR — innehåll och inställningar i localStorage
+   ========================================================= */
+function saveState() {
+  if (EMBED_MODE) return;
+  try {
+    localStorage.setItem('tax-state', JSON.stringify({
+      content: editor ? editor.getValue() : null,
+      title: document.getElementById('taxTitle').value,
+      format: currentEditorFormat,
+      rootMode: document.getElementById('rootMode').value,
+      icon: document.getElementById('iconSelect').value
+    }));
+  } catch (e) { /* privat läge m.m. — ignorera */ }
+}
+function loadState() {
+  try { return JSON.parse(localStorage.getItem('tax-state')) || null; }
+  catch (e) { return null; }
+}
+
+/* =========================================================
+   VISUALISERINGAR
+   ========================================================= */
+let currentView = 'tree';
+const viz = () => document.getElementById('vizContainer');
+
+document.getElementById('viewTabs').addEventListener('click', e => {
+  const btn = e.target.closest('.viewtab');
+  if (!btn) return;
+  document.querySelectorAll('.viewtab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentView = btn.dataset.view;
+  document.getElementById('iconPickerWrap').classList.toggle('hidden', currentView !== 'tree');
+  render();
+});
+document.getElementById('iconSelect').addEventListener('change', render);
+document.getElementById('taxTitle').addEventListener('input', () => { clearTimeout(window._tdb); window._tdb = setTimeout(render, 300); });
+
+function getModel() {
+  const text = editor ? editor.getValue() : DEFAULT_MD;
+  let roots = [];
+  try {
+    roots = parseEditor(text, currentEditorFormat);
+  } catch (e) { setStatus('Kunde inte tolka innehållet: ' + e.message, true); return null; }
+  const title = document.getElementById('taxTitle').value.trim() || 'Taxonomi';
+  const rootMode = document.getElementById('rootMode').value;
+
+  let displayRoots, hierarchyRoot;
+  if (rootMode === 'title') {
+    // Titelfältet är roten; texten innehåller barnen
+    displayRoots = [{ name: title, children: roots }];
+    hierarchyRoot = displayRoots[0];
+  } else {
+    // Första raden i texten är roten; virtuell rot bara vid flera toppnoder
+    displayRoots = roots;
+    hierarchyRoot = roots.length === 1 ? roots[0] : { name: title, children: roots, _virtual: true };
+  }
+  document.getElementById('nodeCount').textContent = countNodes(roots) + ' noder';
+  resolveColors(hierarchyRoot, null);
+  return { roots, displayRoots, hierarchyRoot, title, rootMode };
+}
+
+/* Nodfärg: explicit/ärvd färg vinner, annars nivåfärg */
+function nodeColor(d, fallbackDepth) {
+  return (d.data && d.data._c) || depthColor(fallbackDepth !== undefined ? fallbackDepth : d.depth);
+}
+/* Typografi per nod: b och s ur attributkommentaren (ej ärvda) */
+function fontW(d, def) { return (d.data ? d.data.bold : d.bold) ? 700 : def; }
+function fontS(d, def) { const v = d.data ? d.data.size : d.size; return v || def; }
+
+function render() {
+  const m = getModel();
+  if (!m) return;
+  viz().innerHTML = '';
+  if (!m.roots.length) {
+    viz().innerHTML = '<p style="color:var(--text-secondary)">Skriv en punktlista i editorn för att se en visualisering.</p>';
+    if (editor) saveState();
+    return;
+  }
+  setStatus('Klar.');
+  try {
+    switch (currentView) {
+      case 'tree': renderTreeView(m); break;
+      case 'collapsible': renderCollapsible(m); break;
+      case 'graph': renderGraph(m); break;
+      case 'radial': renderRadial(m); break;
+      case 'sunburst': renderSunburst(m); break;
+      case 'icicle': renderIcicle(m); break;
+      case 'treemap': renderTreemap(m); break;
+      case 'pack': renderPack(m); break;
+      case 'mermaid': renderMermaidView(m); break;
+    }
+  } catch (e) {
+    setStatus('Renderingsfel: ' + e.message, true);
+  }
+  if (editor) saveState();
+}
+
+/* ---------- Träd med ikoner (från file.php) ---------- */
+function renderTreeView(m) {
+  const iconClass = document.getElementById('iconSelect').value;
+  const showIcon = iconClass !== 'none';
+  const wrap = document.createElement('div');
+  wrap.className = 'gs-tree';
+  wrap.id = 'gsTreeExport';
+
+  const iconHtml = (n) => showIcon
+    ? `<i class="fa-solid ${iconClass}"${n && n._c ? ` style="color:${n._c}"` : ''}></i>`
+    : '';
+
+  const nameSpan = (n) => {
+    const span = document.createElement('span');
+    span.textContent = n.name;
+    if (n.bold) span.style.fontWeight = '700';
+    if (n.size) span.style.fontSize = n.size + 'px';
+    return span;
+  };
+
+  const buildUl = (nodes) => {
+    const ul = document.createElement('ul');
+    for (const n of nodes) {
+      const li = document.createElement('li');
+      if (!showIcon) li.className = 'no-icon';
+      li.innerHTML = iconHtml(n);
+      li.appendChild(nameSpan(n));
+      if (n.children.length) li.appendChild(buildUl(n.children));
+      ul.appendChild(li);
+    }
+    return ul;
+  };
+
+  for (const root of m.displayRoots) {
+    const top = document.createElement('div');
+    top.className = 'topnode' + (showIcon ? '' : ' no-icon');
+    top.innerHTML = iconHtml(root);
+    top.appendChild(nameSpan(root));
+    wrap.appendChild(top);
+    if (root.children.length) wrap.appendChild(buildUl(root.children));
+  }
+  viz().appendChild(wrap);
+}
+
+/* ---------- Gemensamt för SVG-vyer ---------- */
+function makeSvg(w, h, centered) {
+  const svg = d3.create('svg')
+    .attr('id', 'vizSvg')
+    .attr('viewBox', `0 0 ${w} ${h}`)
+    .attr('width', '100%')
+    .attr('preserveAspectRatio', 'xMidYMid meet')
+    .style('max-height', 'calc(100vh - 230px)')
+    .style('background', cssVar('--viz-bg'));
+  const zoomG = svg.append('g').attr('class', 'zoom-group');
+  // Inre grupp så att zoom-transformen inte skriver över centreringen
+  const g = centered
+    ? zoomG.append('g').attr('transform', `translate(${w / 2},${h / 2})`)
+    : zoomG;
+  svg.call(d3.zoom().scaleExtent([0.2, 8]).on('zoom', ev => zoomG.attr('transform', ev.transform)));
+  return { svg, g };
+}
+const txtColor = () => cssVar('--text-color') || '#333';
+const depthColor = d => GS.complementary[d % GS.complementary.length];
+
+/* ---------- Graf (force) ---------- */
+function renderGraph(m) {
+  const w = 900, h = 600;
+  const { svg, g } = makeSvg(w, h);
+  const nodes = [], links = [];
+  (function walk(node, parentId, path, depth) {
+    const id = path + '/' + node.name;
+    nodes.push({ id, name: node.name, depth, c: node._c, bold: node.bold, size: node.size });
+    if (parentId) links.push({ source: parentId, target: id });
+    node.children.forEach(c => walk(c, id, id, depth + 1));
+  })(m.hierarchyRoot, null, '', 0);
+
+  const sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d => d.id).distance(70))
+    .force('charge', d3.forceManyBody().strength(-260))
+    .force('center', d3.forceCenter(w / 2, h / 2));
+
+  const link = g.append('g').selectAll('line').data(links).enter().append('line')
+    .attr('stroke', GS.blue).attr('stroke-width', 1.5).attr('stroke-opacity', .7);
+
+  const node = g.append('g').selectAll('circle').data(nodes).enter().append('circle')
+    .attr('r', d => d.depth === 0 ? 10 : 7)
+    .attr('fill', d => d.c || depthColor(d.depth))
+    .attr('stroke', cssVar('--viz-bg')).attr('stroke-width', 1.5)
+    .call(d3.drag()
+      .on('start', (ev, d) => { if (!ev.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag', (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
+      .on('end', (ev, d) => { if (!ev.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+  const label = g.append('g').selectAll('text').data(nodes).enter().append('text')
+    .text(d => d.name).attr('fill', txtColor())
+    .attr('font-size', d => fontS(d, 12)).attr('font-weight', d => fontW(d, 400))
+    .attr('dx', 11).attr('dy', '.35em');
+
+  sim.on('tick', () => {
+    link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    node.attr('cx', d => d.x).attr('cy', d => d.y);
+    label.attr('x', d => d.x).attr('y', d => d.y);
+  });
+
+  viz().appendChild(svg.node());
+}
+
+/* ---------- Radiell dendrogram ---------- */
+function renderRadial(m) {
+  const size = 800, radius = size / 2;
+  const { svg, g } = makeSvg(size, size, true);
+
+  const root = d3.tree().size([2 * Math.PI, radius - 110])(d3.hierarchy(m.hierarchyRoot));
+
+  g.selectAll('path').data(root.links()).enter().append('path')
+    .attr('d', d3.linkRadial().angle(d => d.x).radius(d => d.y))
+    .attr('stroke', GS.blue).attr('stroke-opacity', .6).attr('fill', 'none');
+
+  const node = g.selectAll('g.node').data(root.descendants()).enter().append('g')
+    .attr('transform', d => `rotate(${d.x * 180 / Math.PI - 90}) translate(${d.y},0)`);
+
+  node.append('circle').attr('r', 4).attr('fill', d => nodeColor(d));
+  node.append('text')
+    .attr('dy', '0.31em')
+    .attr('x', d => (d.x < Math.PI) === !d.children ? 7 : -7)
+    .attr('text-anchor', d => (d.x < Math.PI) === !d.children ? 'start' : 'end')
+    .attr('transform', d => d.x >= Math.PI ? 'rotate(180)' : null)
+    .attr('font-size', d => fontS(d, 12)).attr('font-weight', d => fontW(d, 400)).attr('fill', txtColor())
+    .text(d => d.data.name);
+
+  viz().appendChild(svg.node());
+}
+
+/* ---------- Sunburst ---------- */
+function renderSunburst(m) {
+  const size = 900, radius = size / 2;
+  const { svg, g } = makeSvg(size, size, true);
+
+  const root = d3.partition().size([2 * Math.PI, radius - 10])(
+    d3.hierarchy(m.hierarchyRoot).sum(d => d.children && d.children.length ? 0 : 1)
+  );
+
+  const arc = d3.arc().startAngle(d => d.x0).endAngle(d => d.x1)
+    .innerRadius(d => d.y0).outerRadius(d => d.y1 - 1);
+
+  const slices = root.descendants().filter(d => d.depth);
+
+  g.selectAll('path').data(slices).enter().append('path')
+    .attr('d', arc)
+    .attr('stroke', cssVar('--viz-bg')).attr('stroke-width', 1)
+    .attr('fill', d => nodeColor(d, d.depth - 1))
+    .attr('fill-opacity', d => 1 - Math.min(d.depth - 1, 4) * 0.12)
+    .append('title')
+    .text(d => d.ancestors().map(a => a.data.name).reverse().join(' › '));
+
+  g.selectAll('text').data(slices.filter(d => (d.x1 - d.x0) > 0.04)).enter().append('text')
+    .attr('transform', d => {
+      const angle = (d.x0 + d.x1) / 2 * 180 / Math.PI;
+      const r = (d.y0 + d.y1) / 2;
+      return `rotate(${angle - 90}) translate(${r},0) rotate(${angle < 180 ? 0 : 180})`;
+    })
+    .attr('text-anchor', 'middle').attr('dy', '0.35em')
+    .attr('font-size', d => fontS(d, 11)).attr('font-weight', d => fontW(d, 400)).attr('fill', '#fff')
+    .style('pointer-events', 'none')
+    .text(d => d.data.name.length > 18 ? d.data.name.slice(0, 17) + '…' : d.data.name);
+
+  viz().appendChild(svg.node());
+}
+
+/* ---------- Icicle ---------- */
+function renderIcicle(m) {
+  const w = 900, h = 600;
+  const { svg, g } = makeSvg(w, h);
+
+  const root = d3.partition().size([w, h])(
+    d3.hierarchy(m.hierarchyRoot).sum(d => d.children && d.children.length ? 0 : 1)
+  );
+
+  const cell = g.selectAll('g').data(root.descendants()).enter().append('g')
+    .attr('transform', d => `translate(${d.x0},${d.y0})`);
+
+  cell.append('rect')
+    .attr('width', d => Math.max(0, d.x1 - d.x0 - 1))
+    .attr('height', d => Math.max(0, d.y1 - d.y0 - 1))
+    .attr('rx', 2)
+    .attr('fill', d => nodeColor(d))
+    .attr('fill-opacity', .9)
+    .append('title')
+    .text(d => d.ancestors().map(a => a.data.name).reverse().join(' › '));
+
+  cell.filter(d => (d.x1 - d.x0) > 40).append('text')
+    .attr('x', 6).attr('y', 18)
+    .attr('font-size', d => fontS(d, 12)).attr('font-weight', d => fontW(d, 400)).attr('fill', '#fff')
+    .style('pointer-events', 'none')
+    .text(d => d.data.name);
+
+  viz().appendChild(svg.node());
+}
+
+/* ---------- Kollapsbart träd (horisontellt, klickbara noder) ---------- */
+const collapsedPaths = new Set();
+
+function renderCollapsible(m) {
+  // Bygg hierarki med sökvägs-id och applicera kollapsat läge
+  const root = d3.hierarchy(m.hierarchyRoot);
+  root.each(d => {
+    d._path = (d.parent ? d.parent._path : '') + '/' + d.data.name;
+  });
+  root.each(d => {
+    if (collapsedPaths.has(d._path) && d.children) {
+      d._hidden = d.children;
+      d.children = null;
+    }
+  });
+
+  const visible = root.descendants();
+  const leaves = visible.filter(d => !d.children).length;
+  const h = Math.max(360, leaves * 26 + 40);
+  const w = 900;
+  const { svg, g } = makeSvg(w, h);
+  const inner = g.append('g').attr('transform', 'translate(140,20)');
+
+  d3.tree().size([h - 40, w - 300])(root);
+
+  inner.selectAll('path.link').data(root.links()).enter().append('path')
+    .attr('class', 'link')
+    .attr('d', d3.linkHorizontal().x(d => d.y).y(d => d.x))
+    .attr('fill', 'none').attr('stroke', GS.blue).attr('stroke-opacity', .55).attr('stroke-width', 1.5);
+
+  const node = inner.selectAll('g.node').data(visible).enter().append('g')
+    .attr('transform', d => `translate(${d.y},${d.x})`)
+    .style('cursor', d => (d.children || d._hidden) ? 'pointer' : 'default')
+    .on('click', (ev, d) => {
+      if (!(d.children || d._hidden)) return;
+      if (collapsedPaths.has(d._path)) collapsedPaths.delete(d._path);
+      else collapsedPaths.add(d._path);
+      render();
+    });
+
+  node.append('circle')
+    .attr('r', d => d._hidden ? 7 : 5)
+    .attr('fill', d => d._hidden ? nodeColor(d) : (d.children ? cssVar('--viz-bg') : nodeColor(d)))
+    .attr('stroke', d => nodeColor(d)).attr('stroke-width', 2);
+
+  node.filter(d => d._hidden).append('text')
+    .attr('text-anchor', 'middle').attr('dy', '0.32em')
+    .attr('font-size', 10).attr('fill', '#fff').style('pointer-events', 'none')
+    .text('+');
+
+  node.append('text')
+    .attr('dy', '0.32em')
+    .attr('x', d => (d.children || d._hidden) ? -11 : 11)
+    .attr('text-anchor', d => (d.children || d._hidden) ? 'end' : 'start')
+    .attr('font-size', d => fontS(d, 13)).attr('fill', txtColor())
+    .attr('font-weight', d => d.data.bold ? 700 : (d.depth === 0 ? 600 : 400))
+    .text(d => d.data.name);
+
+  viz().appendChild(svg.node());
+  setStatus('Klicka på en nod för att fälla ihop eller expandera grenen.');
+}
+
+/* ---------- Treemap ---------- */
+function renderTreemap(m) {
+  const w = 900, h = 600;
+  const { svg, g } = makeSvg(w, h);
+
+  const root = d3.treemap()
+    .size([w, h])
+    .paddingOuter(4)
+    .paddingTop(22)
+    .paddingInner(3)
+    .round(true)(
+      d3.hierarchy(m.hierarchyRoot)
+        .sum(d => d.children && d.children.length ? 0 : 1)
+        .sort((a, b) => b.value - a.value)
+    );
+
+  const cell = g.selectAll('g').data(root.descendants()).enter().append('g')
+    .attr('transform', d => `translate(${d.x0},${d.y0})`);
+
+  cell.append('rect')
+    .attr('width', d => Math.max(0, d.x1 - d.x0))
+    .attr('height', d => Math.max(0, d.y1 - d.y0))
+    .attr('rx', 3)
+    .attr('fill', d => nodeColor(d))
+    .attr('fill-opacity', d => d.children ? .28 : .95)
+    .attr('stroke', d => nodeColor(d))
+    .attr('stroke-opacity', .6)
+    .append('title')
+    .text(d => d.ancestors().map(a => a.data.name).reverse().join(' › '));
+
+  // Grenrubriker i padding-zonen
+  cell.filter(d => d.children && (d.x1 - d.x0) > 50).append('text')
+    .attr('x', 6).attr('y', 15)
+    .attr('font-size', d => fontS(d, 12)).attr('font-weight', d => d.data.bold ? 700 : 600)
+    .attr('fill', txtColor())
+    .text(d => d.data.name);
+
+  // Lövetiketter
+  cell.filter(d => !d.children && (d.x1 - d.x0) > 44 && (d.y1 - d.y0) > 18).append('text')
+    .attr('x', 5).attr('y', 15)
+    .attr('font-size', d => fontS(d, 11)).attr('font-weight', d => fontW(d, 400)).attr('fill', '#fff')
+    .style('pointer-events', 'none')
+    .text(d => {
+      const maxChars = Math.floor((d.x1 - d.x0) / 7);
+      return d.data.name.length > maxChars ? d.data.name.slice(0, Math.max(1, maxChars - 1)) + '…' : d.data.name;
+    });
+
+  viz().appendChild(svg.node());
+}
+
+/* ---------- Cirkelpackning ---------- */
+function renderPack(m) {
+  const size = 850;
+  const { svg, g } = makeSvg(size, size);
+
+  const root = d3.pack().size([size, size]).padding(5)(
+    d3.hierarchy(m.hierarchyRoot)
+      .sum(d => d.children && d.children.length ? 0 : 1)
+      .sort((a, b) => b.value - a.value)
+  );
+
+  const node = g.selectAll('g').data(root.descendants()).enter().append('g')
+    .attr('transform', d => `translate(${d.x},${d.y})`);
+
+  node.append('circle')
+    .attr('r', d => d.r)
+    .attr('fill', d => nodeColor(d))
+    .attr('fill-opacity', d => d.children ? .18 : .9)
+    .attr('stroke', d => nodeColor(d))
+    .attr('stroke-opacity', .7)
+    .attr('stroke-width', d => d.children ? 1.5 : 1)
+    .append('title')
+    .text(d => d.ancestors().map(a => a.data.name).reverse().join(' › '));
+
+  // Lövetiketter — bara om de får plats i cirkeln
+  node.filter(d => !d.children && d.r > 16).append('text')
+    .attr('text-anchor', 'middle').attr('dy', '0.32em')
+    .attr('font-size', d => d.data.size || Math.min(13, d.r / 2.6))
+    .attr('font-weight', d => fontW(d, 400))
+    .attr('fill', '#fff').style('pointer-events', 'none')
+    .text(d => {
+      const maxChars = Math.floor(d.r / 3.6);
+      return d.data.name.length > maxChars ? d.data.name.slice(0, Math.max(1, maxChars - 1)) + '…' : d.data.name;
+    });
+
+  // Grenetiketter vid cirkelns topp
+  node.filter(d => !!d.children && d.r > 34).append('text')
+    .attr('text-anchor', 'middle')
+    .attr('y', d => -d.r + 15)
+    .attr('font-size', d => fontS(d, 12)).attr('font-weight', d => d.data.bold ? 700 : 600)
+    .attr('fill', txtColor()).style('pointer-events', 'none')
+    .text(d => d.data.name);
+
+  viz().appendChild(svg.node());
+}
+
+/* ---------- Mermaid (flowchart TD, GS-profil) ---------- */
+let mermaidLib = null;
+let lastMermaidCode = '';
+
+function mermaidId(name, i) {
+  const base = name.toLowerCase()
+    .replace(/å/g, 'a').replace(/ä/g, 'a').replace(/ö/g, 'o')
+    .replace(/[^a-z0-9]+/g, ' ').trim()
+    .split(' ')
+    .map((w, idx) => idx === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1))
+    .join('');
+  const safe = /^[a-z]/.test(base) ? base : 'n' + base;
+  return (safe || 'nod') + i;
+}
+function mermaidLabel(name) {
+  return name.replace(/"/g, "'").replace(/</g, '(').replace(/>/g, ')');
+}
+
+function buildMermaidCode(m) {
+  let counter = 0;
+  const lines = [];
+  const styleLines = [];
+  const classAssign = { primary: [], secondary: [], process: [] };
+
+  (function walk(node, parentId, depth) {
+    const id = mermaidId(node.name, ++counter);
+    lines.push(`  ${id}["<b>${mermaidLabel(node.name)}</b>"]`);
+    if (parentId) lines.push(`  ${parentId} --> ${id}`);
+    if (node._c || node.size) {
+      // Egen/ärvd färg och/eller storlek vinner över nivåklassen
+      const st = [];
+      if (node._c) st.push(`fill:${node._c}`, `stroke:${node._c}`, `color:${contrastText(node._c)}`);
+      if (node.size) st.push(`font-size:${node.size}px`);
+      styleLines.push(`  style ${id} ${st.join(',')}`);
+      if (!node._c) {
+        if (depth === 0) classAssign.primary.push(id);
+        else if (depth === 1) classAssign.secondary.push(id);
+        else classAssign.process.push(id);
+      }
+    } else if (depth === 0) classAssign.primary.push(id);
+    else if (depth === 1) classAssign.secondary.push(id);
+    else classAssign.process.push(id);
+    node.children.forEach(c => walk(c, id, depth + 1));
+  })(m.hierarchyRoot, null, 0);
+
+  const code = [
+    `%% Diagram: ${m.title} – ${dateStamp()}`,
+    'flowchart TD',
+    ...lines,
+    '',
+    '  classDef primaryNode fill:#004172,stroke:#004172,color:#FFFFFF;',
+    '  classDef secondaryNode fill:#C0E4F2,stroke:#0077BC,color:#1F1F1F;',
+    '  classDef processNode fill:#FFFFFF,stroke:#0077BC,color:#1F1F1F;',
+    ''
+  ];
+  if (classAssign.primary.length) code.push(`  class ${classAssign.primary.join(',')} primaryNode;`);
+  if (classAssign.secondary.length) code.push(`  class ${classAssign.secondary.join(',')} secondaryNode;`);
+  if (classAssign.process.length) code.push(`  class ${classAssign.process.join(',')} processNode;`);
+  if (styleLines.length) code.push('', ...styleLines);
+  return code.join('\n');
+}
+
+async function renderMermaidView(m) {
+  lastMermaidCode = buildMermaidCode(m);
+
+  const wrap = document.createElement('div');
+  wrap.id = 'mermaidWrap';
+  wrap.innerHTML = '<p style="color:var(--text-secondary)">Renderar Mermaid…</p>';
+  viz().appendChild(wrap);
+
+  const actions = document.createElement('div');
+  actions.className = 'mermaid-actions';
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'btn btn-secondary';
+  copyBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Kopiera Mermaid-kod';
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(lastMermaidCode);
+      setStatus('Mermaid-kod kopierad till urklipp.');
+    } catch (e) { setStatus('Kunde inte kopiera: ' + e.message, true); }
+  });
+  const dlBtn = document.createElement('button');
+  dlBtn.className = 'btn btn-secondary';
+  dlBtn.innerHTML = '<i class="fa-solid fa-file-arrow-down"></i> Ladda ner .mmd';
+  dlBtn.addEventListener('click', () => {
+    downloadBlob(new Blob([lastMermaidCode], { type: 'text/plain;charset=utf-8' }),
+      `${slugify(m.title)}_${dateStamp()}.mmd`);
+  });
+  actions.appendChild(copyBtn);
+  actions.appendChild(dlBtn);
+  viz().appendChild(actions);
+
+  try {
+    if (!mermaidLib) {
+      const mod = await import('https://cdn.jsdelivr.net/npm/mermaid@latest/dist/mermaid.esm.min.mjs');
+      mermaidLib = mod.default || mod;
+      mermaidLib.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'base',
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        themeVariables: {
+          primaryColor: '#FFFFFF',
+          primaryBorderColor: '#0077BC',
+          primaryTextColor: '#1F1F1F',
+          lineColor: '#0077BC'
+        },
+        flowchart: {
+          curve: 'basis',
+          htmlLabels: true,
+          nodeSpacing: 40,
+          rankSpacing: 55,
+          padding: 10,
+          useMaxWidth: true
+        }
+      });
+    }
+    const renderId = 'mmd' + Date.now();
+    let svg;
+    try {
+      ({ svg } = await mermaidLib.render(renderId, lastMermaidCode));
+    } finally {
+      // Mermaid kan lämna kvar temp-/felelement i body — städa alltid
+      ['#' + renderId, '#d' + renderId].forEach(sel => {
+        const el = document.querySelector(sel);
+        if (el && !wrap.contains(el)) el.remove();
+      });
+    }
+    // Rendera inte in i en vy användaren redan lämnat
+    if (currentView !== 'mermaid' || !document.body.contains(wrap)) return;
+    wrap.innerHTML = svg;
+    const svgEl = wrap.querySelector('svg');
+    if (svgEl) {
+      // Mermaids felbomb-svg = syntaxfel i genererad kod: visa koden istället
+      if (svgEl.querySelector('.error-icon, .error-text')) {
+        throw new Error('Mermaid rapporterade syntaxfel i den genererade koden.');
+      }
+      // OBS: byt ALDRIG id — Mermaids interna CSS är scopad till #<renderId>.
+      // Ett id-byte kopplar bort all styling (svart fyllda kanter, osynlig text).
+      svgEl.dataset.taxviz = '1';
+      svgEl.style.height = 'auto';
+      svgEl.removeAttribute('height');
+    }
+    appendMermaidCodeDetails(wrap);
+    setStatus('Mermaid renderad enligt Göteborgs Stads profil.');
+  } catch (e) {
+    if (!document.body.contains(wrap)) return;
+    wrap.innerHTML = '';
+    const pre = document.createElement('pre');
+    pre.style.cssText = 'color:#d24723;white-space:pre-wrap;';
+    pre.textContent = 'Fel i Mermaid-rendering:\n' + (e.message || e);
+    wrap.appendChild(pre);
+    appendMermaidCodeDetails(wrap, true);
+  }
+}
+
+/* Visar genererad Mermaid-kod under diagrammet */
+function appendMermaidCodeDetails(wrap, open) {
+  const det = document.createElement('details');
+  if (open) det.open = true;
+  det.style.marginTop = '12px';
+  const sum = document.createElement('summary');
+  sum.textContent = 'Visa Mermaid-kod';
+  sum.style.cssText = 'cursor:pointer;color:var(--link-color);font-size:13px;';
+  const pre = document.createElement('pre');
+  pre.textContent = lastMermaidCode;
+  pre.style.cssText = 'font-size:12px;overflow:auto;background:var(--bg-nav);padding:10px;border-radius:4px;color:var(--text-color);margin:8px 0 0 0;';
+  det.appendChild(sum);
+  det.appendChild(pre);
+  wrap.appendChild(det);
+}
+
+/* =========================================================
+   IMPORT
+   ========================================================= */
+document.getElementById('importBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', ev => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const fmt = document.getElementById('importFormat').value;
+      const { roots, format } = parseAny(reader.result, fmt, file.name);
+      if (!roots.length) throw new Error('Inga noder hittades.');
+
+      let outRoots = roots;
+      const rootMode = document.getElementById('rootMode').value;
+      if (rootMode === 'title' && roots.length === 1 && roots[0].children.length) {
+        // Lyft ut roten till titelfältet; texten får barnen
+        document.getElementById('taxTitle').value = roots[0].name;
+        outRoots = roots[0].children;
+      } else {
+        const base = file.name.replace(/\.[^.]+$/, '').replace(/_\d{4}-\d{2}-\d{2}$/, '');
+        if (base) document.getElementById('taxTitle').value = base;
+      }
+      editor.setValue(serializeAs(outRoots, currentEditorFormat).trimEnd());
+      setStatus(`Importerade ${countNodes(roots)} noder från ${file.name} (${format} → ${formatLabel(currentEditorFormat)}).`);
+    } catch (e) {
+      setStatus('Import misslyckades: ' + e.message, true);
+    }
+    ev.target.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+});
+
+// Dra-och-släpp på editorn
+document.getElementById('editorPane').addEventListener('dragover', e => e.preventDefault());
+document.getElementById('editorPane').addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  const input = document.getElementById('fileInput');
+  input.files = dt.files;
+  input.dispatchEvent(new Event('change'));
+});
+
+/* =========================================================
+   EXPORT
+   ========================================================= */
+function slugify(s) {
+  return s.trim().toLowerCase()
+    .replace(/å/g, 'a').replace(/ä/g, 'a').replace(/ö/g, 'o')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'taxonomi';
+}
+function dateStamp() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function downloadBlob(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+document.getElementById('exportMdBtn').addEventListener('click', () => {
+  const m = getModel();
+  if (!m || !m.roots.length) { setStatus('Inget att exportera.', true); return; }
+  const md = `# ${m.title}\n\n` + toMarkdown(m.roots);
+  const filename = `${slugify(m.title)}_${dateStamp()}.md`;
+  downloadBlob(new Blob([md], { type: 'text/markdown;charset=utf-8' }), filename);
+  setStatus(`Exporterade ${filename}.`);
+});
+
+document.getElementById('exportPngBtn').addEventListener('click', async () => {
+  const m = getModel();
+  if (!m) return;
+  const filename = `${slugify(m.title)}_${dateStamp()}.png`;
+  try {
+    const dataUrl = await captureCurrentViewPngDataUrl();
+    if (!dataUrl) throw new Error('Ingen visualisering att spara.');
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    a.click();
+    setStatus(`Exporterade ${filename}.`);
+  } catch (e) {
+    setStatus('PNG-export misslyckades: ' + e.message, true);
+  }
+});
+
+/* =========================================================
+   EMBED — Skill Canvas integration
+   ========================================================= */
+function embedGetMarkdown() {
+  const m = getModel();
+  if (!m) return editor ? editor.getValue() : DEFAULT_MD;
+  if (!m.roots.length) return editor ? editor.getValue() : DEFAULT_MD;
+  return `# ${m.title}\n\n` + toMarkdown(m.roots);
+}
+
+function waitForPaint() {
+  return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+/** Vänta tills Mermaid-vyn renderat (async). */
+async function waitForMermaidSvg(timeoutMs = 15000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const svg = document.querySelector('#mermaidWrap svg[data-taxviz]');
+    if (svg && !svg.querySelector('.error-icon, .error-text')) return svg;
+    if (document.querySelector('#mermaidWrap pre')) return null;
+    await new Promise(r => setTimeout(r, 80));
+  }
+  return null;
+}
+
+function svgElementToPngDataUrl(svgEl) {
+  const clone = svgEl.cloneNode(true);
+  const vb = svgEl.viewBox.baseVal;
+  clone.setAttribute('width', vb.width);
+  clone.setAttribute('height', vb.height);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('style', 'font-family: Arial, Helvetica, sans-serif;');
+  const xml = new XMLSerializer().serializeToString(clone);
+  const img = new Image();
+  const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
+  return new Promise((resolve) => {
+    img.onload = () => {
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = vb.width * scale;
+      canvas.height = vb.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = cssVar('--viz-bg');
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(''); };
+    img.src = url;
+  });
+}
+
+/** PNG av aktiv visualiseringsvy (samma som export-knappen). */
+async function captureCurrentViewPngDataUrl() {
+  const m = getModel();
+  if (!m || !m.roots.length) return '';
+
+  render();
+  await waitForPaint();
+
+  if (currentView === 'mermaid') {
+    const mermaidSvg = await waitForMermaidSvg();
+    if (mermaidSvg) return svgElementToPngDataUrl(mermaidSvg);
+    return '';
+  }
+
+  try {
+    if (currentView === 'tree') {
+      const el = document.getElementById('gsTreeExport');
+      if (!el) return '';
+      const canvas = await html2canvas(el, { backgroundColor: cssVar('--viz-bg'), scale: 2 });
+      return canvas.toDataURL('image/png');
+    }
+    const svgEl = document.getElementById('vizSvg');
+    if (!svgEl) return '';
+    return await svgElementToPngDataUrl(svgEl);
+  } catch (e) {
+    console.error(e);
+    return '';
+  }
+}
+
+async function exportPngDataUrl() {
+  return captureCurrentViewPngDataUrl();
+}
+
+function embedApplyContent(content, title, theme) {
+  let md = String(content ?? '').replace(/\r\n?/g, '\n');
+  let t = String(title ?? '').trim();
+  const hm = md.match(/^#\s+(.+?)(?:\n|$)/);
+  if (hm) {
+    if (!t) t = hm[1].trim();
+    md = md.slice(hm[0].length).replace(/^\n+/, '');
+  }
+  if (t) document.getElementById('taxTitle').value = t;
+  if (editor) editor.setValue(md || DEFAULT_MD);
+  if (theme) applyTheme(theme === 'dark' ? 'dark' : 'light');
+  else render();
+}
+
+async function embedSave() {
+  const content = embedGetMarkdown();
+  const pngDataUrl = await exportPngDataUrl();
+  window.parent.postMessage({
+    type: 'sc-taxonomi-save',
+    content,
+    pngDataUrl,
+    title: document.getElementById('taxTitle').value.trim(),
+  }, '*');
+}
+
+function embedCancel() {
+  window.parent.postMessage({ type: 'sc-taxonomi-cancel' }, '*');
+}
+
+window.embedSave = embedSave;
+window.embedCancel = embedCancel;
+
+window.addEventListener('message', e => {
+  const d = e.data;
+  if (!d || typeof d !== 'object') return;
+  if (d.type === 'sc-taxonomi-init') {
+    if (d.theme) applyTheme(d.theme === 'dark' ? 'dark' : 'light');
+    if (editor) embedApplyContent(d.content, d.title, null);
+    else window._pendingInit = d;
+  }
+  if (d.type === 'sc-taxonomi-set-theme' && d.theme) applyTheme(d.theme === 'dark' ? 'dark' : 'light');
+});
+
+if (EMBED_MODE) {
+  document.getElementById('btnEmbedSave')?.addEventListener('click', () => embedSave());
+  document.getElementById('btnEmbedCancel')?.addEventListener('click', () => embedCancel());
+  window.parent.postMessage({ type: 'sc-taxonomi-ready' }, '*');
+}
+
+document.addEventListener('keydown', e => {
+  if (!EMBED_MODE) return;
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); embedSave(); }
+  if (e.key === 'Escape') { e.preventDefault(); embedCancel(); }
+});
+
+/* =========================================================
+   DRAGBAR (justerbar panelbredd)
+   ========================================================= */
+(function () {
+  const bar = document.getElementById('dragbar');
+  const pane = document.getElementById('editorPane');
+  let dragging = false;
+  bar.addEventListener('mousedown', () => { dragging = true; document.body.style.userSelect = 'none'; });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const min = 260, max = window.innerWidth - 320;
+    pane.style.width = Math.min(max, Math.max(min, e.clientX)) + 'px';
+  });
+  window.addEventListener('mouseup', () => { dragging = false; document.body.style.userSelect = ''; });
+})();
+</script>
+</body>
+</html>

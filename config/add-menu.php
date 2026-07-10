@@ -34,5 +34,23 @@ return [
             'enabled' => true,
             'description' => 'ArchiMate 4-diagram med ArchiCode-syntax',
         ],
+        [
+            'id' => 'taxonomi',
+            'label' => 'Taxonomi',
+            'enabled' => true,
+            'description' => 'Hierarkiska taxonomier med visualisering och Mermaid-export',
+        ],
+        [
+            'id' => 'mindmap',
+            'label' => 'Mindmap',
+            'enabled' => true,
+            'description' => 'Tankekarta med markdown-export och PNG-förhandsbild',
+        ],
+        [
+            'id' => 'svg',
+            'label' => 'SVG',
+            'enabled' => true,
+            'description' => 'Vektorgrafik med live-förhandsvisning på kortet',
+        ],
     ],
 ];

@@ -3,16 +3,16 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/includes/AbstractModule.php';
 
-final class ArchicodeModule extends AbstractModule
+final class TaxonomiModule extends AbstractModule
 {
     public function getSlug(): string
     {
-        return 'archicode';
+        return 'taxonomi';
     }
 
     public function getType(): string
     {
-        return 'archicode';
+        return 'taxonomi';
     }
 
     /** @param array<string, mixed> $values */
@@ -24,50 +24,45 @@ final class ArchicodeModule extends AbstractModule
 
         $title = (string) ($values['title'] ?? '');
         $width = (int) ($values['width'] ?? ($nodeDefaults['width'] ?? 520));
-        $defaultHeight = (int) ($nodeDefaults['height'] ?? 480);
-        $heightRaw = $values['height'] ?? null;
-        if ($heightRaw === '' || $heightRaw === null) {
-            $height = (string) $defaultHeight;
-        } else {
-            $height = (string) (int) $heightRaw;
-        }
+        $heightRaw = $values['height'] ?? '';
+        $height = ($heightRaw === '' || $heightRaw === null) ? '' : (string) (int) $heightRaw;
         $content = (string) ($values['content'] ?? '');
 
         ob_start();
         ?>
         <div class="mfield">
             <label><?= h($isEdit ? ($labels['title'] ?? 'Titel') : ($labels['titleOptional'] ?? 'Titel (valfri)')) ?></label>
-            <input id="ac-title"
+            <input id="tx-title"
                    value="<?= h($title) ?>"
-                   placeholder="<?= h($placeholders['title'] ?? 'Diagramtitel…') ?>"
+                   placeholder="<?= h($placeholders['title'] ?? 'Taxonomins titel…') ?>"
                    <?= $isEdit ? '' : 'autofocus' ?>>
         </div>
         <div class="mfield">
             <label><?= h($labels['width'] ?? 'Bredd kort (px)') ?></label>
-            <input id="ac-width"
+            <input id="tx-width"
                    value="<?= h((string) $width) ?>"
                    type="number"
                    min="<?= h((string) ($nodeDefaults['minWidth'] ?? 200)) ?>"
-                   max="<?= h((string) ($nodeDefaults['maxWidth'] ?? 1400)) ?>">
+                   max="<?= h((string) ($nodeDefaults['maxWidth'] ?? 1200)) ?>">
         </div>
         <div class="mfield">
-            <label><?= h($labels['height'] ?? 'Höjd kort (px)') ?></label>
-            <input id="ac-height"
+            <label><?= h($labels['height'] ?? 'Höjd (px)') ?></label>
+            <input id="tx-height"
                    value="<?= h($height) ?>"
                    type="number"
-                   min="<?= h((string) ($nodeDefaults['minHeight'] ?? 280)) ?>"
+                   min="<?= h((string) ($nodeDefaults['minHeight'] ?? 120)) ?>"
                    max="<?= h((string) ($nodeDefaults['maxHeight'] ?? 1200)) ?>"
-                   placeholder="<?= h((string) $defaultHeight) ?>">
+                   placeholder="<?= h($placeholders['height'] ?? 'Automatisk') ?>">
         </div>
-        <p class="field-hint" style="margin:-2px 0 10px"><?= h($labels['heightHint'] ?? 'Standard ' . $defaultHeight . ' px — kan även ändras genom att dra i kortets hörn.') ?></p>
+        <p class="field-hint" style="margin:-2px 0 10px"><?= h($labels['heightHint'] ?? 'Tomt = automatisk höjd. Ange px för fast höjd med scroll.') ?></p>
         <div class="mfield">
-            <label><?= h($labels['content'] ?? 'ArchiCode-kod') ?></label>
-            <textarea id="ac-content"
+            <label><?= h($labels['content'] ?? 'Markdown (punktlista)') ?></label>
+            <textarea id="tx-content"
                       class="tall"
-                      placeholder="<?= h($placeholders['content'] ?? '[<business:actor> Kund] -> [<business:process> Order]') ?>"
+                      placeholder="<?= h($placeholders['content'] ?? "- Nivå 1\n  - Nivå 2") ?>"
                       spellcheck="false"><?= h($content) ?></textarea>
-            <p class="ac-modal-hint" style="font-size:11px;color:var(--text-sec);margin-top:6px;line-height:1.45">
-                <?= h($labels['editorHint'] ?? 'Tips: öppna ArchiCode-editorn (knapp nere till vänster) för Monaco, live-förhandsvisning och SVG-export.') ?>
+            <p class="mm-modal-hint" style="font-size:11px;color:var(--text-sec);margin-top:6px;line-height:1.45">
+                <?= h($labels['editorHint'] ?? 'Tips: öppna Taxonomi-editorn för visualisering, färger och PNG-förhandsbild.') ?>
             </p>
         </div>
         <?php
@@ -85,4 +80,4 @@ final class ArchicodeModule extends AbstractModule
     }
 }
 
-return new ArchicodeModule();
+return new TaxonomiModule();

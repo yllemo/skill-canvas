@@ -107,6 +107,25 @@ const ArchicodeModule = (() => {
     return cfg().editorUrl || 'html/archicode.php';
   }
 
+  function defaultArchicodeHeight() {
+    return nodeDefaults().height || 480;
+  }
+
+  function parseArchicodeHeight(raw) {
+    const s = String(raw ?? '').trim();
+    if (!s) return undefined;
+    const defs = nodeDefaults();
+    const h = parseInt(s, 10);
+    if (!Number.isFinite(h) || h <= 0) return undefined;
+    return Math.max(defs.minHeight || 280, Math.min(defs.maxHeight || 1200, h));
+  }
+
+  function applyNodeLayout(node) {
+    if (node._el && typeof applyArchicodeNodeLayout === 'function') {
+      applyArchicodeNodeLayout(node, node._el);
+    }
+  }
+
   function disconnectResize(node) {
     if (node._acResizeObs) {
       node._acResizeObs.disconnect();
@@ -152,7 +171,7 @@ const ArchicodeModule = (() => {
     if (!code && node.file) code = await readTextFile(node.file);
     code = String(code).trim();
 
-    const minH = node.height || nodeDefaults().minHeight || 280;
+    const minH = nodeDefaults().minHeight || 280;
 
     if (!code) {
       const ph = document.createElement('div');
@@ -160,6 +179,7 @@ const ArchicodeModule = (() => {
       ph.style.minHeight = `${minH}px`;
       ph.textContent = 'Tomt diagram — öppna ArchiCode-editorn';
       body.appendChild(ph);
+      applyNodeLayout(node);
       return;
     }
 
@@ -181,6 +201,7 @@ const ArchicodeModule = (() => {
       requestAnimationFrame(() => {
         fitDiagramToViewport(viewport, diagram);
         wireResize(node, viewport, diagram);
+        applyNodeLayout(node);
       });
     } catch (err) {
       viewport.innerHTML = '';
@@ -195,6 +216,7 @@ const ArchicodeModule = (() => {
     if (node?.type !== TYPE || !node._el) return;
     const body = node._el.querySelector('.node-body');
     if (body) await renderContent(node, body);
+    applyNodeLayout(node);
   }
 
   function closeFullscreenEditor() {
@@ -291,9 +313,10 @@ const ArchicodeModule = (() => {
     try {
       const pos = centerPos();
       await Modal.openFromType(TYPE, 'add', {}, async () => {
-        const fields = Modal.readFields({ title: 'ac-title', width: 'ac-width', content: 'ac-content' });
+        const fields = Modal.readFields({ title: 'ac-title', width: 'ac-width', height: 'ac-height', content: 'ac-content' });
         const defaults = nodeDefaults();
         const width = parseInt(fields.width, 10) || defaults.width || 520;
+        const height = parseArchicodeHeight(fields.height) ?? defaultArchicodeHeight();
         const content = fields.content || DEFAULT_CODE;
         const id = genId();
         const filename = `${defaults.fileDir || 'diagrams'}/${id}.${defaults.fileExt || 'ac'}`;
@@ -305,6 +328,7 @@ const ArchicodeModule = (() => {
           x: pos.x,
           y: pos.y,
           width,
+          height,
           title: fields.title,
           file: filename,
           _ownFile: true,
@@ -331,12 +355,14 @@ const ArchicodeModule = (() => {
     await Modal.openFromType(TYPE, 'edit', {
       title: node.title || '',
       width: node.width || nodeDefaults().width || 520,
+      height: node.height || defaultArchicodeHeight(),
       content,
     }, async () => {
-      const fields = Modal.readFields({ title: 'ac-title', width: 'ac-width', content: 'ac-content' });
+      const fields = Modal.readFields({ title: 'ac-title', width: 'ac-width', height: 'ac-height', content: 'ac-content' });
       const defaults = nodeDefaults();
       node.title = fields.title;
       node.width = parseInt(fields.width, 10) || defaults.width || 520;
+      node.height = parseArchicodeHeight(fields.height) ?? defaultArchicodeHeight();
       const newContent = fields.content;
       if (node.file) {
         files[node.file] = new TextEncoder().encode(newContent);
@@ -344,6 +370,7 @@ const ArchicodeModule = (() => {
         node.content = newContent;
       }
       node._el.style.width = node.width + 'px';
+      applyNodeLayout(node);
       const htitle = node._el.querySelector('.node-handle span:nth-child(2)');
       if (htitle) htitle.textContent = node.title || '';
       const body = node._el.querySelector('.node-body');

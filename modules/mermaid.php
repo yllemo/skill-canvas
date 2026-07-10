@@ -24,6 +24,13 @@ final class MermaidModule extends AbstractModule
 
         $title = (string) ($values['title'] ?? '');
         $width = (int) ($values['width'] ?? ($nodeDefaults['width'] ?? 500));
+        $defaultHeight = (int) ($nodeDefaults['height'] ?? 600);
+        $heightRaw = $values['height'] ?? null;
+        if ($heightRaw === '' || $heightRaw === null) {
+            $height = (string) $defaultHeight;
+        } else {
+            $height = (string) (int) $heightRaw;
+        }
         $content = (string) ($values['content'] ?? '');
 
         ob_start();
@@ -43,6 +50,16 @@ final class MermaidModule extends AbstractModule
                    min="<?= h((string) ($nodeDefaults['minWidth'] ?? 160)) ?>"
                    max="<?= h((string) ($nodeDefaults['maxWidth'] ?? 1400)) ?>">
         </div>
+        <div class="mfield">
+            <label><?= h($labels['height'] ?? 'Höjd kort (px)') ?></label>
+            <input id="mm-height"
+                   value="<?= h($height) ?>"
+                   type="number"
+                   min="<?= h((string) ($nodeDefaults['minHeight'] ?? 120)) ?>"
+                   max="<?= h((string) ($nodeDefaults['maxHeight'] ?? 1600)) ?>"
+                   placeholder="<?= h((string) $defaultHeight) ?>">
+        </div>
+        <p class="field-hint" style="margin:-2px 0 10px"><?= h($labels['heightHint'] ?? 'Standard ' . $defaultHeight . ' px — kan även ändras genom att dra i kortets hörn.') ?></p>
         <div class="mfield">
             <label><?= h($labels['content'] ?? 'Mermaid-kod') ?></label>
             <textarea id="mm-content"

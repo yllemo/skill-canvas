@@ -24,8 +24,13 @@ final class MarkdownModule extends AbstractModule
 
         $title = (string) ($values['title'] ?? '');
         $width = (int) ($values['width'] ?? ($nodeDefaults['width'] ?? 720));
-        $heightRaw = $values['height'] ?? '';
-        $height = ($heightRaw === '' || $heightRaw === null) ? '' : (string) (int) $heightRaw;
+        $defaultHeight = (int) ($nodeDefaults['height'] ?? 600);
+        $heightRaw = $values['height'] ?? null;
+        if ($heightRaw === '' || $heightRaw === null) {
+            $height = (string) $defaultHeight;
+        } else {
+            $height = (string) (int) $heightRaw;
+        }
         $content = (string) ($values['content'] ?? '');
 
         ob_start();
@@ -52,10 +57,10 @@ final class MarkdownModule extends AbstractModule
                        type="number"
                        min="<?= h((string) ($nodeDefaults['minHeight'] ?? 120)) ?>"
                        max="<?= h((string) ($nodeDefaults['maxHeight'] ?? 1600)) ?>"
-                       placeholder="<?= h($placeholders['height'] ?? 'Automatisk') ?>">
+                       placeholder="<?= h((string) $defaultHeight) ?>">
             </div>
         </div>
-        <p class="field-hint" style="margin:-2px 0 10px"><?= h($labels['heightHint'] ?? 'Tomt = automatisk höjd. Ange px för fast höjd med scroll.') ?></p>
+        <p class="field-hint" style="margin:-2px 0 10px"><?= h($labels['heightHint'] ?? 'Standard ' . $defaultHeight . ' px — kan även ändras genom att dra i kortets hörn.') ?></p>
         <div class="mfield">
             <label><?= h($labels['content'] ?? 'Markdown-innehåll') ?></label>
             <textarea id="md-content"

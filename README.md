@@ -4,7 +4,7 @@
 
 ## Skill Canvas
 
-En PHP-baserad whiteboard-app för team som vill paketera kompetens till tydliga, visuella skills. Bygg och redigera storyboards med Markdown, Mermaid-diagram, **ArchiMate 4 (ArchiCode)**, Draw.io-ritningar, **BPMN-processdiagram**, bilder (inkl. inbyggd målare), labels, annotations (text+pil), notes, **HTML/iframe**, **PromptBook** (chattkort med LLM) och **relationer mellan moduler**, och exportera allt som en .zip med SKILL.md och YAML frontmatter.
+En PHP-baserad whiteboard-app för team som vill paketera kompetens till tydliga, visuella skills. Bygg och redigera storyboards med Markdown, Mermaid-diagram, **ArchiMate 4 (ArchiCode)**, Draw.io-ritningar, **BPMN-processdiagram**, **Taxonomi**, **Mindmap**, **SVG**, bilder (inkl. inbyggd målare), labels, annotations (text+pil), notes, **HTML/iframe**, **PromptBook** (chattkort med LLM) och **relationer mellan moduler**, och exportera allt som en .zip med `SKILL.md`, `index.md` (OKF) och YAML frontmatter.
 
 > Se [CHANGELOG.md](CHANGELOG.md) för senaste ändringar.
 
@@ -43,8 +43,10 @@ Se CONTRIBUTING.md för riktlinjer kring issues, pull requests och rekommenderat
 1. Kör appen via PHP (t.ex. `php -S localhost:8080` i projektroten) och öppna `index.php`
 2. **Öppna** en befintlig `.zip` eller `.skill`-fil (samma format), dra den till fönstret, eller välj **Ny tom canvas** via öppna-menyn
 3. Fyll i skill-metadata (`name`, `description`, …) vid ny canvas — standardvärden fylls i automatiskt (standardnamn t.ex. `my-skill-2026-05-31` med dagens datum)
-4. Lägg till noder via toolbaren längst ner. **⋯** (längst till höger) innehåller **HTML / iframe**, **BPMN**, **PromptBook** och **ArchiCode**. **Draw.io** och **Mermaid** har egna knappar. Koppla moduler med **länk-ikonen** i handtaget.
+4. Lägg till noder via toolbaren längst ner. **⋯** (längst till höger) innehåller **HTML / iframe**, **BPMN**, **PromptBook**, **ArchiCode**, **Taxonomi**, **Mindmap** och **SVG**. **Draw.io** och **Mermaid** har egna knappar. Koppla moduler med **länk-ikonen** i handtaget.
 5. **Exportera** som `.zip` (eller `Ctrl+S`) — eller som `.png` för en bild av canvasen
+
+Vid osparade ändringar varnas du innan du stänger fliken, lämnar sidan, öppnar en annan fil eller skapar ny tom canvas. Efter lyckad zip-export nollställs varningen.
 
 Körs som en PHP-webbapp och gör det enkelt att ta en idé till en delbar, visuellt förankrad skill.
 
@@ -58,7 +60,7 @@ Körs som en PHP-webbapp och gör det enkelt att ta en idé till en delbar, visu
 |---------|----------|
 | **Titel** (`name`) | Klicka för att öppna skill-metadata. Beskrivningen (`description`) visas som underrad. |
 | **Öppna** ▾ | Klick = filväljare (.zip / .skill). Pil = meny: *Öppna .zip / .skill* / *Ny tom canvas* |
-| **Exportera** ▾ | *Spara .zip* (SKILL.md + filer) eller *Spara .png* (bild av alla objekt) |
+| **Exportera** ▾ | *Spara .zip* (`SKILL.md` + `index.md` + filer) eller *Spara .png* (bild av alla objekt) |
 | **Canvas** | Öppna skill-metadata (inkl. **Skill-träd** — filöversikt i paketet) |
 | **Centrera** | Zooma ut så att alla noder syns |
 | **Tema** | Växla ljust/mörkt läge |
@@ -84,7 +86,7 @@ Ny canvas får som standard `name` med datum-suffix (`my-skill-YYYY-MM-DD`). Sty
 | Fokusera en nod | Dubbelklick på handtaget, eller fokus-ikonen (ej Notes) |
 | Markera nod | Klick |
 | Flytta nod | Dra i handtaget (Markdown, Mermaid, ArchiCode, Bild, Draw.io, BPMN, HTML, PromptBook, Annotation) — eller direkt på ytan (Label, Note) |
-| Ändra storlek | Resize-hörn nere till höger (Note, Annotation, HTML: bredd och höjd; övriga: bredd) |
+| Ändra storlek | Resize-hörn nere till höger — bredd och höjd för Note, Annotation, HTML, PromptBook, Markdown, Mermaid, Taxonomi och ArchiCode; bredd för övriga |
 | Kontextmeny | Högerklick på nod — inkl. **Spara som .png** (enskilt kort) och **Flytta längst fram** (z-ordning på canvas och exportordning) |
 | Ta bort markerad | `Delete` / `Backspace` |
 | Duplicera markerad | `Ctrl+D` |
@@ -92,31 +94,51 @@ Ny canvas får som standard `name` med datum-suffix (`my-skill-YYYY-MM-DD`). Sty
 
 Handtaget på Markdown, Mermaid, ArchiCode, Bild, Draw.io, BPMN, HTML och PromptBook ligger ovanför kortet (trycker inte ner innehållet vid hover). En osynlig hover-brygga gör det lättare att nå handtaget utan att träffa noden.
 
-På **Markdown-kort** med fast höjd scrollar mushjulet innehållet i kortet i stället för att zooma canvas.
+På **Markdown-kort** med fast höjd scrollar mushjulet innehållet i kortet i stället för att zooma canvas. Nya och importerade Markdown-noder får standardhöjd **600 px** om inget annat anges.
 
 ---
 
 ## Nodtyper
 
 ### Markdown
-Full Markdown-support: rubriker, listor, tabeller, kodblock, citat, länkar. Innehåll sparas som `.md` under `nodes/`. Bilder i Markdown (relativa sökvägar i zip) visas på kortet efter import. Standardbredd på nya kort: **720 px** (läsbredd). Valfri **fast höjd** (px) ger scroll i kortet vid längre innehåll.
+Full Markdown-support: rubriker, listor, tabeller, kodblock, citat, länkar. Innehåll sparas som `.md` under `nodes/`. Bilder i Markdown (relativa sökvägar i zip) visas på kortet efter import. Standardbredd på nya kort: **720 px**. Standardhöjd: **600 px** (scroll i kortet vid längre innehåll). Vid import av `.zip` / `.skill` utan sparad höjd sätts **600 px** automatiskt.
 
 - **Fullskärmseditor** — grön knapp nere till vänster i redigeringsmodalen öppnar Monaco-editor (`html/markdown.php`) i iframe med `postMessage`-sparande.
 - **Importera DOCX** — finns i fullskärmseditorn (`html/docx-to-skill.php`); konverterad Markdown (med bilder i zip-minnet) kan skickas tillbaka till editorn.
 
 ### Mermaid
-Diagram med [Mermaid](https://mermaid.js.org/)-syntax. Kod sparas som `.mmd` under `diagrams/`.
+Diagram med [Mermaid](https://mermaid.js.org/)-syntax. Kod sparas som `.mmd` under `diagrams/`. Standardhöjd på kort: **600 px** (kan ändras i modalen eller via resize-hörn).
 
 - **Mermaid-editor** — knapp nere till vänster i redigeringsmodalen öppnar inbyggd fullskärmseditor (`html/mermaid-editor.php`): Monaco med Mermaid-syntax, live-förhandsvisning, exempeldiagram (flöde, sekvens, Gantt, C4 m.m.), **ArchiMate 4 (C260)**-exempel i egen dropdown (domänöversikt + sju domäner, [referens](https://archimate.yllemo.com/archimate-mermaid.html)), zoom/pan, kopiera kod, PNG/SVG-export. Tema följer Skill Canvas (ljust/mörkt).
 - Headern länkar till [mermaid.js.org](https://mermaid.js.org/) och [mermaid.live](https://mermaid.live/) (även i embed-läge från canvas).
 
 ### ArchiCode
-ArchiMate 4-diagram med [ArchiCode](https://github.com/yllemo/ArchiCode)-syntax. Källkod sparas som `.ac` under `diagrams/`.
+ArchiMate 4-diagram med [ArchiCode](https://github.com/yllemo/ArchiCode)-syntax. Källkod sparas som `.ac` under `diagrams/`. Standardhöjd på kort: **480 px** (bredd och höjd via resize-hörn).
 
 - Lägg till via **⋯ → ArchiCode**
 - **Kortet** renderar diagrammet live från källkoden (samma motor som editorn), inpassat så att hela diagrammet syns utan klippning; ikoner följer med
 - **ArchiCode-editor** — knapp nere till vänster i redigeringsmodalen, eller öppnas direkt efter skapande: fullskärm (`html/archicode.php`) med Monaco, live diagram, exempel-dropdown och **Spara till kort**
 - Bibliotek (`archicode.js` / `archicode.css`) laddas från CDN vid behov
+
+### Taxonomi
+Hierarkiska taxonomier som punktlistor (Markdown). Innehåll sparas som `taxonomi/{id}.md`; kortet visar PNG-förhandsbild från aktiv vy i editorn.
+
+- Lägg till via **⋯ → Taxonomi**
+- **Taxonomi-editor** — fullskärm (`html/taxonomi-editor.php`): Monaco, flera vyer (träd, kollapsbart, graf, sunburst, Mermaid m.m.), färger, statistik, **Importera fil** (även i embed från canvas), PNG-export
+- Valfri höjd på kort (modal eller resize-hörn)
+
+### Mindmap
+Interaktiv tankekarta med markdown-export. Innehåll sparas som `mindmap/{id}.md` + PNG-förhandsbild på kortet.
+
+- Lägg till via **⋯ → Mindmap**
+- **Mindmap-editor** — fullskärm (`html/mindmap-editor.php`): dra noder, färger, sök, ångra/gör om, export till Markdown/PNG/Mermaid, knappen **Ny** för blank karta (även i embed)
+- Standardtitel: **Tankekarta**
+
+### SVG
+Vektorgrafik direkt på kortet — live-rendering av `.svg`-filen (ingen PNG-förhandsbild).
+
+- Lägg till via **⋯ → SVG**
+- **SVG-editor** — fullskärm (`html/svg-editor.php`) med Monaco och live-förhandsvisning
 
 ### Draw.io
 Ritningar via inbäddad [diagrams.net](https://embed.diagrams.net/) i fullskärm. XML sparas som `.drawio` under `diagrams/`; kortet visar en PNG-förhandsvisning.
@@ -246,6 +268,9 @@ Flera moduler använder overlay med iframe och `postMessage`-protokoll:
 | Markdown | `html/markdown.php` | `sc-markdown-ready`, `sc-markdown-init`, `sc-markdown-save` |
 | Mermaid | `html/mermaid-editor.php` | `sc-mermaid-ready`, `sc-mermaid-init`, `sc-mermaid-save` |
 | ArchiCode | `html/archicode.php` | `sc-archicode-ready`, `sc-archicode-init`, `sc-archicode-save` |
+| Taxonomi | `html/taxonomi-editor.php` | `sc-taxonomi-ready`, `sc-taxonomi-init`, `sc-taxonomi-save` |
+| Mindmap | `html/mindmap-editor.php` | `sc-mindmap-ready`, `sc-mindmap-init`, `sc-mindmap-save` |
+| SVG | `html/svg-editor.php` | `sc-svg-ready`, `sc-svg-init`, `sc-svg-save` |
 | Draw.io | `html/drawio-skill-editor.php` | `sc-drawio-ready`, `sc-drawio-init`, `sc-drawio-save` |
 | BPMN | `html/bpmn-skill-editor.php` | `sc-bpmn-ready`, `sc-bpmn-init`, `sc-bpmn-save` |
 | Bild (målare) | `html/paint-skill-editor.php` | `sc-paint-ready`, `sc-paint-init`, `sc-paint-save` |
@@ -273,16 +298,20 @@ skill-canvas/
 ├── app.js                 ← canvas, zoom, export, noder, markdown-bilder
 ├── style.css
 ├── favicon.svg
+├── index.md               ← OKF-mall (referens); genereras vid export
 ├── config/
 │   ├── app.php            ← apptitel, språk, tema, favicon
 │   ├── defaults.php       ← standardvärden för skill, canvas, nodtyper, moduler
 │   ├── settings.php       ← app-inställningar (schema, standardvärden)
-│   └── add-menu.php       ← ⋯-menyn: HTML, BPMN, PromptBook, ArchiCode
+│   └── add-menu.php       ← ⋯-menyn: HTML, BPMN, PromptBook, ArchiCode, Taxonomi, Mindmap, SVG
 ├── includes/              ← bootstrap, modul-laddare, settings/add-menu, head-meta, hjälpfunktioner
 ├── modules/               ← PHP: modal-HTML per nodtyp
 │   ├── markdown.php
 │   ├── mermaid.php
 │   ├── archicode.php
+│   ├── taxonomi.php
+│   ├── mindmap.php
+│   ├── svg.php
 │   ├── promptbook.php
 │   ├── bild.php
 │   ├── drawio.php
@@ -296,6 +325,7 @@ skill-canvas/
 │   ├── add-menu.js        ← ⋯-meny i lägg-till-panelen
 │   ├── skill-import.js    ← zip/.skill-validering + fallback-import
 │   ├── skill-tree.js      ← filträd i skill-metadata-modalen
+│   ├── okf-index.js       ← genererar index.md (OKF) vid export
 │   ├── connections.js     ← relationer mellan moduler (SVG)
 │   ├── docx-import.js
 │   └── modules/           ← JS: add/edit/render per nodtyp
@@ -306,6 +336,9 @@ skill-canvas/
     ├── markdown.php       ← Monaco fullskärm
     ├── mermaid-editor.php ← Mermaid Monaco + live preview + AM4-exempel
     ├── archicode.php      ← ArchiCode Monaco + live diagram
+    ├── taxonomi-editor.php
+    ├── mindmap-editor.php
+    ├── svg-editor.php
     ├── promptbook.php     ← PromptBook chatt + inställningar
     ├── drawio-skill-editor.php
     ├── bpmn-skill-editor.php
@@ -330,9 +363,9 @@ Nya nodtyper läggs till som par av `modules/<slug>.php` + `js/modules/<slug>.js
 
 ## SKILL.md-format
 
-Varje `.zip` eller `.skill` (samma format) bör innehålla `SKILL.md` med YAML frontmatter och en `nodes`-array för full Skill Canvas-layout. Övriga filer refereras via `file`- (och vid Draw.io/BPMN även `previewFile`-) fält i noderna.
+Varje `.zip` eller `.skill` (samma format) innehåller `SKILL.md` med YAML frontmatter och en `nodes`-array för full Skill Canvas-layout, samt **`index.md`** enligt [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) — en katalog över alla filer med relativa markdown-länkar (progressive disclosure). Övriga filer refereras via `file`- (och vid Draw.io/BPMN/Taxonomi/Mindmap även `previewFile`-) fält i noderna.
 
-**Import:** Om frontmatter saknas eller inte har `nodes` importeras filen ändå — `SKILL.md` och övriga `.md` blir markdown-noder, `.mmd` mermaid, `.ac` archicode, `.drawio` draw.io, `.bpmn` BPMN (med matchande `.png` som förhandsbild om den finns), `.html` html-noder (intern fil), `.json` under `promptbook/` promptbook-noder, bilder blir bild-noder. Metadata från giltig YAML (namn, beskrivning m.m.) används när den går att läsa.
+**Import:** Om frontmatter saknas eller inte har `nodes` importeras filen ändå — `SKILL.md` och övriga `.md` blir markdown-noder, `.mmd` mermaid, `.ac` archicode, `.drawio` draw.io, `.bpmn` BPMN (med matchande `.png` som förhandsbild om den finns), `.html` html-noder (intern fil), `.json` under `promptbook/` promptbook-noder, filer under `taxonomi/` och `mindmap/` respektive nodtyper, `.svg` under `svg/` svg-noder, bilder blir bild-noder. Metadata från giltig YAML (namn, beskrivning m.m.) används när den går att läsa. Markdown-noder utan sparad höjd får **600 px** vid import.
 
 ### Metadata
 
@@ -401,10 +434,10 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
 | Fält | Typ | Beskrivning |
 |------|-----|-------------|
 | `id` | sträng | Unikt ID, genereras automatiskt |
-| `type` | sträng | `markdown` \| `mermaid` \| `archicode` \| `drawio` \| `bpmn` \| `image` \| `label` \| `annotation` \| `note` \| `html` \| `promptbook` |
+| `type` | sträng | `markdown` \| `mermaid` \| `archicode` \| `drawio` \| `bpmn` \| `image` \| `label` \| `annotation` \| `note` \| `html` \| `promptbook` \| `taxonomi` \| `mindmap` \| `svg` |
 | `x`, `y` | heltal | Position i px |
 | `width` | heltal | Bredd i px |
-| `height` | heltal | Höjd i px (Note, Annotation, HTML; Markdown vid fast höjd) |
+| `height` | heltal | Höjd i px (Note, Annotation, HTML, PromptBook, ArchiCode; Markdown/Mermaid/Taxonomi vid fast höjd) |
 | `title` | sträng | Valfri rubrik i nodhandtaget (Markdown, Mermaid, ArchiCode, Bild, Draw.io, BPMN, HTML, PromptBook) |
 
 ### Markdown
@@ -415,6 +448,7 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
   x: 80
   y: 200
   width: 720
+  height: 600
   title: "Visas i handtaget"
   file: nodes/n001.md
 ```
@@ -427,6 +461,7 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
   x: 540
   y: 200
   width: 500
+  height: 600
   title: "Systemlandskap"
   file: diagrams/n002.mmd
 ```
@@ -439,8 +474,48 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
   x: 100
   y: 180
   width: 520
+  height: 480
   title: "Orderflöde"
   file: diagrams/n011.ac
+```
+
+### Taxonomi
+
+```yaml
+- id: n013
+  type: taxonomi
+  x: 100
+  y: 180
+  width: 520
+  height: 400
+  title: "Verksamhetsområden"
+  file: taxonomi/n013.md
+  previewFile: taxonomi/n013.png
+```
+
+### Mindmap
+
+```yaml
+- id: n014
+  type: mindmap
+  x: 100
+  y: 180
+  width: 520
+  title: "Tankekarta"
+  file: mindmap/n014.md
+  previewFile: mindmap/n014.png
+```
+
+### SVG
+
+```yaml
+- id: n015
+  type: svg
+  x: 100
+  y: 180
+  width: 480
+  title: "Ikon"
+  file: svg/n015.svg
 ```
 
 ### Draw.io
@@ -559,6 +634,7 @@ Se [nodtyper ovan](#html--iframe) för flikarna i modalen. I YAML sparas antinge
 ```
 my-skill-2026-05-31.zip
 ├── SKILL.md
+├── index.md              ← OKF-katalog (genereras vid export)
 ├── nodes/
 │   └── n001.md
 ├── html/
@@ -570,11 +646,23 @@ my-skill-2026-05-31.zip
 │   ├── n007.png
 │   ├── n010.bpmn
 │   └── n010.png
+├── taxonomi/
+│   ├── n013.md
+│   └── n013.png
+├── mindmap/
+│   ├── n014.md
+│   └── n014.png
+├── svg/
+│   └── n015.svg
 ├── promptbook/
 │   └── n012.json
 └── images/
     └── 2026-05-31_14.30.45.png
 ```
+
+### index.md (OKF)
+
+Vid export genereras `index.md` automatiskt med YAML-frontmatter (`type: skill`, `title`) och en filöversikt med relativa markdown-länkar — enligt [Google OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) för progressive disclosure. Mall/referens finns i projektroten som `index.md`; logik i `js/okf-index.js`.
 
 Mappnamn följer konventioner i `config/defaults.php` men styrs i praktiken av `file`-sökvägar i noderna.
 
@@ -587,7 +675,8 @@ Standardvärden i `config/defaults.php` kan justeras utan kodändring:
 - **skill** — `nameBase` (t.ex. `my-skill`), `nameDateSuffix` (lägger till `-YYYY-MM-DD` på ny canvas), `description`, `author`, `version`, `tags`
 - **canvas** — zoom-gränser, marginaler vid centrering/fokus
 - **edges** — standardlinje, färg, piländar för nya relationer
-- **nodes.\*** — standardbredd/höjd, min/max per nodtyp (markdown 720 px, html m.m.)
+- **unsaved** — varningstexter vid osparade ändringar (`beforeunload`, bekräftelse vid öppna/ny canvas)
+- **nodes.\*** — standardbredd/höjd, min/max per nodtyp (markdown 720×600, mermaid 500×600, archicode 520×480, html m.m.)
 - **modules.\*** — modaltexter, placeholders, editor-URL:er, note-färger, HTML standard-URL, DOCX-/paint-/drawio-/bpmn-etiketter
 
 Apptitel, språk, favicon och SEO-meta (`description`, `keywords`, författare): `config/app.php`.

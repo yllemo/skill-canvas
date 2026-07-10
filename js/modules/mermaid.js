@@ -16,6 +16,25 @@ const MermaidModule = (() => {
     return cfg().editorUrl || 'html/mermaid-editor.php';
   }
 
+  function parseMermaidHeight(raw) {
+    const s = String(raw ?? '').trim();
+    if (!s) return undefined;
+    const defs = nodeDefaults();
+    const h = parseInt(s, 10);
+    if (!Number.isFinite(h) || h <= 0) return undefined;
+    return Math.max(defs.minHeight || 120, Math.min(defs.maxHeight || 1600, h));
+  }
+
+  function defaultMermaidHeight() {
+    return nodeDefaults().height || 600;
+  }
+
+  function applyNodeLayout(node) {
+    if (node._el && typeof applyMermaidNodeLayout === 'function') {
+      applyMermaidNodeLayout(node, node._el);
+    }
+  }
+
   function closeFullscreenEditor() {
     const overlay = document.getElementById('mm-editor-overlay');
     const iframe = document.getElementById('mm-editor-frame');
@@ -109,9 +128,10 @@ const MermaidModule = (() => {
   async function openAdd() {
     const pos = centerPos();
     await Modal.openFromType(TYPE, 'add', {}, async () => {
-      const fields = Modal.readFields({ title: 'mm-title', width: 'mm-width', content: 'mm-content' });
+      const fields = Modal.readFields({ title: 'mm-title', width: 'mm-width', height: 'mm-height', content: 'mm-content' });
       const defaults = nodeDefaults();
       const width = parseInt(fields.width, 10) || defaults.width || 500;
+      const height = parseMermaidHeight(fields.height) ?? defaultMermaidHeight();
       const id = genId();
       const filename = `${defaults.fileDir || 'diagrams'}/${id}.${defaults.fileExt || 'mmd'}`;
 
@@ -122,6 +142,7 @@ const MermaidModule = (() => {
         x: pos.x,
         y: pos.y,
         width,
+        height,
         title: fields.title,
         file: filename,
         _ownFile: true,
@@ -144,18 +165,21 @@ const MermaidModule = (() => {
     await Modal.openFromType(TYPE, 'edit', {
       title: node.title || '',
       width: node.width || nodeDefaults().width || 500,
+      height: node.height || defaultMermaidHeight(),
       content,
     }, async () => {
-      const fields = Modal.readFields({ title: 'mm-title', width: 'mm-width', content: 'mm-content' });
+      const fields = Modal.readFields({ title: 'mm-title', width: 'mm-width', height: 'mm-height', content: 'mm-content' });
       const defaults = nodeDefaults();
       node.title = fields.title;
       node.width = parseInt(fields.width, 10) || defaults.width || 500;
+      node.height = parseMermaidHeight(fields.height) ?? defaultMermaidHeight();
       if (node.file) {
         files[node.file] = new TextEncoder().encode(fields.content);
       } else {
         node.content = fields.content;
       }
       node._el.style.width = node.width + 'px';
+      applyNodeLayout(node);
       const htitle = node._el.querySelector('.node-handle span:nth-child(2)');
       if (htitle) htitle.textContent = node.title || '';
       const body = node._el.querySelector('.node-body');
