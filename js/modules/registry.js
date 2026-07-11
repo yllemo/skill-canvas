@@ -18,6 +18,7 @@ const ModuleRegistry = (() => {
     archicode: 'ArchicodeModule',
     taxonomi: 'TaxonomiModule',
     mindmap: 'MindmapModule',
+    plantuml: 'PlantumlModule',
     svg: 'SvgModule',
   };
 

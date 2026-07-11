@@ -78,6 +78,7 @@ const SkillImport = (() => {
     if (lower.startsWith('svg/') && ext === 'svg') return 'svg';
     if (ext === 'md') return 'markdown';
     if (ext === 'mmd' || ext === 'mermaid') return 'mermaid';
+    if (ext === 'puml' || ext === 'plantuml') return 'plantuml';
     if (ext === 'ac') return 'archicode';
     if (ext === 'drawio' || ext === 'dio') return 'drawio';
     if (ext === 'bpmn') return 'bpmn';
@@ -123,9 +124,18 @@ const SkillImport = (() => {
     return null;
   }
 
+  function findPumlPreview(path, filesMap) {
+    const base = path.replace(/\.(puml|plantuml)$/i, '');
+    for (const ext of ['png', 'svg', 'jpg', 'jpeg']) {
+      const candidate = `${base}.${ext}`;
+      if (filesMap[candidate]) return candidate;
+    }
+    return null;
+  }
+
   function defaultWidth(type) {
     const nodes = window.SC_DEFAULTS?.nodes || {};
-    return nodes[type]?.width || { markdown: 720, mermaid: 500, image: 400, drawio: 480, bpmn: 480, html: 640, promptbook: 420, archicode: 520, taxonomi: 520, mindmap: 520, svg: 480 }[type] || 400;
+    return nodes[type]?.width || { markdown: 720, mermaid: 500, plantuml: 500, image: 400, drawio: 480, bpmn: 480, html: 640, promptbook: 420, archicode: 520, taxonomi: 520, mindmap: 520, svg: 480 }[type] || 400;
   }
 
   function defaultHeight(type) {
@@ -222,6 +232,20 @@ const SkillImport = (() => {
           previewFile: preview || undefined,
           title: titleFromPath(path),
           width: defaultWidth(type),
+        });
+        continue;
+      }
+
+      if (type === 'plantuml') {
+        const preview = findPumlPreview(path, filesMap);
+        if (preview) usedPaths.add(preview);
+        addNode({
+          type: 'plantuml',
+          file: path,
+          previewFile: preview || undefined,
+          title: titleFromPath(path),
+          width: defaultWidth('plantuml'),
+          height: defaultHeight('plantuml') || 600,
         });
         continue;
       }

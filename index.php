@@ -257,6 +257,11 @@ require_once __DIR__ . '/includes/bootstrap.php';
   <iframe id="sv-editor-frame" title="SVG Studio"></iframe>
 </div>
 
+<!-- PLANTUML EDITOR -->
+<div id="pu-editor-overlay" aria-hidden="true">
+  <iframe id="pu-editor-frame" title="PlantUML-editor"></iframe>
+</div>
+
 <script>
 <?php
 $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php'));

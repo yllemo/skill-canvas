@@ -8,6 +8,7 @@ const OkfIndex = (() => {
     'SKILL.md': 'Huvudmanifest — canvas-layout, noder, relationer och metadata.',
     md: 'Markdown-innehåll.',
     mmd: 'Mermaid-diagram.',
+    puml: 'PlantUML-diagram.',
     ac: 'ArchiCode / ArchiMate-diagram.',
     drawio: 'Draw.io-diagram.',
     bpmn: 'BPMN-processdiagram.',

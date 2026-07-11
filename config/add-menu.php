@@ -47,6 +47,12 @@ return [
             'description' => 'Tankekarta med markdown-export och PNG-förhandsbild',
         ],
         [
+            'id' => 'plantuml',
+            'label' => 'PlantUML',
+            'enabled' => true,
+            'description' => 'UML-diagram med Monaco-editor och PNG-förhandsbild på kortet',
+        ],
+        [
             'id' => 'svg',
             'label' => 'SVG',
             'enabled' => true,

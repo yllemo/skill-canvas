@@ -198,7 +198,7 @@ function onPointerMove(e){
       }else{
         resizeNode._el.style.height=nh+'px';
       }
-    }else if(resizeNode.type==='markdown'||resizeNode.type==='taxonomi'||resizeNode.type==='mermaid'||resizeNode.type==='archicode'){
+    }else if(resizeNode.type==='markdown'||resizeNode.type==='taxonomi'||resizeNode.type==='mermaid'||resizeNode.type==='plantuml'||resizeNode.type==='archicode'){
       const defs=window.SC_DEFAULTS?.nodes?.[resizeNode.type]||{};
       const minW=defs.minWidth||160, maxW=defs.maxWidth||1200;
       const minH=defs.minHeight||120, maxH=defs.maxHeight||1600;
@@ -210,6 +210,7 @@ function onPointerMove(e){
       if(resizeNode.type==='markdown')applyMarkdownNodeLayout(resizeNode,resizeNode._el);
       else if(resizeNode.type==='taxonomi')applyTaxonomiNodeLayout(resizeNode,resizeNode._el);
       else if(resizeNode.type==='mermaid')applyMermaidNodeLayout(resizeNode,resizeNode._el);
+      else if(resizeNode.type==='plantuml')applyPlantumlNodeLayout(resizeNode,resizeNode._el);
       else applyArchicodeNodeLayout(resizeNode,resizeNode._el);
     }else{
       const nw=Math.max(160,Math.round(resizeOW+dx));
@@ -747,7 +748,7 @@ async function buildNodeEl(node){
   // body
   const body=document.createElement('div');body.className='node-body';
   if(node.type==='markdown'||node.type==='mermaid'||node.type==='image'
-    ||node.type==='drawio'||node.type==='bpmn'||node.type==='html'||node.type==='promptbook'||node.type==='archicode'||node.type==='taxonomi'||node.type==='mindmap'||node.type==='svg'||node.type==='annotation'){
+    ||node.type==='drawio'||node.type==='bpmn'||node.type==='html'||node.type==='promptbook'||node.type==='archicode'||node.type==='taxonomi'||node.type==='mindmap'||node.type==='plantuml'||node.type==='svg'||node.type==='annotation'){
     body.setAttribute('contenteditable','false');
     body.setAttribute('aria-readonly','true');
   }
@@ -761,6 +762,7 @@ async function buildNodeEl(node){
   if(node.type==='markdown')applyMarkdownNodeLayout(node,el);
   if(node.type==='taxonomi')applyTaxonomiNodeLayout(node,el);
   if(node.type==='mermaid')applyMermaidNodeLayout(node,el);
+  if(node.type==='plantuml')applyPlantumlNodeLayout(node,el);
   if(node.type==='archicode')applyArchicodeNodeLayout(node,el);
   if(node.type==='note'&&typeof NotesModule!=='undefined')NotesModule.attachEvents(node,el,handle,rz);
   else attachNodeEvents(node,el,handle,rz);
@@ -977,6 +979,37 @@ function applyMermaidNodeLayout(node,el){
 }
 window.applyMermaidNodeLayout=applyMermaidNodeLayout;
 
+function plantumlBodyHeight(node,el){
+  if(node.height&&node.height>0)return node.height;
+  const body=el?.querySelector('.node-body');
+  return body?.scrollHeight||body?.offsetHeight||120;
+}
+
+function applyPlantumlNodeLayout(node,el){
+  if(!el||node.type!=='plantuml')return;
+  const body=el.querySelector('.node-body');
+  if(!body)return;
+  body.style.height='';
+  body.style.maxHeight='';
+  body.style.overflowY='';
+  body.classList.remove('pu-body-fixed');
+  const preview=body.querySelector('.drawio-preview');
+  if(preview){
+    preview.style.height='';
+    preview.style.minHeight='';
+  }
+  if(node.height&&node.height>0){
+    body.style.height=node.height+'px';
+    body.style.overflowY='auto';
+    body.classList.add('pu-body-fixed');
+    if(preview){
+      preview.style.minHeight='0';
+      preview.style.height='100%';
+    }
+  }
+}
+window.applyPlantumlNodeLayout=applyPlantumlNodeLayout;
+
 function archicodeBodyHeight(node,el){
   if(node.height&&node.height>0)return node.height;
   const body=el?.querySelector('.node-body');
@@ -1105,7 +1138,7 @@ async function renderNodeContent(node,body){
       body.appendChild(t);
     }
 
-  }else if(type==='drawio'||type==='bpmn'||type==='taxonomi'||type==='mindmap'){
+  }else if(type==='drawio'||type==='bpmn'||type==='taxonomi'||type==='mindmap'||type==='plantuml'){
     revokeDrawioPreview(node);
     const wrap=document.createElement('div');wrap.className='drawio-preview';
     let src='';
@@ -1116,7 +1149,7 @@ async function renderNodeContent(node,body){
     }
     if(src){
       const img=document.createElement('img');
-      const altMap={drawio:'Draw.io-diagram',bpmn:'BPMN-diagram',taxonomi:'Taxonomi',mindmap:'Mindmap'};
+      const altMap={drawio:'Draw.io-diagram',bpmn:'BPMN-diagram',taxonomi:'Taxonomi',mindmap:'Mindmap',plantuml:'PlantUML-diagram'};
       img.src=src;img.alt=node.title||(altMap[type]||'Diagram');
       img.style.width='100%';
       wrap.appendChild(img);
@@ -1127,6 +1160,7 @@ async function renderNodeContent(node,body){
         drawio:'Ingen förhandsbild — klicka Redigera för att rita',
         taxonomi:'Ingen förhandsbild — öppna Taxonomi-editorn och spara',
         mindmap:'Ingen förhandsbild — öppna Mindmap-editorn och spara',
+        plantuml:'Ingen förhandsbild — öppna PlantUML-editorn och spara',
       };
       ph.textContent=phMap[type]||'Ingen förhandsbild';
       wrap.appendChild(ph);
@@ -1185,13 +1219,24 @@ function attachNodeContextMenu(node,el){
   el.addEventListener('touchmove',()=>{if(longPressTimer)clearTimeout(longPressTimer)});
 }
 
+function resizeStartHeight(node,el){
+  if(node.height)return node.height;
+  if(node.type==='markdown')return markdownBodyHeight(node,el);
+  if(node.type==='taxonomi')return taxonomiBodyHeight(node,el);
+  if(node.type==='mermaid')return mermaidBodyHeight(node,el);
+  if(node.type==='plantuml')return plantumlBodyHeight(node,el);
+  if(node.type==='archicode')return archicodeBodyHeight(node,el);
+  if(node.type==='html'||node.type==='promptbook')return nodeDefaultsHeight(node)||400;
+  return el.offsetHeight;
+}
+
 function startResize(node,el,e){
   e.stopPropagation();e.preventDefault();
   selectNode(node.id);
   resizeNode=node;
   resizeSX=e.clientX;resizeSY=e.clientY;
   resizeOW=node.width||el.offsetWidth;
-  resizeOH=node.height||(node.type==='markdown'?markdownBodyHeight(node,el):(node.type==='taxonomi'?taxonomiBodyHeight(node,el):(node.type==='mermaid'?mermaidBodyHeight(node,el):(node.type==='archicode'?archicodeBodyHeight(node,el):(node.type==='html'||node.type==='promptbook'?(nodeDefaultsHeight(node)||400):el.offsetHeight)))));
+  resizeOH=resizeStartHeight(node,el);
 }
 function nodeDefaultsHeight(node){
   return window.SC_DEFAULTS?.nodes?.[node.type]?.height;
@@ -1210,7 +1255,7 @@ window.attachNodeResize=attachNodeResize;
 function attachNodeEvents(node,el,handle,rz){
   const isLabel=node.type==='label';
   const readOnlyBody=node.type==='markdown'||node.type==='mermaid'||node.type==='image'
-    ||node.type==='drawio'||node.type==='bpmn'||node.type==='html'||node.type==='promptbook'||node.type==='archicode'||node.type==='taxonomi'||node.type==='mindmap'||node.type==='svg'||node.type==='annotation';
+    ||node.type==='drawio'||node.type==='bpmn'||node.type==='html'||node.type==='promptbook'||node.type==='archicode'||node.type==='taxonomi'||node.type==='mindmap'||node.type==='plantuml'||node.type==='svg'||node.type==='annotation';
   const body=el.querySelector('.node-body');
 
   function isSelectablePreviewTarget(target){
@@ -1820,7 +1865,7 @@ function mimeFromPath(p){
   return{png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'}[e]||'application/octet-stream';
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function typeLabel(t){return{markdown:'MD',mermaid:'MM',image:'IMG',label:'LBL',note:'Note',annotation:'ANN',drawio:'DIO',bpmn:'BPMN',html:'HTML',promptbook:'PB',archicode:'AC',taxonomi:'TAX',mindmap:'MAP',svg:'SVG'}[t]||'?'}
+function typeLabel(t){return{markdown:'MD',mermaid:'MM',image:'IMG',label:'LBL',note:'Note',annotation:'ANN',drawio:'DIO',bpmn:'BPMN',html:'HTML',promptbook:'PB',archicode:'AC',taxonomi:'TAX',mindmap:'MAP',plantuml:'PUML',svg:'SVG'}[t]||'?'}
 function iconEdit(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 3.5l2 2-10 10H4.5v-2L14.5 3.5z"/></svg>`}
 function iconFocus(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3H3v3M14 3h3v3M17 14v3h-3M6 17H3v-3"/><rect x="7" y="7" width="6" height="6" rx="1"/></svg>`}
 function iconDel(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h12M9 7V4h2v3M6 7l1 9h6l1-9"/></svg>`}
