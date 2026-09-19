@@ -54,8 +54,41 @@ function render_setting_field(array $setting, string $current, array $themeFallb
     return match ($type) {
         'choice' => render_setting_choice($setting, $key, $current),
         'color' => render_setting_color($setting, $key, $current, $themeFallback),
+        'text', 'password' => render_setting_text($setting, $key, $current, $type),
         default => '',
     };
+}
+
+/** @param array<string, mixed> $setting */
+function render_setting_text(array $setting, string $key, string $current, string $type = 'text'): string
+{
+    $label = h((string) ($setting['label'] ?? ''));
+    $description = trim((string) ($setting['description'] ?? ''));
+    $placeholder = h((string) ($setting['placeholder'] ?? ''));
+    $autocomplete = h((string) ($setting['autocomplete'] ?? 'off'));
+    $inputId = h('sc-setting-' . $key);
+    $inputType = $type === 'password' ? 'password' : 'text';
+
+    ob_start();
+    ?>
+    <div class="settings-field settings-field-text" data-setting="<?= $key ?>">
+        <label class="settings-label" for="<?= $inputId ?>"><?= $label ?></label>
+        <?php if ($description !== ''): ?>
+            <p class="settings-hint"><?= h($description) ?></p>
+        <?php endif; ?>
+        <input type="<?= $inputType ?>"
+               id="<?= $inputId ?>"
+               class="settings-text-input"
+               value="<?= h($current) ?>"
+               placeholder="<?= $placeholder ?>"
+               autocomplete="<?= $autocomplete ?>"
+               spellcheck="false"
+               data-setting-key="<?= $key ?>"
+               data-setting-type="<?= h($type) ?>">
+    </div>
+    <?php
+
+    return (string) ob_get_clean();
 }
 
 /** @param array<string, mixed> $setting */
@@ -64,6 +97,8 @@ function render_setting_choice(array $setting, string $key, string $current): st
     $label = h((string) ($setting['label'] ?? ''));
     $description = trim((string) ($setting['description'] ?? ''));
     $options = $setting['options'] ?? [];
+    $compact = !empty($setting['compact']);
+    $choicesClass = $compact ? 'settings-choices settings-choices-compact' : 'settings-choices';
 
     ob_start();
     ?>
@@ -72,20 +107,23 @@ function render_setting_choice(array $setting, string $key, string $current): st
         <?php if ($description !== ''): ?>
             <p class="settings-hint"><?= h($description) ?></p>
         <?php endif; ?>
-        <div class="settings-choices" role="radiogroup" aria-label="<?= $label ?>">
+        <div class="<?= h($choicesClass) ?>" role="radiogroup" aria-label="<?= $label ?>">
             <?php foreach ($options as $option):
                 $value = h((string) ($option['value'] ?? ''));
                 $optLabel = h((string) ($option['label'] ?? $value));
                 $checked = $current === (string) ($option['value'] ?? '') ? ' checked' : '';
                 $inputId = h('sc-setting-' . $key . '-' . $value);
+                $choiceClass = $compact ? 'settings-choice settings-choice-compact' : 'settings-choice';
                 ?>
-                <label class="settings-choice" for="<?= $inputId ?>">
+                <label class="<?= h($choiceClass) ?>" for="<?= $inputId ?>">
                     <input type="radio"
                            id="<?= $inputId ?>"
                            name="sc-setting-<?= $key ?>"
                            value="<?= $value ?>"
                            data-setting-key="<?= $key ?>"<?= $checked ?>>
+                    <?php if (!$compact): ?>
                     <span class="settings-choice-preview settings-preview-<?= $value ?>" aria-hidden="true"></span>
+                    <?php endif; ?>
                     <span class="settings-choice-text"><?= $optLabel ?></span>
                 </label>
             <?php endforeach; ?>

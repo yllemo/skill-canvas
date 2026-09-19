@@ -8,6 +8,15 @@ Formatet bygger på [Keep a Changelog](https://keepachangelog.com/sv/1.1.0/).
 
 ### Tillagt
 
+- **GitHub / GitLab** — öppna och pusha `.skill` / `.zip` via Contents API
+  - Guide + fleranvändarprofiler i `localStorage` (`sc-git`); token lämnar aldrig servern
+  - Repo-URL, hub, lista filer, tomt-repo-CTA, push med commit-meddelande
+  - Klient: `js/git-remote.js`, `js/git-wizard.js`
+  - Hämtning av stora filer via raw/blob (Contents JSON trunkerar >1 MB)
+- **Export `.skill`** — samma paket som `.zip`, valbart i exportmenyn
+- **Skill-träd → canvas** — lägg till saknade filer som noder; fokusera om redan på canvas
+- **`SKILL.md`-förhandsvisning** — skrivskyddad nod; export genererar alltid SKILL.md
+- **PlantUML-modul** — via **⋯ → PlantUML** (editor, `.puml` + PNG på kort)
 - **Taxonomi-modul** — hierarkiska taxonomier via **⋯ → Taxonomi**
   - Fullskärmseditor `html/taxonomi-editor.php` (Monaco, flera vyer, Mermaid-export, statistik, färger)
   - Sparas som `taxonomi/{id}.md` + PNG-förhandsbild på kortet
@@ -34,7 +43,10 @@ Formatet bygger på [Keep a Changelog](https://keepachangelog.com/sv/1.1.0/).
 
 ### Ändrat
 
-- **⋯-menyn** utökad med Taxonomi, Mindmap och SVG; SVG flyttad från huvudverktygsraden
+- **Markdown-filer** — filnamn från panelens titel (`nodes/Test.md`); byts vid titeländring
+- **Öppna-meny** — URL och Git utöver lokal fil
+- **Exportmeny** — `.skill`, `.zip`, `.png`, Git
+- **⋯-menyn** utökad med Taxonomi, Mindmap, PlantUML och SVG
 - **Markdown** — standardhöjd **600 px** på nya kort; vid import av zip utan sparad höjd sätts 600 px automatiskt
 - **Mermaid** — standardhöjd **600 px**; höjdfält i modalen; resize i bredd och höjd
 - **Taxonomi** — höjd på kort via modal och resize-hörn
@@ -50,7 +62,7 @@ Formatet bygger på [Keep a Changelog](https://keepachangelog.com/sv/1.1.0/).
 
 ### Dokumentation
 
-- **README.md** — Taxonomi, Mindmap, SVG, OKF `index.md`, höjder, osparade ändringar, uppdaterad zip-struktur
+- **README.md** — Git, `.skill`-export, Skill-träd, PlantUML, titelbaserade `.md`-filer, Taxonomi/Mindmap/SVG/OKF
 - **CHANGELOG.md** — denna fil
 
 ---

@@ -3,9 +3,14 @@
 // ════════════════════════════════════════════════════════════
 const SkillTree = (() => {
   let drawerOpen = false;
+  let hooks = {
+    getFiles: () => ({}),
+    getNodes: () => [],
+    onActivateFile: null,
+  };
 
   function esc(s) {
-    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   function fileSize(path, filesMap) {
@@ -31,7 +36,11 @@ const SkillTree = (() => {
     if (ext === 'drawio' || ext === 'dio') return 'drawio';
     if (ext === 'bpmn') return 'bpmn';
     if (ext === 'html' || ext === 'htm') return 'html';
-    if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) return 'image';
+    if (ext === 'puml' || ext === 'plantuml') return 'plantuml';
+    if (ext === 'ac') return 'archicode';
+    if (ext === 'svg') return 'svg';
+    if (ext === 'json') return 'promptbook';
+    if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) return 'image';
     return 'file';
   }
 
@@ -43,14 +52,19 @@ const SkillTree = (() => {
       drawio: 'DIO',
       bpmn: 'BPMN',
       html: 'HTML',
+      plantuml: 'PUML',
+      archicode: 'AC',
+      svg: 'SVG',
+      promptbook: 'PB',
       image: 'IMG',
       file: 'FIL',
     }[kind] || 'FIL';
   }
 
   function referencedPaths(nodesList) {
-    const refs = new Set(['SKILL.md']);
+    const refs = new Set();
     (nodesList || []).forEach(n => {
+      if (n._skillMdPreview) refs.add('SKILL.md');
       if (n.file) refs.add(n.file);
       if (n.previewFile) refs.add(n.previewFile);
     });
@@ -82,6 +96,15 @@ const SkillTree = (() => {
     return root;
   }
 
+  function actionLabel(f, ctx) {
+    if (f.path === 'SKILL.md') {
+      return ctx.refs.has('SKILL.md') ? 'Visa' : 'Visa på canvas';
+    }
+    if (ctx.refs.has(f.path)) return 'Visa';
+    if (fileKind(f.path) === 'file') return '';
+    return 'Lägg till';
+  }
+
   function renderNode(node, depth, ctx) {
     let html = '';
     const pad = depth * 14;
@@ -93,17 +116,27 @@ const SkillTree = (() => {
     const files = [...node.files].sort((a, b) => a.name.localeCompare(b.name));
     for (const f of files) {
       const kind = fileKind(f.path);
-      const size = fileSize(f.path, ctx.filesMap);
+      const size = f.path === 'SKILL.md' && ctx.filesMap['SKILL.md'] == null
+        ? null
+        : fileSize(f.path, ctx.filesMap);
       const virtual = f.path === 'SKILL.md' && ctx.filesMap['SKILL.md'] == null;
       const onCanvas = ctx.refs.has(f.path);
       const badges = [];
-      if (virtual) badges.push('genereras vid export');
-      else if (onCanvas) badges.push('på canvas');
-      else if (f.path !== 'SKILL.md') badges.push('ej på canvas');
-      html += `<div class="skill-tree-row skill-tree-file${onCanvas ? ' is-on-canvas' : ''}" style="padding-left:${pad}px" title="${esc(f.path)}">
+      if (f.path === 'SKILL.md') {
+        badges.push(virtual ? 'genereras vid export' : 'byggs om vid export');
+        if (onCanvas) badges.push('förhandsvisning');
+      } else if (onCanvas) {
+        badges.push('på canvas');
+      } else {
+        badges.push('ej på canvas');
+      }
+      const action = actionLabel(f, ctx);
+      const clickable = kind !== 'file' || f.path === 'SKILL.md';
+      html += `<div class="skill-tree-row skill-tree-file${onCanvas ? ' is-on-canvas' : ''}${clickable ? ' is-actionable' : ''}" style="padding-left:${pad}px" title="${esc(f.path)}" data-skill-path="${esc(f.path)}">
         <span class="skill-tree-kind">${kindLabel(kind)}</span>
         <span class="skill-tree-name">${esc(f.name)}</span>
         <span class="skill-tree-meta">${formatSize(size)}${badges.length ? ' · ' + badges.join(' · ') : ''}</span>
+        ${action ? `<button type="button" class="skill-tree-action" data-skill-path="${esc(f.path)}">${esc(action)}</button>` : ''}
       </div>`;
     }
     return html;
@@ -129,7 +162,7 @@ const SkillTree = (() => {
         ${orphanCount ? `<span class="skill-tree-orphan">${orphanCount} utan nod</span>` : ''}
       </div>
       <div class="skill-tree-list">${renderNode(tree, 0, ctx)}</div>
-      <p class="skill-tree-hint">Trädet visar filer i minnet — samma innehåll som exporteras till .zip / .skill. <code>SKILL.md</code> byggs från metadata och noderna vid export om den inte redan finns.</p>
+      <p class="skill-tree-hint">Klicka på en fil eller <strong>Lägg till</strong> för att visa den på canvas. <code>SKILL.md</code> läggs till som skrivskyddad förhandsvisning — den byggs alltid om från metadata och noder vid export.</p>
     `;
   }
 
@@ -149,20 +182,36 @@ const SkillTree = (() => {
       `;
       document.getElementById('modal')?.appendChild(drawer);
       drawer.querySelector('#skill-tree-close')?.addEventListener('click', closeDrawer);
+      drawer.addEventListener('click', e => {
+        const btn = e.target.closest('[data-skill-path]');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const path = btn.getAttribute('data-skill-path');
+        if (!path || typeof hooks.onActivateFile !== 'function') return;
+        hooks.onActivateFile(path);
+      });
     }
     return drawer;
   }
 
   function openDrawer(getFiles, getNodes) {
+    if (typeof getFiles === 'function') hooks.getFiles = getFiles;
+    if (typeof getNodes === 'function') hooks.getNodes = getNodes;
     const drawer = ensureDrawer();
     const body = drawer.querySelector('#skill-tree-body');
-    const filesMap = typeof getFiles === 'function' ? getFiles() : (getFiles || {});
-    const nodesList = typeof getNodes === 'function' ? getNodes() : (getNodes || []);
+    const filesMap = hooks.getFiles() || {};
+    const nodesList = hooks.getNodes() || [];
     if (body) body.innerHTML = renderContent(filesMap, nodesList);
     drawer.classList.add('open');
     drawer.setAttribute('aria-hidden', 'false');
     document.getElementById('modal')?.classList.add('has-skill-tree');
     drawerOpen = true;
+  }
+
+  function refreshDrawer() {
+    if (!drawerOpen) return;
+    openDrawer(hooks.getFiles, hooks.getNodes);
   }
 
   function closeDrawer() {
@@ -180,17 +229,33 @@ const SkillTree = (() => {
     else openDrawer(getFiles, getNodes);
   }
 
-  function wireMetaButton(getFiles, getNodes) {
+  function wireMetaButton(getFilesOrHooks, getNodesMaybe) {
+    // Bakåtkompat: (getFiles, getNodes) eller ({ getFiles, getNodes, onActivateFile })
+    if (getFilesOrHooks && typeof getFilesOrHooks === 'object' && !Array.isArray(getFilesOrHooks)) {
+      hooks = { ...hooks, ...getFilesOrHooks };
+    } else {
+      if (typeof getFilesOrHooks === 'function') hooks.getFiles = getFilesOrHooks;
+      if (typeof getNodesMaybe === 'function') hooks.getNodes = getNodesMaybe;
+    }
     setTimeout(() => {
       const footLeft = document.getElementById('modal-foot-left');
       if (!footLeft) return;
       footLeft.innerHTML = `<button type="button" class="mbtn mbtn-skill-tree" id="meta-skill-tree-btn">Skill-träd</button>`;
       document.getElementById('meta-skill-tree-btn')?.addEventListener('click', e => {
         e.preventDefault();
-        toggleDrawer(getFiles, getNodes);
+        toggleDrawer(hooks.getFiles, hooks.getNodes);
       });
     }, 0);
   }
 
-  return { openDrawer, closeDrawer, toggleDrawer, wireMetaButton, renderContent };
+  return {
+    openDrawer,
+    closeDrawer,
+    toggleDrawer,
+    refreshDrawer,
+    wireMetaButton,
+    renderContent,
+    fileKind,
+    referencedPaths,
+  };
 })();

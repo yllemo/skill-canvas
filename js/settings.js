@@ -131,11 +131,20 @@ const SCSettings = (() => {
     cw.dataset.canvasBg = bg;
     applyCanvasColors(cw, settings);
     syncColorUi(settings);
+    // Git-fält synkas av GitRemote (egen localStorage-nyckel sc-git)
+    document.querySelectorAll('input[data-setting-key][data-setting-type="text"], input[data-setting-key][data-setting-type="password"]').forEach(input => {
+      if (!(input instanceof HTMLInputElement)) return;
+      const k = input.dataset.settingKey;
+      if (!k || window.GitRemote?.isGitSettingKey?.(k)) return;
+      const next = settings[k] == null ? '' : String(settings[k]);
+      if (input.value !== next) input.value = next;
+    });
 
     document.querySelectorAll('[data-setting-key]').forEach(input => {
       if (!(input instanceof HTMLInputElement)) return;
       const k = input.dataset.settingKey;
       if (!k || input.type !== 'radio') return;
+      if (window.GitRemote?.isGitSettingKey?.(k)) return;
       input.checked = String(settings[k]) === input.value;
     });
   }
@@ -145,6 +154,8 @@ const SCSettings = (() => {
     const btn = document.getElementById('btn-settings');
     const panel = document.getElementById('settings-panel');
     if (!wrap || !btn || !panel) return;
+
+    let textSaveTimer = null;
 
     btn.addEventListener('click', e => {
       e.stopPropagation();
@@ -158,23 +169,44 @@ const SCSettings = (() => {
       if (!(input instanceof HTMLInputElement)) return;
       const key = input.dataset.settingKey;
       if (!key) return;
+      if (input.dataset.settingType === 'color') return;
+      if (window.GitRemote?.isGitSettingKey?.(key)) {
+        GitRemote.set(key, input.value);
+        return;
+      }
       set(key, input.value);
     });
 
     panel.addEventListener('input', e => {
       const input = e.target;
       if (!(input instanceof HTMLInputElement)) return;
-      if (input.dataset.settingType !== 'color') return;
       const key = input.dataset.settingKey;
       if (!key) return;
-      set(key, input.value.toUpperCase());
+
+      if (input.dataset.settingType === 'color') {
+        set(key, input.value.toUpperCase());
+        return;
+      }
+
+      if (input.dataset.settingType === 'text' || input.dataset.settingType === 'password') {
+        clearTimeout(textSaveTimer);
+        textSaveTimer = setTimeout(() => {
+          if (window.GitRemote?.isGitSettingKey?.(key)) {
+            GitRemote.set(key, input.value.trim());
+          } else {
+            set(key, input.value.trim());
+          }
+        }, 300);
+      }
     });
 
     panel.addEventListener('click', e => {
       const btnReset = e.target.closest('[data-setting-reset]');
       if (!btnReset) return;
       const key = btnReset.getAttribute('data-setting-reset');
-      if (key) set(key, '');
+      if (!key) return;
+      if (window.GitRemote?.isGitSettingKey?.(key)) GitRemote.set(key, '');
+      else set(key, '');
     });
   }
 
@@ -182,6 +214,9 @@ const SCSettings = (() => {
     apply(getAll());
     wirePanel();
     window.addEventListener('sc-theme-change', () => apply(getAll()));
+    window.addEventListener('sc-git-change', () => {
+      window.GitRemote?.syncSettingsUi?.();
+    });
   }
 
   return { get, getAll, set, apply, init };

@@ -47,6 +47,8 @@ let nodes=[];           // [{id,type,x,y,width,height,title,content,file,src,alt
 let edges=[];           // [{id,from,to,label,style,strokeWidth,color,markerStart,markerEnd,multiplicityStart,multiplicityEnd}]
 let files={};           // {path: Uint8Array|string}  — in-memory zip contents
 let dirty=false;
+/** @type {{ path: string, sha: string }|null} */
+let gitSource=null;
 let selectedId=null;
 let ctxTargetId=null;
 let dragNode=null,dragOX=0,dragOY=0;
@@ -349,6 +351,7 @@ function clearDirty(){
 
 function newCanvas(){
   files={};nodes=[];edges=[];skillMeta={...skillDefaults()};
+  gitSource=null;
   canvas.innerHTML='';clearDirty();
   if(typeof Connections!=='undefined')Connections.ensureLayer();
   panX=0;panY=0;scale=1;applyTf();
@@ -375,6 +378,9 @@ document.querySelectorAll('[data-open]').forEach(btn=>{
     }else if(btn.dataset.open==='url'){
       if(!confirmDiscardUnsaved())return;
       openUrlModal();
+    }else if(btn.dataset.open==='git'){
+      if(!confirmDiscardUnsaved())return;
+      openGitModal();
     }else if(confirmDiscardUnsaved()){
       newCanvas();
     }
@@ -388,9 +394,14 @@ document.getElementById('btn-open-url-dz')?.addEventListener('click',()=>{
   if(!confirmDiscardUnsaved())return;
   openUrlModal();
 });
+document.getElementById('btn-open-git-dz')?.addEventListener('click',()=>{
+  if(!confirmDiscardUnsaved())return;
+  openGitModal();
+});
 fileInput.onchange=e=>{
   if(e.target.files[0]){
     if(!confirmDiscardUnsaved()){e.target.value='';return}
+    gitSource=null;
     loadZip(e.target.files[0]);
   }
   e.target.value='';
@@ -518,6 +529,7 @@ async function loadZip(file){
   }
   loading.classList.add('on');
   try{
+    gitSource=null;
     await loadArchiveFromBuffer(await file.arrayBuffer(),file.name);
     return true;
   }catch(err){
@@ -536,6 +548,7 @@ async function loadArchiveFromUrl(urlInput){
   try{
     const buf=await fetchArchiveBuffer(parsed.url);
     const fileName=SkillImport.fileNameFromUrl(parsed.url);
+    gitSource=null;
     await loadArchiveFromBuffer(buf,fileName);
     return true;
   }catch(err){
@@ -693,6 +706,109 @@ async function initRemoteArchiveLoad(){
 wireUrlOpenModal();
 
 // ════════════════════════════════════════════════════════════
+//  GIT OPEN / SAVE (via GitWizard)
+// ════════════════════════════════════════════════════════════
+function openGitModal(){
+  if(typeof GitWizard==='undefined'){
+    showToast('Git-wizard kunde inte laddas',4000);
+    return;
+  }
+  GitWizard.open({mode:'open'});
+}
+
+function openGitSaveModal(){
+  if(typeof GitWizard==='undefined'){
+    showToast('Git-wizard kunde inte laddas',4000);
+    return;
+  }
+  GitWizard.open({mode:'save'});
+}
+
+function openGitSetupWizard(){
+  if(typeof GitWizard==='undefined')return;
+  GitWizard.open({mode:'setup',forceWizard:true});
+}
+
+async function loadSkillFromGitPath(path){
+  loading.classList.add('on');
+  try{
+    const file=await GitRemote.getFile(path);
+    const size=file.content?.byteLength??file.content?.length??0;
+    if(!size){
+      throw new Error('Filen från Git är tom (0 byte). Pusha om .skill-filen eller kontrollera att det inte är en Git LFS-pekare.');
+    }
+    gitSource={path:file.path,sha:file.sha||''};
+    await loadArchiveFromBuffer(file.content,file.name);
+    showToast('Öppnad från Git: '+file.path);
+  }catch(err){
+    console.error(err);
+    gitSource=null;
+    showToast(err?.message||'Kunde inte öppna från Git',5000);
+    throw err;
+  }finally{loading.classList.remove('on')}
+}
+
+async function pushSkillToGit(path,message){
+  loading.classList.add('on');
+  try{
+    const {blob}=await buildZipBlob();
+    const buf=await blob.arrayBuffer();
+    const result=await GitRemote.putFile(path,buf,{
+      sha:gitSource?.path===path?gitSource.sha:'',
+      message,
+    });
+    gitSource={path:result.path,sha:result.sha||''};
+    clearDirty();
+    showToast('Pushad till Git: '+result.path);
+    return result;
+  }catch(err){
+    console.error(err);
+    showToast(err?.message||'Kunde inte spara till Git',5000);
+    throw err;
+  }finally{loading.classList.remove('on')}
+}
+
+function ensureCanvasForGitSave(){
+  const exportWrapEl=document.getElementById('export-wrap');
+  const onDropZone=!exportWrapEl||exportWrapEl.classList.contains('hidden');
+  if(!onDropZone)return true;
+  if(!confirmDiscardUnsaved())return false;
+  files={};nodes=[];edges=[];skillMeta={...skillDefaults()};
+  gitSource=null;
+  canvas.innerHTML='';
+  clearDirty();
+  if(typeof Connections!=='undefined')Connections.ensureLayer();
+  panX=0;panY=0;scale=1;applyTf();
+  clearNodeSelection();
+  if(typeof Connections!=='undefined')Connections.renderAll();
+  showCanvas();
+  showToast('Ny canvas — pusha som .skill till Git',3500);
+  return true;
+}
+
+function wireGitWizard(){
+  if(typeof GitWizard==='undefined')return;
+  GitWizard.init({
+    confirmDiscard:()=>confirmDiscardUnsaved(),
+    canSave:()=>!document.getElementById('export-wrap')?.classList.contains('hidden'),
+    ensureCanvas:()=>ensureCanvasForGitSave(),
+    getGitSource:()=>gitSource,
+    defaultSavePath:()=>{
+      const slug=(skillMeta.name||'canvas').replace(/[^\w\-åäöÅÄÖ]+/gi,'-').replace(/^-|-$/g,'').toLowerCase()||'canvas';
+      return GitRemote.defaultSavePath(slug+'.skill');
+    },
+    defaultCommitMessage:(mode)=>{
+      if(mode==='create')return `Add ${skillMeta.name||'skill canvas'}`;
+      return `Update ${skillMeta.name||'skill canvas'}`;
+    },
+    onOpenFile:path=>loadSkillFromGitPath(path),
+    onSave:(path,message)=>pushSkillToGit(path,message),
+  });
+}
+
+wireGitWizard();
+
+// ════════════════════════════════════════════════════════════
 //  PARSE SKILL.md (intern)
 // ════════════════════════════════════════════════════════════
 function normalizeNodeType(type){
@@ -734,7 +850,7 @@ async function buildNodeEl(node){
   if(node.type==='note'&&typeof NotesModule!=='undefined'){
     handle.innerHTML=NotesModule.buildHandleHTML(node);
   }else{
-    handle.innerHTML=`<span class="node-type-label">${typeLabel(node.type)}</span>
+    handle.innerHTML=`<span class="node-type-label">${typeLabel(node.type,node)}</span>
     <span class="node-handle-title">${node.title||''}</span>
     <span class="node-handle-actions">
       <button type="button" title="Dra relation till annan modul" data-action="connect">${iconConnect()}</button>
@@ -1073,10 +1189,20 @@ async function renderNodeContent(node,body){
 
   if(type==='markdown'){
     let md=node.content||'';
-    if(!md&&node.file){md=await readTextFile(node.file)}
+    if(node._skillMdPreview){
+      md=typeof buildSkillMdContent==='function'?buildSkillMdContent():md;
+    }else if(!md&&node.file){
+      md=await readTextFile(node.file);
+    }
     const{meta,body:mdBody,rawYaml}=splitMarkdownFrontmatter(md);
     const div=document.createElement('div');div.className='md';
     div.setAttribute('contenteditable','false');
+    if(node._skillMdPreview){
+      const banner=document.createElement('div');
+      banner.className='skill-md-preview-banner';
+      banner.textContent='SKILL.md · skrivskyddad förhandsvisning (byggs om vid export)';
+      div.appendChild(banner);
+    }
     if(meta||rawYaml)div.appendChild(renderMarkdownFrontmatter(meta,rawYaml));
     const bodyWrap=document.createElement('div');
     bodyWrap.className='md-content';
@@ -1541,7 +1667,11 @@ function openMetaModal(){
     markDirty();Modal.close();
   },'Spara');
   if(typeof SkillTree!=='undefined'){
-    SkillTree.wireMetaButton(()=>files,()=>nodes);
+    SkillTree.wireMetaButton({
+      getFiles:()=>files,
+      getNodes:()=>nodes,
+      onActivateFile:path=>activatePackageFile(path),
+    });
   }
 }
 document.getElementById('btn-meta').onclick=openMetaModal;
@@ -1717,7 +1847,9 @@ document.getElementById('btn-export').onclick=e=>{
 document.querySelectorAll('[data-export]').forEach(btn=>{
   btn.onclick=()=>{
     exportWrap.classList.remove('open');
-    if(btn.dataset.export==='zip')saveZip();
+    if(btn.dataset.export==='skill')saveArchive('skill');
+    else if(btn.dataset.export==='zip')saveArchive('zip');
+    else if(btn.dataset.export==='git')openGitSaveModal();
     else exportPng();
   };
 });
@@ -1730,8 +1862,29 @@ document.addEventListener('mousedown',e=>{
 // ── EDIT modal — delegeras till ModuleRegistry ──
 async function openEditModal(node){
   if(!node||node.type==='note')return;
+  if(node._skillMdPreview){
+    openSkillMdPreviewModal();
+    return;
+  }
   node.type=normalizeNodeType(node.type);
   await ModuleRegistry.openEdit(node);
+}
+
+function openSkillMdPreviewModal(){
+  const content=buildSkillMdContent();
+  Modal.open(
+    'SKILL.md (förhandsvisning)',
+    `<p class="skill-md-preview-note">Skrivskyddad. Innehållet byggs från canvas-metadata och noder vid varje export — redigera via <strong>Canvas-inställningar</strong> och noderna, inte den här filen.</p>
+     <textarea id="skill-md-preview-text" class="skill-md-preview-text" readonly spellcheck="false">${esc(content)}</textarea>`,
+    ()=>{
+      const text=document.getElementById('skill-md-preview-text')?.value||'';
+      navigator.clipboard?.writeText(text).then(
+        ()=>showToast('SKILL.md kopierad'),
+        ()=>showToast('Kunde inte kopiera',4000)
+      );
+    },
+    'Kopiera'
+  );
 }
 
 function serializeNodeForExport(n){
@@ -1756,62 +1909,198 @@ function serializeNodeForExport(n){
   return rest;
 }
 
-async function saveZip(){
+async function buildZipBlob(opts={}){
+  const zip=new JSZip();
+  const skillContent=buildSkillMdContent();
+  // Alltid genererad SKILL.md — skriv aldrig över med eventuellt lagrad kopia i files
+  zip.file('SKILL.md',skillContent);
+
+  if(typeof OkfIndex!=='undefined'&&OkfIndex.build){
+    const indexMd=OkfIndex.build(
+      {name:skillMeta.name,title:skillMeta.name,description:skillMeta.description},
+      Object.keys(files).filter(p=>!isSkillMdPath(p))
+    );
+    zip.file('index.md',indexMd);
+  }
+
+  for(const [path,data] of Object.entries(files)){
+    if(isSkillMdPath(path))continue;
+    if(data instanceof Uint8Array)zip.file(path,data);
+    else zip.file(path,data);
+  }
+
+  const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE'});
+  const ext=opts.ext==='skill'?'skill':'zip';
+  return {blob,filename:exportBaseName()+'.'+ext};
+}
+
+function isSkillMdPath(path){
+  return String(path||'').replace(/^\/+/,'').toLowerCase()==='skill.md';
+}
+
+/** YAML+frontmatter som exporten skriver till SKILL.md (utan förhandsnoder). */
+function buildSkillMdContent(){
+  const exportNodes=nodes
+    .filter(n=>!n._skillMdPreview)
+    .map(serializeNodeForExport);
+
+  const tagsVal=skillMeta.tags
+    ?skillMeta.tags.split(',').map(t=>t.trim()).filter(Boolean)
+    :undefined;
+
+  const exportEdges=edges.map(e=>{
+    const markerStart=e.markerStart||'none';
+    const markerEnd=e.markerEnd||'arrow';
+    return{
+      id:e.id,from:e.from,to:e.to,
+      ...(e.label?{label:e.label}:{}),
+      ...(e.style&&e.style!=='curve'?{style:e.style}:{}),
+      ...(e.strokeWidth!=null&&e.strokeWidth!==2?{strokeWidth:e.strokeWidth}:{}),
+      ...(e.color&&e.color!=='#0077bc'?{color:e.color}:{}),
+      ...(markerStart!=='none'?{markerStart}:{}),
+      ...(markerEnd!=='arrow'?{markerEnd}:{}),
+      ...(e.multiplicityStart?{multiplicityStart:e.multiplicityStart}:{}),
+      ...(e.multiplicityEnd?{multiplicityEnd:e.multiplicityEnd}:{}),
+    };
+  });
+
+  const yamlObj={
+    name:skillMeta.name,
+    description:skillMeta.description,
+    author:skillMeta.author||'',
+    version:skillMeta.version||'1.0',
+    ...(tagsVal&&tagsVal.length?{tags:tagsVal}:{}),
+    nodes:exportNodes,
+    ...(exportEdges.length?{edges:exportEdges}:{}),
+  };
+  return '---\n'+jsyaml.dump(yamlObj,{lineWidth:120,noRefs:true})+'---\n';
+}
+
+function nodeTypeForPackagePath(path){
+  if(isSkillMdPath(path))return 'skillmd';
+  const ext=(String(path).split('.').pop()||'').toLowerCase();
+  const map={
+    md:'markdown',
+    mmd:'mermaid',
+    mermaid:'mermaid',
+    drawio:'drawio',
+    dio:'drawio',
+    bpmn:'bpmn',
+    html:'html',
+    htm:'html',
+    png:'image',jpg:'image',jpeg:'image',gif:'image',webp:'image',
+    svg:'svg',
+    puml:'plantuml',
+    plantuml:'plantuml',
+    ac:'archicode',
+    json:'promptbook',
+  };
+  return map[ext]||null;
+}
+
+function findNodesForPackagePath(path){
+  if(isSkillMdPath(path)){
+    return nodes.filter(n=>n._skillMdPreview);
+  }
+  return nodes.filter(n=>n.file===path||n.previewFile===path);
+}
+
+async function placeSkillMdPreviewOnCanvas(){
+  const existing=nodes.find(n=>n._skillMdPreview);
+  if(existing){
+    if(existing._el)focusNode(existing);
+    else{
+      await buildNodeEl(existing);
+      focusNode(existing);
+    }
+    return existing;
+  }
+  const pos=centerPos();
+  const defaults=window.SC_DEFAULTS?.nodes?.markdown||{};
+  const node={
+    id:genId(),
+    type:'markdown',
+    x:pos.x,
+    y:pos.y,
+    width:defaults.width||720,
+    height:defaults.height||600,
+    title:'SKILL.md',
+    _skillMdPreview:true,
+    // Ingen file — får aldrig skrivas till files['SKILL.md']
+  };
+  nodes.push(node);
+  await buildNodeEl(node);
+  markDirty();
+  focusNode(node);
+  showToast('SKILL.md tillagd som skrivskyddad förhandsvisning');
+  return node;
+}
+
+async function placePackageFileOnCanvas(path){
+  const type=nodeTypeForPackagePath(path);
+  if(!type){
+    showToast('Ingen nodtyp för den filtypen',4000);
+    return null;
+  }
+  if(type==='skillmd')return placeSkillMdPreviewOnCanvas();
+
+  if(isSkillMdPath(path)){
+    showToast('SKILL.md får bara visas som förhandsvisning',4000);
+    return placeSkillMdPreviewOnCanvas();
+  }
+
+  const existing=findNodesForPackagePath(path)[0];
+  if(existing){
+    focusNode(existing);
+    return existing;
+  }
+
+  if(!files[path]){
+    showToast('Filen finns inte i paketet: '+path,4000);
+    return null;
+  }
+
+  const pos=centerPos();
+  const defaults=window.SC_DEFAULTS?.nodes?.[type]||{};
+  const node={
+    id:genId(),
+    type,
+    x:pos.x,
+    y:pos.y,
+    width:defaults.width||480,
+    title:path.split('/').pop()||path,
+    file:path,
+    _ownFile:false,
+  };
+  if(defaults.height)node.height=defaults.height;
+  if(type==='html'||type==='promptbook'){
+    node.height=node.height||defaults.height||400;
+  }
+
+  nodes.push(node);
+  await buildNodeEl(node);
+  markDirty();
+  focusNode(node);
+  showToast('Tillagd på canvas: '+path);
+  return node;
+}
+
+async function activatePackageFile(path){
+  const found=findNodesForPackagePath(path)[0];
+  if(found){
+    if(typeof Modal!=='undefined')Modal.close();
+    focusNode(found);
+    return;
+  }
+  const node=await placePackageFileOnCanvas(path);
+  if(node&&typeof Modal!=='undefined')Modal.close();
+}
+
+async function saveArchive(format='zip'){
   loading.classList.add('on');
   try{
-    const zip=new JSZip();
-
-    // Build SKILL.md
-    const exportNodes=nodes.map(serializeNodeForExport);
-
-    const tagsVal=skillMeta.tags
-      ?skillMeta.tags.split(',').map(t=>t.trim()).filter(Boolean)
-      :undefined;
-
-    const exportEdges=edges.map(e=>{
-      const markerStart=e.markerStart||'none';
-      const markerEnd=e.markerEnd||'arrow';
-      return{
-        id:e.id,from:e.from,to:e.to,
-        ...(e.label?{label:e.label}:{}),
-        ...(e.style&&e.style!=='curve'?{style:e.style}:{}),
-        ...(e.strokeWidth!=null&&e.strokeWidth!==2?{strokeWidth:e.strokeWidth}:{}),
-        ...(e.color&&e.color!=='#0077bc'?{color:e.color}:{}),
-        ...(markerStart!=='none'?{markerStart}:{}),
-        ...(markerEnd!=='arrow'?{markerEnd}:{}),
-        ...(e.multiplicityStart?{multiplicityStart:e.multiplicityStart}:{}),
-        ...(e.multiplicityEnd?{multiplicityEnd:e.multiplicityEnd}:{}),
-      };
-    });
-
-    const yamlObj={
-      name:skillMeta.name,
-      description:skillMeta.description,
-      author:skillMeta.author||'',
-      version:skillMeta.version||'1.0',
-      ...(tagsVal&&tagsVal.length?{tags:tagsVal}:{}),
-      nodes:exportNodes,
-      ...(exportEdges.length?{edges:exportEdges}:{}),
-    };
-    const skillContent='---\n'+jsyaml.dump(yamlObj,{lineWidth:120,noRefs:true})+'---\n';
-    zip.file('SKILL.md',skillContent);
-
-    if(typeof OkfIndex!=='undefined'&&OkfIndex.build){
-      const indexMd=OkfIndex.build(
-        {name:skillMeta.name,title:skillMeta.name,description:skillMeta.description},
-        Object.keys(files)
-      );
-      zip.file('index.md',indexMd);
-    }
-
-    // Add all files
-    for(const [path,data] of Object.entries(files)){
-      if(data instanceof Uint8Array)zip.file(path,data);
-      else zip.file(path,data);
-    }
-
-    const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE'});
-    const filename=exportBaseName()+'.zip';
+    const ext=format==='skill'?'skill':'zip';
+    const {blob,filename}=await buildZipBlob({ext});
     downloadBlob(blob,filename);
     clearDirty();
     showToast('Sparad: '+filename);
@@ -1819,6 +2108,8 @@ async function saveZip(){
     console.error(err);showToast('Sparafel: '+err.message,4000);
   }finally{loading.classList.remove('on')}
 }
+function saveZip(){return saveArchive('zip')}
+function saveSkill(){return saveArchive('skill')}
 
 // ════════════════════════════════════════════════════════════
 //  DIRTY / UTILS
@@ -1855,17 +2146,63 @@ function initUnsavedGuards(){
 initUnsavedGuards();
 function genId(){return 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function genEdgeId(){return 'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
-function uniqueFilePath(orig){
+function uniqueFilePath(orig,exceptPath){
   let p=orig,i=1;
-  while(files[p]){const d=orig.lastIndexOf('.');p=d>-1?orig.slice(0,d)+'-'+i+orig.slice(d):orig+'-'+i;i++}
+  while(files[p]&&p!==exceptPath){
+    const d=orig.lastIndexOf('.');
+    p=d>-1?orig.slice(0,d)+'-'+i+orig.slice(d):orig+'-'+i;
+    i++;
+  }
   return p;
+}
+/** Filnamn baserat på panelens titel (för träd / promptbook). */
+function slugifyFileBase(title,fallback='untitled'){
+  let s=String(title||'').trim();
+  s=s.replace(/[^a-zA-Z0-9_\-åäöÅÄÖ]+/g,'-').replace(/-+/g,'-').replace(/^-+|-+$/g,'');
+  if(!s)s=fallback;
+  return s.slice(0,80);
+}
+function filePathFromTitle(dir,title,ext,exceptPath){
+  const folder=String(dir||'nodes').replace(/\\/g,'/').replace(/^\/+|\/+$/g,'')||'nodes';
+  const base=slugifyFileBase(title,'untitled');
+  const cleanExt=String(ext||'md').replace(/^\./,'');
+  return uniqueFilePath(`${folder}/${base}.${cleanExt}`,exceptPath);
+}
+/** Byt ägd fil när titeln ändras. Returnerar ny sökväg eller oförändrad. */
+function nodeOwnsExclusiveFile(node){
+  if(!node?.file)return false;
+  if(typeof isSkillMdPath==='function'&&isSkillMdPath(node.file))return false;
+  if(node._ownFile)return true;
+  const path=node.file;
+  return !nodes.some(n=>n!==node&&(n.file===path||n.previewFile===path));
+}
+function syncOwnedFileNameFromTitle(node,title,opts={}){
+  if(!node||!node.file)return node?.file||'';
+  if(!nodeOwnsExclusiveFile(node))return node.file;
+  node._ownFile=true;
+  if(typeof isSkillMdPath==='function'&&isSkillMdPath(node.file))return node.file;
+  const prev=node.file;
+  const slash=prev.lastIndexOf('/');
+  const dir=opts.dir||(slash>=0?prev.slice(0,slash):'nodes');
+  const ext=opts.ext||(prev.includes('.')?prev.split('.').pop():'md');
+  const next=filePathFromTitle(dir,title,ext,prev);
+  if(next===prev)return prev;
+  if(files[prev]!=null){
+    files[next]=files[prev];
+    delete files[prev];
+  }
+  node.file=next;
+  return next;
 }
 function mimeFromPath(p){
   const e=p.split('.').pop().toLowerCase();
   return{png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'}[e]||'application/octet-stream';
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function typeLabel(t){return{markdown:'MD',mermaid:'MM',image:'IMG',label:'LBL',note:'Note',annotation:'ANN',drawio:'DIO',bpmn:'BPMN',html:'HTML',promptbook:'PB',archicode:'AC',taxonomi:'TAX',mindmap:'MAP',plantuml:'PUML',svg:'SVG'}[t]||'?'}
+function typeLabel(t,node){
+  if(node?._skillMdPreview)return 'SKILL';
+  return{markdown:'MD',mermaid:'MM',image:'IMG',label:'LBL',note:'Note',annotation:'ANN',drawio:'DIO',bpmn:'BPMN',html:'HTML',promptbook:'PB',archicode:'AC',taxonomi:'TAX',mindmap:'MAP',plantuml:'PUML',svg:'SVG'}[t]||'?';
+}
 function iconEdit(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 3.5l2 2-10 10H4.5v-2L14.5 3.5z"/></svg>`}
 function iconFocus(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3H3v3M14 3h3v3M17 14v3h-3M6 17H3v-3"/><rect x="7" y="7" width="6" height="6" rx="1"/></svg>`}
 function iconDel(){return`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h12M9 7V4h2v3M6 7l1 9h6l1-9"/></svg>`}

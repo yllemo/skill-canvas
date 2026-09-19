@@ -39,6 +39,7 @@ require_once __DIR__ . '/includes/bootstrap.php';
     <div class="hdr-export-menu" id="open-menu">
       <button type="button" data-open="zip">Öppna .zip / .skill</button>
       <button type="button" data-open="url">Öppna från URL</button>
+      <button type="button" data-open="git">Öppna från Git</button>
       <button type="button" data-open="new">Ny tom canvas</button>
     </div>
   </div>
@@ -50,8 +51,10 @@ require_once __DIR__ . '/includes/bootstrap.php';
       <svg class="hdr-export-caret" viewBox="0 0 20 20" fill="currentColor"><path d="M5 8l5 5 5-5z"/></svg>
     </button>
     <div class="hdr-export-menu" id="export-menu">
+      <button type="button" data-export="skill">Spara .skill</button>
       <button type="button" data-export="zip">Spara .zip</button>
       <button type="button" data-export="png">Spara .png</button>
+      <button type="button" data-export="git">Spara till Git</button>
     </div>
   </div>
   <button class="hb hidden" id="btn-meta" title="Canvas-inställningar" aria-label="Canvas">
@@ -82,13 +85,14 @@ require_once __DIR__ . '/includes/bootstrap.php';
   <div id="dz-inner">
     <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="var(--gs-blue)" stroke-width="1.5"><path d="M3 7a2 2 0 012-2h2l2-2h4l2 2h2a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/><path d="M12 11v5M9.5 13.5L12 11l2.5 2.5"/></svg>
     <h2><?= h($app['title']) ?></h2>
-    <p>Öppna en befintlig <strong>.zip</strong> eller <strong>.skill</strong>-fil, dra den till fönstret, hämta från en URL, eller skapa en ny canvas från grunden.</p>
+    <p>Öppna en <strong>.zip</strong> eller <strong>.skill</strong> från fil, URL eller Git (GitHub/GitLab), eller skapa en ny canvas.</p>
     <div class="dz-actions">
       <button class="openbtn" id="btn-open-dz">Öppna fil</button>
       <button class="openbtn openbtn-secondary" id="btn-open-url-dz">Öppna från URL</button>
+      <button class="openbtn openbtn-secondary" id="btn-open-git-dz">Öppna från Git</button>
       <button class="openbtn openbtn-new" id="btn-new">Ny tom canvas</button>
     </div>
-    <p class="dz-footnote">Allt sker lokalt i webbläsaren — inget laddas upp till servern.</p>
+    <p class="dz-footnote">Git-token och repo-inställningar sparas bara i webbläsaren (localStorage) — aldrig på servern.</p>
   </div>
 </div>
 
@@ -202,6 +206,74 @@ require_once __DIR__ . '/includes/bootstrap.php';
   </div>
 </div>
 
+<!-- GIT WIZARD / OPEN / SAVE -->
+<div id="git-wizard-bg" aria-hidden="true">
+  <div class="url-open-modal git-wizard-modal" role="dialog" aria-labelledby="git-wizard-title">
+    <div class="url-open-head git-wizard-head" id="git-wizard-head">
+      <div class="git-wizard-head-main">
+        <span class="git-wizard-brand" id="git-wizard-brand" aria-hidden="true"></span>
+        <h3 id="git-wizard-title">Git</h3>
+      </div>
+      <button type="button" id="git-wizard-close" aria-label="Stäng">✕</button>
+    </div>
+
+    <!-- HUB: lista sparade anslutningar -->
+    <div class="git-wizard-panel" data-git-panel="hub" hidden>
+      <div class="url-open-body">
+        <p class="url-open-hint">Välj en sparad anslutning (GitHub eller GitLab) eller skapa en ny via guiden. Allt sparas i webbläsarens <code>localStorage</code>.</p>
+        <div class="git-profile-list" id="git-profile-list" role="listbox" aria-label="Sparade Git-anslutningar"></div>
+      </div>
+      <div class="url-open-foot git-wizard-foot">
+        <button type="button" class="mbtn mbtn-primary" id="git-hub-new">Ny anslutning (wizard)</button>
+        <button type="button" class="mbtn mbtn-cancel" id="git-hub-close">Stäng</button>
+      </div>
+    </div>
+
+    <!-- WIZARD STEPS -->
+    <div class="git-wizard-panel" data-git-panel="wizard" hidden>
+      <div class="git-wizard-steps" id="git-wizard-steps" aria-label="Steg"></div>
+      <div class="url-open-body" id="git-wizard-step-body"></div>
+      <div class="url-open-foot git-wizard-foot">
+        <button type="button" class="mbtn mbtn-cancel" id="git-wizard-back">Tillbaka</button>
+        <div class="git-wizard-foot-right">
+          <button type="button" class="mbtn mbtn-cancel" id="git-wizard-cancel">Avbryt</button>
+          <button type="button" class="mbtn mbtn-primary" id="git-wizard-next">Nästa</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BROWSE FILES -->
+    <div class="git-wizard-panel" data-git-panel="browse" hidden>
+      <div class="url-open-body">
+        <p class="url-open-hint" id="git-browse-repo"></p>
+        <div class="git-file-list" id="git-open-list" role="listbox" aria-label="Filer i repository"></div>
+        <p class="git-status" id="git-open-status" hidden></p>
+      </div>
+      <div class="url-open-foot">
+        <button type="button" class="mbtn mbtn-cancel" id="git-open-back">Tillbaka</button>
+        <button type="button" class="mbtn mbtn-cancel" id="git-open-refresh">Uppdatera</button>
+        <button type="button" class="mbtn mbtn-primary" id="git-open-submit" disabled>Öppna</button>
+      </div>
+    </div>
+
+    <!-- SAVE / PUSH -->
+    <div class="git-wizard-panel" data-git-panel="save" hidden>
+      <div class="url-open-body">
+        <p class="url-open-hint" id="git-save-repo"></p>
+        <label class="url-open-label" for="git-save-path">Sökväg i repo</label>
+        <input type="text" id="git-save-path" class="url-open-input" placeholder="skills/min-canvas.skill" autocomplete="off" spellcheck="false">
+        <label class="url-open-label" for="git-save-message">Commit-meddelande</label>
+        <input type="text" id="git-save-message" class="url-open-input" placeholder="Update skill canvas" autocomplete="off" spellcheck="false">
+        <p class="git-status" id="git-save-status" hidden></p>
+      </div>
+      <div class="url-open-foot">
+        <button type="button" class="mbtn mbtn-cancel" id="git-save-back">Tillbaka</button>
+        <button type="button" class="mbtn mbtn-primary" id="git-save-submit">Pusha</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MERMAID EDITOR -->
 <div id="mm-editor-overlay" aria-hidden="true">
   <iframe id="mm-editor-frame" title="Mermaid-editor"></iframe>
@@ -278,6 +350,8 @@ $assetBase = h($app['basePath'] ?? '');
 ?>
 <script src="<?= $assetBase ?>js/add-menu.js?v=<?= asset_version('js/add-menu.js') ?>"></script>
 <script src="<?= $assetBase ?>js/settings.js?v=<?= asset_version('js/settings.js') ?>"></script>
+<script src="<?= $assetBase ?>js/git-remote.js?v=<?= asset_version('js/git-remote.js') ?>"></script>
+<script src="<?= $assetBase ?>js/git-wizard.js?v=<?= asset_version('js/git-wizard.js') ?>"></script>
 <script src="<?= $assetBase ?>js/skill-import.js?v=<?= asset_version('js/skill-import.js') ?>"></script>
 <script src="<?= $assetBase ?>js/skill-tree.js?v=<?= asset_version('js/skill-tree.js') ?>"></script>
 <script src="<?= $assetBase ?>js/okf-index.js?v=<?= asset_version('js/okf-index.js') ?>"></script>

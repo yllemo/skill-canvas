@@ -119,7 +119,12 @@ const MarkdownModule = (() => {
       const width = parseInt(fields.width, 10) || defaults.width || 720;
       const height = parseMarkdownHeight(fields.height) ?? defaultMarkdownHeight();
       const id = genId();
-      const filename = `${defaults.fileDir || 'nodes'}/${id}.${defaults.fileExt || 'md'}`;
+      const title = String(fields.title || '').trim() || 'Markdown';
+      const filename = filePathFromTitle(
+        defaults.fileDir || 'nodes',
+        title,
+        defaults.fileExt || 'md'
+      );
 
       files[filename] = new TextEncoder().encode(fields.content);
       const node = {
@@ -129,7 +134,7 @@ const MarkdownModule = (() => {
         y: pos.y,
         width,
         height,
-        title: fields.title,
+        title,
         file: filename,
         _ownFile: true,
       };
@@ -143,6 +148,11 @@ const MarkdownModule = (() => {
   }
 
   async function openEdit(node) {
+    if (node?._skillMdPreview) {
+      if (typeof openSkillMdPreviewModal === 'function') openSkillMdPreviewModal();
+      else showToast('SKILL.md är skrivskyddad förhandsvisning', 4000);
+      return;
+    }
     selectNode(node.id);
     let content = '';
     if (node.file) content = await readTextFile(node.file);
@@ -156,13 +166,24 @@ const MarkdownModule = (() => {
     }, async () => {
       const fields = Modal.readFields({ title: 'md-title', width: 'md-width', height: 'md-height', content: 'md-content' });
       const defaults = nodeDefaults();
-      node.title = fields.title;
+      const title = String(fields.title || '').trim() || node.title || 'Markdown';
+      node.title = title;
       node.width = parseInt(fields.width, 10) || defaults.width || 720;
       node.height = parseMarkdownHeight(fields.height) ?? defaultMarkdownHeight();
-      if (node.file) {
+      // Skydda SKILL.md — får aldrig skrivas från en nod
+      const filePath = String(node.file || '');
+      if (filePath && !/^skill\.md$/i.test(filePath.replace(/^\/+/, ''))) {
+        if (typeof nodeOwnsExclusiveFile === 'function' ? nodeOwnsExclusiveFile(node) : node._ownFile) {
+          syncOwnedFileNameFromTitle(node, title, {
+            dir: defaults.fileDir || 'nodes',
+            ext: defaults.fileExt || 'md',
+          });
+        }
         files[node.file] = new TextEncoder().encode(fields.content);
-      } else {
+      } else if (!filePath) {
         node.content = fields.content;
+      } else {
+        showToast('SKILL.md kan inte redigeras via nod — använd Canvas-inställningar', 4500);
       }
       node._el.style.width = node.width + 'px';
       const htitle = node._el.querySelector('.node-handle-title');

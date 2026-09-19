@@ -4,7 +4,7 @@
 
 ## Skill Canvas
 
-En PHP-baserad whiteboard-app för team som vill paketera kompetens till tydliga, visuella skills. Bygg och redigera storyboards med Markdown, Mermaid-diagram, **ArchiMate 4 (ArchiCode)**, Draw.io-ritningar, **BPMN-processdiagram**, **Taxonomi**, **Mindmap**, **SVG**, bilder (inkl. inbyggd målare), labels, annotations (text+pil), notes, **HTML/iframe**, **PromptBook** (chattkort med LLM) och **relationer mellan moduler**, och exportera allt som en .zip med `SKILL.md`, `index.md` (OKF) och YAML frontmatter.
+En PHP-baserad whiteboard-app för team som vill paketera kompetens till tydliga, visuella skills. Bygg och redigera storyboards med Markdown, Mermaid-diagram, **PlantUML**, **ArchiMate 4 (ArchiCode)**, Draw.io-ritningar, **BPMN-processdiagram**, **Taxonomi**, **Mindmap**, **SVG**, bilder (inkl. inbyggd målare), labels, annotations (text+pil), notes, **HTML/iframe**, **PromptBook** (chattkort med LLM) och **relationer mellan moduler**, och exportera allt som `.zip` eller `.skill` med `SKILL.md`, `index.md` (OKF) och YAML frontmatter. Öppna och spara även via **GitHub/GitLab** (token sparas bara i webbläsaren).
 
 > Se [CHANGELOG.md](CHANGELOG.md) för senaste ändringar.
 
@@ -12,13 +12,13 @@ Kompatibel med Claude Skills-formatet — name och description är obligatoriska
 
 ### AI-skills som fungerar direkt
 
-Skill Canvas paketerar allt i en .zip-fil med SKILL.md i centrum, så samma innehåll kan användas direkt av agentisk AI utan efterbehandling. Samtidigt får team en snygg visuell whiteboard-upplevelse för att bygga, granska och vidareutveckla samma skill tillsammans.
+Skill Canvas paketerar allt i en `.zip`- eller `.skill`-fil (samma innehåll) med SKILL.md i centrum, så samma innehåll kan användas direkt av agentisk AI utan efterbehandling. Samtidigt får team en snygg visuell whiteboard-upplevelse för att bygga, granska och vidareutveckla samma skill tillsammans.
 
 Resultatet är ett gemensamt arbetsformat där människor och AI samarbetar i samma moduluppbyggda struktur: visuellt på canvasen och maskinläsbart i SKILL.md-paketeringen.
 
 ### Från whiteboard till delbar AI-skill
 
-Du kan klistra in en bild direkt i Skill Canvas, rita eller redigera den i målaren, och allt följer automatiskt med i .zip-filen vid export. Markdown-kort visar inbäddade bilder från zip vid import. Det gör att samma material kan öppnas av en kollega, delas vidare i teamet eller användas direkt av AI och agentiska AI-skills.
+Du kan klistra in en bild direkt i Skill Canvas, rita eller redigera den i målaren, och allt följer automatiskt med i `.zip` / `.skill` vid export. Markdown-kort visar inbäddade bilder från zip vid import. Det gör att samma material kan öppnas av en kollega, delas vidare i teamet eller användas direkt av AI och agentiska AI-skills.
 
 All paketering styrs via SKILL.md-standarden från Anthropic (Claude AI Skills), vilket ger ett tydligt och portabelt format för både människor och AI.
 
@@ -41,12 +41,12 @@ Se CONTRIBUTING.md för riktlinjer kring issues, pull requests och rekommenderat
 ## Kom igång
 
 1. Kör appen via PHP (t.ex. `php -S localhost:8080` i projektroten) och öppna `index.php`
-2. **Öppna** en befintlig `.zip` eller `.skill`-fil (samma format), dra den till fönstret, eller välj **Ny tom canvas** via öppna-menyn
+2. **Öppna** en befintlig `.zip` eller `.skill`-fil (samma format), dra den till fönstret, ange **URL**, öppna från **Git** (GitHub/GitLab), eller välj **Ny tom canvas** via öppna-menyn
 3. Fyll i skill-metadata (`name`, `description`, …) vid ny canvas — standardvärden fylls i automatiskt (standardnamn t.ex. `my-skill-2026-05-31` med dagens datum)
-4. Lägg till noder via toolbaren längst ner. **⋯** (längst till höger) innehåller **HTML / iframe**, **BPMN**, **PromptBook**, **ArchiCode**, **Taxonomi**, **Mindmap** och **SVG**. **Draw.io** och **Mermaid** har egna knappar. Koppla moduler med **länk-ikonen** i handtaget.
-5. **Exportera** som `.zip` (eller `Ctrl+S`) — eller som `.png` för en bild av canvasen
+4. Lägg till noder via toolbaren längst ner. **⋯** (längst till höger) innehåller **HTML / iframe**, **BPMN**, **PromptBook**, **ArchiCode**, **Taxonomi**, **Mindmap**, **PlantUML** och **SVG**. **Draw.io** och **Mermaid** har egna knappar. Koppla moduler med **länk-ikonen** i handtaget.
+5. **Exportera** som `.skill` eller `.zip` (eller `Ctrl+S` för `.zip`) — som `.png` för en bild av canvasen — eller **Spara till Git**
 
-Vid osparade ändringar varnas du innan du stänger fliken, lämnar sidan, öppnar en annan fil eller skapar ny tom canvas. Efter lyckad zip-export nollställs varningen.
+Vid osparade ändringar varnas du innan du stänger fliken, lämnar sidan, öppnar en annan fil eller skapar ny tom canvas. Efter lyckad export nollställs varningen.
 
 Körs som en PHP-webbapp och gör det enkelt att ta en idé till en delbar, visuellt förankrad skill.
 
@@ -59,20 +59,38 @@ Körs som en PHP-webbapp och gör det enkelt att ta en idé till en delbar, visu
 | Element | Funktion |
 |---------|----------|
 | **Titel** (`name`) | Klicka för att öppna skill-metadata. Beskrivningen (`description`) visas som underrad. |
-| **Öppna** ▾ | Klick = filväljare (.zip / .skill). Pil = meny: *Öppna .zip / .skill* / *Ny tom canvas* |
-| **Exportera** ▾ | *Spara .zip* (`SKILL.md` + `index.md` + filer) eller *Spara .png* (bild av alla objekt) |
+| **Öppna** ▾ | Klick = filväljare (.zip / .skill). Pil = meny: *Öppna .zip / .skill* / *Öppna från URL* / *Öppna från Git* / *Ny tom canvas* |
+| **Exportera** ▾ | *Spara .skill* / *Spara .zip* (samma paket, olika filändelse) / *Spara .png* / *Spara till Git* |
 | **Canvas** | Öppna skill-metadata (inkl. **Skill-träd** — filöversikt i paketet) |
+| **Inställningar** | Canvas-bakgrund + Git-anslutningar (PAT sparas bara i webbläsaren) |
 | **Centrera** | Zooma ut så att alla noder syns |
 | **Tema** | Växla ljust/mörkt läge |
 
 Exportfiler namnges automatiskt (skill-namn + tidsstämpel):
 
 ```
+my-skill-2026-05-31_2026-05-31_14.30.45.skill
 my-skill-2026-05-31_2026-05-31_14.30.45.zip
 my-skill-2026-05-31_2026-05-31_14.30.45.png
 ```
 
 Ny canvas får som standard `name` med datum-suffix (`my-skill-YYYY-MM-DD`). Styr basnamn och suffix i `config/defaults.php` (`nameBase`, `nameDateSuffix`).
+
+---
+
+## Git (GitHub / GitLab)
+
+Öppna och pusha `.skill` / `.zip` direkt mot ett repo via Contents-API. Ingen server-proxy — anrop går från webbläsaren; access token sparas i `localStorage` (`sc-git`), aldrig på servern.
+
+| Steg | Beskrivning |
+|------|-------------|
+| **Guide** | Öppna → *Öppna från Git*, eller Exportera → *Spara till Git*. Välj provider, klistra in repo-URL (t.ex. `https://github.com/yllemo/skills`), branch, valfri undermapp och PAT. |
+| **Flera anslutningar** | Hubben listar sparade profiler; du kan lägga till fler eller byta aktiv. |
+| **Lista / öppna** | Visar `.skill` och `.zip` i repot. Tomt repo → CTA *Skapa ny .skill och pusha*. |
+| **Push** | Bygger samma paket som lokal export och skriver via API (skapar fil om den saknas). |
+| **Token** | Fine-grained GitHub: Repository access till just repot + **Contents: Read and write**. Klassisk PAT: scope `repo`. GitLab: `api` eller `read_repository` + `write_repository`. |
+
+Stora filer (>1 MB) hämtas via GitHub raw/blob-API (Contents JSON trunkerar).
 
 ---
 
@@ -101,7 +119,7 @@ På **Markdown-kort** med fast höjd scrollar mushjulet innehållet i kortet i s
 ## Nodtyper
 
 ### Markdown
-Full Markdown-support: rubriker, listor, tabeller, kodblock, citat, länkar. Innehåll sparas som `.md` under `nodes/`. Bilder i Markdown (relativa sökvägar i zip) visas på kortet efter import. Standardbredd på nya kort: **720 px**. Standardhöjd: **600 px** (scroll i kortet vid längre innehåll). Vid import av `.zip` / `.skill` utan sparad höjd sätts **600 px** automatiskt.
+Full Markdown-support: rubriker, listor, tabeller, kodblock, citat, länkar. Innehåll sparas som `.md` under `nodes/`. **Filnamnet följer panelens titel** (t.ex. titel `Test` → `nodes/Test.md`) så filen syns tydligt i Skill-trädet och PromptBook; vid titelbyte byts filen om. Bilder i Markdown (relativa sökvägar i zip) visas på kortet efter import. Standardbredd på nya kort: **720 px**. Standardhöjd: **600 px** (scroll i kortet vid längre innehåll). Vid import av `.zip` / `.skill` utan sparad höjd sätts **600 px** automatiskt.
 
 - **Fullskärmseditor** — grön knapp nere till vänster i redigeringsmodalen öppnar Monaco-editor (`html/markdown.php`) i iframe med `postMessage`-sparande.
 - **Importera DOCX** — finns i fullskärmseditorn (`html/docx-to-skill.php`); konverterad Markdown (med bilder i zip-minnet) kan skickas tillbaka till editorn.
@@ -139,6 +157,13 @@ Vektorgrafik direkt på kortet — live-rendering av `.svg`-filen (ingen PNG-fö
 
 - Lägg till via **⋯ → SVG**
 - **SVG-editor** — fullskärm (`html/svg-editor.php`) med Monaco och live-förhandsvisning
+
+### PlantUML
+UML- och övriga diagram med [PlantUML](https://plantuml.com/)-syntax. Källkod sparas som `.puml` under `diagrams/`; kortet visar PNG-förhandsbild.
+
+- Lägg till via **⋯ → PlantUML**
+- **PlantUML-editor** — fullskärm (`html/plantuml-editor.php` / `.html`): Monaco, live-förhandsvisning, UML/Övrigt-exempel, PNG-export till kortet
+- Samma ⋯-meny-mönster som övriga diagrammoduler
 
 ### Draw.io
 Ritningar via inbäddad [diagrams.net](https://embed.diagrams.net/) i fullskärm. XML sparas som `.drawio` under `diagrams/`; kortet visar en PNG-förhandsvisning.
@@ -255,7 +280,11 @@ Nya inställningar läggs i `config/settings.php` (schema och standardvärden). 
 
 Knappen **Canvas** (eller titeln i headern) öppnar skill-metadata: `name`, `description`, `author`, `version`, `tags`.
 
-Längst ner till vänster i samma modal: **Skill-träd** — visar alla filer i paketet (samma innehåll som exporteras till zip), storlek, och vilka som är kopplade till noder. `SKILL.md` markeras som genererad vid export om den saknas i minnet.
+Längst ner till vänster i samma modal: **Skill-träd** — visar alla filer i paketet (samma innehåll som exporteras), storlek, och vilka som är kopplade till noder.
+
+- Klicka **Lägg till** / **Visa** på en fil för att placera den som nod på canvas (eller fokusera befintlig nod)
+- **`SKILL.md`** läggs till som **skrivskyddad förhandsvisning** (byggs alltid om från metadata + noder vid export — ingår inte som redigerbar fil i paketet)
+- Filer som saknas på canvas markeras; orphan-räknare i sammanfattningen
 
 ---
 
@@ -275,6 +304,7 @@ Flera moduler använder overlay med iframe och `postMessage`-protokoll:
 | BPMN | `html/bpmn-skill-editor.php` | `sc-bpmn-ready`, `sc-bpmn-init`, `sc-bpmn-save` |
 | Bild (målare) | `html/paint-skill-editor.php` | `sc-paint-ready`, `sc-paint-init`, `sc-paint-save` |
 | PromptBook | `html/promptbook.php` | `sc-promptbook-ready`, `sc-promptbook-init`, `sc-promptbook-save` |
+| PlantUML | `html/plantuml-editor.php` | `sc-plantuml-ready`, `sc-plantuml-init`, `sc-plantuml-save` |
 
 DOCX-import använder `html/docx-to-skill.php` och `js/docx-import.js` med samma overlay-mönster.
 
@@ -302,12 +332,13 @@ skill-canvas/
 ├── config/
 │   ├── app.php            ← apptitel, språk, tema, favicon
 │   ├── defaults.php       ← standardvärden för skill, canvas, nodtyper, moduler
-│   ├── settings.php       ← app-inställningar (schema, standardvärden)
-│   └── add-menu.php       ← ⋯-menyn: HTML, BPMN, PromptBook, ArchiCode, Taxonomi, Mindmap, SVG
+│   ├── settings.php       ← app-inställningar (canvas-bakgrund + Git-schema)
+│   └── add-menu.php       ← ⋯-menyn: HTML, BPMN, PromptBook, ArchiCode, Taxonomi, Mindmap, PlantUML, SVG
 ├── includes/              ← bootstrap, modul-laddare, settings/add-menu, head-meta, hjälpfunktioner
 ├── modules/               ← PHP: modal-HTML per nodtyp
 │   ├── markdown.php
 │   ├── mermaid.php
+│   ├── plantuml.php
 │   ├── archicode.php
 │   ├── taxonomi.php
 │   ├── mindmap.php
@@ -323,18 +354,23 @@ skill-canvas/
 ├── js/
 │   ├── modal.js
 │   ├── add-menu.js        ← ⋯-meny i lägg-till-panelen
+│   ├── git-remote.js      ← GitHub/GitLab Contents API (klient)
+│   ├── git-wizard.js      ← guide, hub, lista/öppna/pusha
 │   ├── skill-import.js    ← zip/.skill-validering + fallback-import
-│   ├── skill-tree.js      ← filträd i skill-metadata-modalen
+│   ├── skill-tree.js      ← filträd + lägg till på canvas
 │   ├── okf-index.js       ← genererar index.md (OKF) vid export
 │   ├── connections.js     ← relationer mellan moduler (SVG)
+│   ├── settings.js
 │   ├── docx-import.js
 │   └── modules/           ← JS: add/edit/render per nodtyp
 ├── api/
 │   ├── modal.php          ← returnerar modal-HTML som JSON
+│   ├── fetch-archive.php  ← proxy för fjärr-.zip/.skill (CORS)
 │   └── llm-proxy.php      ← proxy för lokala LLM (PromptBook)
 └── html/
     ├── markdown.php       ← Monaco fullskärm
     ├── mermaid-editor.php ← Mermaid Monaco + live preview + AM4-exempel
+    ├── plantuml-editor.php / .html ← PlantUML Monaco + preview
     ├── archicode.php      ← ArchiCode Monaco + live diagram
     ├── taxonomi-editor.php
     ├── mindmap-editor.php
@@ -363,9 +399,11 @@ Nya nodtyper läggs till som par av `modules/<slug>.php` + `js/modules/<slug>.js
 
 ## SKILL.md-format
 
-Varje `.zip` eller `.skill` (samma format) innehåller `SKILL.md` med YAML frontmatter och en `nodes`-array för full Skill Canvas-layout, samt **`index.md`** enligt [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) — en katalog över alla filer med relativa markdown-länkar (progressive disclosure). Övriga filer refereras via `file`- (och vid Draw.io/BPMN/Taxonomi/Mindmap även `previewFile`-) fält i noderna.
+Varje `.zip` eller `.skill` (samma format) innehåller `SKILL.md` med YAML frontmatter och en `nodes`-array för full Skill Canvas-layout, samt **`index.md`** enligt [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) — en katalog över alla filer med relativa markdown-länkar (progressive disclosure). Övriga filer refereras via `file`- (och vid Draw.io/BPMN/Taxonomi/Mindmap/PlantUML även `previewFile`-) fält i noderna.
 
-**Import:** Om frontmatter saknas eller inte har `nodes` importeras filen ändå — `SKILL.md` och övriga `.md` blir markdown-noder, `.mmd` mermaid, `.ac` archicode, `.drawio` draw.io, `.bpmn` BPMN (med matchande `.png` som förhandsbild om den finns), `.html` html-noder (intern fil), `.json` under `promptbook/` promptbook-noder, filer under `taxonomi/` och `mindmap/` respektive nodtyper, `.svg` under `svg/` svg-noder, bilder blir bild-noder. Metadata från giltig YAML (namn, beskrivning m.m.) används när den går att läsa. Markdown-noder utan sparad höjd får **600 px** vid import.
+**Import:** Om frontmatter saknas eller inte har `nodes` importeras filen ändå — `SKILL.md` och övriga `.md` blir markdown-noder, `.mmd` mermaid, `.puml` plantuml, `.ac` archicode, `.drawio` draw.io, `.bpmn` BPMN (med matchande `.png` som förhandsbild om den finns), `.html` html-noder (intern fil), `.json` under `promptbook/` promptbook-noder, filer under `taxonomi/` och `mindmap/` respektive nodtyper, `.svg` under `svg/` svg-noder, bilder blir bild-noder. Metadata från giltig YAML (namn, beskrivning m.m.) används när den går att läsa. Markdown-noder utan sparad höjd får **600 px** vid import.
+
+**Export:** `SKILL.md` genereras alltid från aktuell canvas (metadata + noder). En eventuell lagrad kopia i minnet skrivs inte över den genererade filen. Förhandsnoder för `SKILL.md` på canvas exporteras inte till YAML.
 
 ### Metadata
 
@@ -434,7 +472,7 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
 | Fält | Typ | Beskrivning |
 |------|-----|-------------|
 | `id` | sträng | Unikt ID, genereras automatiskt |
-| `type` | sträng | `markdown` \| `mermaid` \| `archicode` \| `drawio` \| `bpmn` \| `image` \| `label` \| `annotation` \| `note` \| `html` \| `promptbook` \| `taxonomi` \| `mindmap` \| `svg` |
+| `type` | sträng | `markdown` \| `mermaid` \| `plantuml` \| `archicode` \| `drawio` \| `bpmn` \| `image` \| `label` \| `annotation` \| `note` \| `html` \| `promptbook` \| `taxonomi` \| `mindmap` \| `svg` |
 | `x`, `y` | heltal | Position i px |
 | `width` | heltal | Bredd i px |
 | `height` | heltal | Höjd i px (Note, Annotation, HTML, PromptBook, ArchiCode; Markdown/Mermaid/Taxonomi vid fast höjd) |
@@ -450,7 +488,7 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
   width: 720
   height: 600
   title: "Visas i handtaget"
-  file: nodes/n001.md
+  file: nodes/Visas-i-handtaget.md
 ```
 
 ### Mermaid
@@ -464,6 +502,19 @@ Vid import av äldre zip-filer med `title` (utan `name`) används `title` som `n
   height: 600
   title: "Systemlandskap"
   file: diagrams/n002.mmd
+```
+
+### PlantUML
+
+```yaml
+- id: n016
+  type: plantuml
+  x: 100
+  y: 180
+  width: 480
+  title: "Klassdiagram"
+  file: diagrams/n016.puml
+  previewFile: diagrams/n016.png
 ```
 
 ### ArchiCode
@@ -629,18 +680,20 @@ Se [nodtyper ovan](#html--iframe) för flikarna i modalen. I YAML sparas antinge
 
 ---
 
-## Zip-struktur
+## Zip- / .skill-struktur
 
 ```
-my-skill-2026-05-31.zip
+my-skill-2026-05-31.skill   # eller .zip — samma innehåll
 ├── SKILL.md
 ├── index.md              ← OKF-katalog (genereras vid export)
 ├── nodes/
-│   └── n001.md
+│   └── Visas-i-handtaget.md
 ├── html/
 │   └── min-sida.html
 ├── diagrams/
 │   ├── n002.mmd
+│   ├── n016.puml
+│   ├── n016.png
 │   ├── n011.ac
 │   ├── n007.drawio
 │   ├── n007.png
@@ -700,5 +753,5 @@ Externa tjänster vid redigering: [diagrams.net](https://www.diagrams.net/) (Dra
 Testad i Chrome 120+, Edge 120+, Firefox 121+.
 
 - **PHP-app:** kräver webbserver (PHP inbyggd server räcker)
-- **All data lokalt** — zip/png laddas ner till disk; Draw.io embed använder internet mot diagrams.net; BPMN-editorn laddar bpmn-js från CDN
+- **All data lokalt** — zip/skill/png laddas ner till disk; Git-PAT sparas i webbläsaren; Draw.io embed använder internet mot diagrams.net; BPMN-editorn laddar bpmn-js från CDN; GitHub/GitLab Contents API anropas direkt från klienten
 - PNG-export renderar en klon av noderna off-screen via html2canvas (2× upplösning)
