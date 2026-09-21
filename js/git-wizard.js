@@ -72,6 +72,17 @@ const GitWizard = (() => {
 
   function applyDraftToStorage() {
     if (typeof GitRemote === 'undefined') return;
+    // Self-heal: glpat-… eller gitlab-host ⇒ provider gitlab (undvik /api/v3)
+    const host = draft.gitHost || '';
+    const token = draft.gitToken || '';
+    if (
+      draft.gitProvider !== 'gitlab' &&
+      (GitRemote.resolveProvider?.(draft.gitProvider, host, token) === 'gitlab' ||
+        /^glpat-/i.test(token) ||
+        /gitlab/i.test(host))
+    ) {
+      draft.gitProvider = 'gitlab';
+    }
     GitRemote.upsertProfile({
       name: draft.name || '',
       gitProvider: draft.gitProvider || 'github',

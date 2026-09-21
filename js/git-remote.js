@@ -165,6 +165,8 @@ const GitRemote = (() => {
   function upsertProfile(partial, id = null) {
     const store = loadStore();
     const fields = profileFields(partial);
+    // Self-heal felaktig provider (GitLab-host/token sparad som github ⇒ /api/v3)
+    fields.gitProvider = resolveProvider(fields.gitProvider, fields.gitHost, fields.gitToken);
     const name = String(partial.name || '').trim() || defaultProfileName(fields);
     const now = Date.now();
 
@@ -269,15 +271,34 @@ const GitRemote = (() => {
     });
   }
 
+  function looksLikeGitlabHost(host) {
+    const h = String(host || '').trim().toLowerCase().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    if (!h) return false;
+    if (h === 'gitlab.com' || h === 'www.gitlab.com') return true;
+    return h.includes('gitlab');
+  }
+
+  function looksLikeGitlabToken(token) {
+    return /^glpat-/i.test(String(token || '').trim());
+  }
+
+  function resolveProvider(rawProvider, host, token) {
+    const p = String(rawProvider || '').toLowerCase();
+    if (p === 'gitlab' || looksLikeGitlabHost(host) || looksLikeGitlabToken(token)) {
+      return 'gitlab';
+    }
+    return 'github';
+  }
+
   function config() {
     const s = getAll();
-    const provider = String(s.gitProvider || 'github').toLowerCase() === 'gitlab' ? 'gitlab' : 'github';
     const host = String(s.gitHost || '').trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
     const owner = String(s.gitOwner || '').trim().replace(/^\/+|\/+$/g, '');
     const repo = String(s.gitRepo || '').trim().replace(/^\/+|\/+$/g, '');
     const branch = String(s.gitBranch || 'main').trim() || 'main';
     const path = normalizePath(String(s.gitPath || '').trim());
     const token = String(s.gitToken || '').trim();
+    const provider = resolveProvider(s.gitProvider, host, token);
     return { provider, host, owner, repo, branch, path, token };
   }
 
@@ -307,7 +328,7 @@ const GitRemote = (() => {
 
   function profileSummary(profile) {
     const fields = profileFields(profile);
-    const provider = fields.gitProvider === 'gitlab' ? 'gitlab' : 'github';
+    const provider = resolveProvider(fields.gitProvider, fields.gitHost, fields.gitToken);
     const host = String(fields.gitHost || '').trim() || (provider === 'gitlab' ? 'gitlab.com' : 'github.com');
     const project = projectPath({
       owner: fields.gitOwner,
@@ -437,12 +458,14 @@ const GitRemote = (() => {
   }
 
   function apiBase(cfg) {
-    if (cfg.provider === 'gitlab') {
-      const host = (cfg.host || 'gitlab.com').replace(/^https?:\/\//i, '').replace(/\/+$/, '');
-      return `https://${host}/api/v4`;
+    const host = String(cfg.host || '').trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    // GitLab (cloud eller self-hosted) — alltid API v4. Aldrig /api/v3
+    // (v3 ger: "API V3 is no longer supported. Use API V4 instead.")
+    if (cfg.provider === 'gitlab' || looksLikeGitlabHost(host)) {
+      const h = host || 'gitlab.com';
+      return `https://${h}/api/v4`;
     }
     // github.com public API is https://api.github.com (NOT …/api/v3)
-    const host = String(cfg.host || '').trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
     if (!host || host === 'github.com' || host === 'www.github.com' || host === 'api.github.com') {
       return 'https://api.github.com';
     }
@@ -469,7 +492,17 @@ const GitRemote = (() => {
     const project = cfg ? projectPath(cfg) : '';
     const inaccessible = /resource not accessible by personal access token/i.test(d);
 
+    if (/API V3 is no longer supported|Use API V4/i.test(d)) {
+      return (
+        'GitLab kräver API v4. Kontrollera att leverantören är GitLab (inte GitHub) ' +
+        'och att host är din GitLab-server — anrop ska gå till /api/v4.'
+      );
+    }
+
     if (status === 401) {
+      if (cfg?.provider === 'gitlab') {
+        return 'Ogiltig eller utgången GitLab-token. Skapa en ny med scope api (eller read_repository + write_repository).';
+      }
       return 'Ogiltig eller utgången token. Skapa en ny fine-grained PAT med Contents: Read and write och tillgång till repot.';
     }
     if (status === 403 || inaccessible) {
@@ -507,7 +540,7 @@ const GitRemote = (() => {
       const msg = e?.message || String(e);
       if (/failed to fetch|networkerror|load failed/i.test(msg)) {
         throw new Error(
-          'Nätverksfel mot Git-API (Failed to fetch). Kontrollera internet, att URL:en är api.github.com, och att ingen webbläsartillägg blockerar anropet.'
+          'Nätverksfel mot Git-API (Failed to fetch). Kontrollera internet, API-URL (GitHub: api.github.com, GitLab: …/api/v4), och att ingen tillägg blockerar anropet.'
         );
       }
       throw e;
@@ -925,6 +958,8 @@ const GitRemote = (() => {
     profileSummary,
     defaultProfileName,
     parseRepoUrl,
+    resolveProvider,
+    looksLikeGitlabHost,
     init,
   };
 })();

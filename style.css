@@ -261,11 +261,12 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 #dz-inner.hover{border-color:var(--gs-blue);background:var(--bg-nav)}
 #dz-inner h2{font-size:20px;color:var(--text)}
 #dz-inner p{font-size:13px;color:var(--text-sec);margin:0}
-.dz-footnote{font-size:11px!important;color:var(--text-sec)!important}
-.dz-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:4px}
-.dz-actions .openbtn{justify-content:center;min-width:0;padding:10px 16px}
+.dz-footnote{font-size:11px!important;color:var(--text-sec)!important;max-width:36em;line-height:1.45}
+.dz-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:8px}
+.dz-actions .openbtn{justify-content:center;min-width:0;padding:11px 16px;width:100%;box-sizing:border-box}
+.dz-actions #btn-open-dz{grid-column:1/-1}
 .dz-actions .openbtn-new{grid-column:1/-1;background:var(--gs-blue-dark)}
-.dz-actions #btn-open-git-dz{order:0}
+.dz-actions .openbtn-new:hover{background:var(--gs-blue);opacity:1}
 .openbtn{display:inline-flex;align-items:center;gap:7px;padding:10px 22px;background:var(--gs-blue);color:#fff;border:none;border-radius:4px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s,background .15s}
 .openbtn:hover{opacity:.88}
 .openbtn-secondary{background:var(--card);color:var(--gs-blue);border:2px solid var(--gs-blue)}

@@ -92,7 +92,7 @@ require_once __DIR__ . '/includes/bootstrap.php';
       <button class="openbtn openbtn-secondary" id="btn-open-git-dz">Öppna från Git</button>
       <button class="openbtn openbtn-new" id="btn-new">Ny tom canvas</button>
     </div>
-    <p class="dz-footnote">Git-token och repo-inställningar sparas bara i webbläsaren (localStorage) — aldrig på servern.</p>
+    <p class="dz-footnote">Git-token och repo-inställningar sparas bara i webbläsaren — aldrig på servern.</p>
   </div>
 </div>
 
