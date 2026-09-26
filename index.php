@@ -334,6 +334,39 @@ require_once __DIR__ . '/includes/bootstrap.php';
   <iframe id="pu-editor-frame" title="PlantUML-editor"></iframe>
 </div>
 
+<!-- ABOUT -->
+<div id="about-wrap">
+  <button type="button" id="btn-about" aria-haspopup="dialog" aria-expanded="false" aria-label="Om <?= h($app['title']) ?>">
+    <img src="<?= h($favicon) ?>?v=<?= asset_version($favicon) ?>" alt="">
+  </button>
+  <div class="about-panel" id="about-panel" role="dialog" aria-label="Om <?= h($app['title']) ?>">
+    <div class="about-panel-head">
+      <img src="<?= h($favicon) ?>?v=<?= asset_version($favicon) ?>" alt="">
+      <div class="about-panel-heading">
+        <strong><?= h($app['title']) ?></strong>
+        <span class="about-version">v<?= h($app['version'] ?? '1.0.0') ?></span>
+      </div>
+    </div>
+    <p class="about-panel-desc"><?= h($app['description'] ?? '') ?></p>
+    <div class="about-panel-links">
+      <a href="<?= h($app['repository']) ?>" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <?= h($app['author_url'] ?? 'https://github.com/yllemo') ?>
+      </a>
+      <?php if (!empty($app['video'])): ?>
+      <a href="<?= h($app['video']) ?>" target="_blank" rel="noopener">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2" y="4.5" width="16" height="11" rx="3"/><path d="M8.5 7.5v5l4-2.5z" fill="currentColor"/></svg>
+        Video · Så fungerar det
+      </a>
+      <?php endif; ?>
+      <a href="<?= h($app['demo'] ?? 'https://canvas.aiwiki.se') ?>" target="_blank" rel="noopener">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c2.4 2.1 3.6 4.7 3.6 7.5s-1.2 5.4-3.6 7.5c-2.4-2.1-3.6-4.7-3.6-7.5S7.6 4.6 10 2.5z"/></svg>
+        Demo · canvas.aiwiki.se
+      </a>
+    </div>
+  </div>
+</div>
+
 <script>
 <?php
 $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php'));
@@ -359,6 +392,7 @@ $assetBase = h($app['basePath'] ?? '');
 <script src="<?= $assetBase ?>js/connections.js?v=<?= asset_version('js/connections.js') ?>"></script>
 <script src="<?= $assetBase ?>js/docx-import.js?v=<?= asset_version('js/docx-import.js') ?>"></script>
 <script src="<?= $assetBase ?>js/modules/registry.js?v=<?= asset_version('js/modules/registry.js') ?>"></script>
+<script src="<?= $assetBase ?>js/about-panel.js?v=<?= asset_version('js/about-panel.js') ?>"></script>
 <script src="<?= $assetBase ?>app.js?v=<?= asset_version('app.js') ?>"></script>
 <?php foreach (registered_module_scripts() as $script): ?>
 <script src="<?= $assetBase ?><?= h($script) ?>?v=<?= asset_version($script) ?>"></script>

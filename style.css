@@ -990,6 +990,24 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
 .zb:hover{background:var(--bg-nav)}
 #zlevel{width:34px;height:22px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text-sec);font-size:10px;display:flex;align-items:center;justify-content:center;cursor:default;user-select:none}
 
+/* ── ABOUT ── */
+#about-wrap{position:fixed;bottom:20px;left:20px;z-index:100}
+#btn-about{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--card);box-shadow:0 2px 8px var(--card-shadow);padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.65;transition:opacity .15s,transform .15s}
+#btn-about:hover,#btn-about:focus-visible{opacity:1;transform:translateY(-1px)}
+#btn-about img{width:20px;height:20px;display:block;border-radius:50%}
+.about-panel{position:absolute;bottom:calc(100% + 10px);left:0;display:none;width:min(280px,calc(100vw - 40px));background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.22);padding:14px 16px;z-index:260}
+#about-wrap.open .about-panel{display:block}
+.about-panel-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.about-panel-head img{width:30px;height:30px;flex-shrink:0;border-radius:50%}
+.about-panel-heading{display:flex;flex-direction:column;line-height:1.35}
+.about-panel-heading strong{font-size:14px;color:var(--text)}
+.about-version{font-size:11px;color:var(--text-sec)}
+.about-panel-desc{font-size:12px;color:var(--text-sec);line-height:1.5;margin-bottom:12px}
+.about-panel-links{display:flex;flex-direction:column;gap:4px}
+.about-panel-links a{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--link);text-decoration:none;padding:7px 8px;border-radius:6px;transition:background .12s}
+.about-panel-links a:hover{background:var(--bg-nav)}
+.about-panel-links svg{width:14px;height:14px;flex-shrink:0;opacity:.85}
+
 /* ── TOAST ── */
 #toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(12px);background:#222;color:#fff;padding:8px 16px;border-radius:6px;font-size:12px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:500;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -1262,6 +1280,21 @@ html,body{height:100%;overflow:hidden;font-family:'Goteborg',Arial,Helvetica,san
   #zc {
     bottom: calc(88px + var(--safe-bottom));
     right: max(12px, var(--safe-right));
+  }
+
+  #about-wrap {
+    bottom: calc(88px + var(--safe-bottom));
+    left: max(12px, var(--safe-left));
+  }
+
+  #btn-about {
+    width: 40px;
+    height: 40px;
+  }
+
+  #btn-about img {
+    width: 22px;
+    height: 22px;
   }
 
   .zb {
